@@ -105,6 +105,90 @@ Everything in this section is an **assumption**, not a fact. None of it has been
 
 **Reading rule for this section:** if a later document, script comment or commit message asserts any of the above as settled, it is wrong unless it also cites the verification that settled it.
 
+### 5.21 — `ChaosVehicles` module name and `ChaosVehiclesPlugin` plugin name
+
+`ApexFormulaVehicle.Build.cs` lists `ChaosVehicles` as a private dependency and `ApexFormula.uproject` enables the plugin `ChaosVehiclesPlugin`. Both strings are stated intent, not observed fact. The module name and the plugin name are *not* the same string, and either could have been renamed in 5.8. If the module name is wrong, `ApexFormulaVehicle` fails to build with an unresolved module error; if the plugin name is wrong, the editor reports a missing plugin on project load.
+
+This is contained by decision D-008: no ApexFormula file outside `AFVehicleCompatibilityLayer.h/.cpp` names any engine vehicle type, and the compatibility layer currently binds **no backend at all** (`BackendId` is `none`, `bBackendAvailable` is `false`). So a wrong module name is a build-configuration fix in one file, not a code rewrite.
+
+### 5.22 — `DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams` with a `double` parameter
+
+`AFCheckpoint.h` declares `FAFOnCheckpointPassed` as a three-parameter dynamic multicast delegate, one parameter of which is a `double`. Dynamic delegates are reflected and Blueprint-exposed, and Blueprint's historical floating-point pin was `float`; UE5 introduced double-precision Blueprint reals, but whether a `double` is accepted in a *dynamic* delegate signature in 5.8 is unverified.
+
+**This is the highest-risk single declaration in the Milestone 1 C++.** If it is rejected, the fix is to change the parameter to `float` at the delegate boundary only — the timing types themselves stay `double`, because lap timing precision must not be reduced to satisfy a delegate signature.
+
+### 5.23 — `EAutomationTestFlags` used as an `int32` mask
+
+All six test files declare a file-local `static const int32 AF<Area>TestFlags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::CommandletContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter;`. This is the historical idiom and relies on the flags being a plain (unscoped) enum that decays to `int32`.
+
+If 5.8 converted `EAutomationTestFlags` to an `enum class`, every one of the six files fails to compile at that line. The fix is mechanical but touches all six: either use the engine's own flag type for the constant or insert explicit casts. Flagged here because a single upstream change produces six simultaneous failures that could otherwise look like six unrelated bugs.
+
+### 5.24 — `AddExpectedError(...)` matching a `UE_LOG(..., Warning, ...)`
+
+Three test files call `AddExpectedError(<substring>, EAutomationExpectedErrorFlags::Contains, 0)` before deliberately invoking a rejected operation. The rejections in `AFSectorTimer` and `AFLapValidator` log at **Warning** level, not **Error**.
+
+Whether `AddExpectedError` suppresses and matches Warnings as well as Errors in 5.8 is unverified. **This is the single most likely reason the automation tests would run but fail as written.** If Warnings are not covered, the options are to raise those specific rejections to Error, or to drop the expectation and assert only the return value. Note the third argument `0` means "any number of occurrences, including zero", which was chosen precisely to reduce this fragility.
+
+### 5.25 — `TestEqual` overloads and tolerance behaviour
+
+Double comparisons pass an explicit tolerance (`1.0e-9`). Two call sites compare `float`s **without** an explicit tolerance argument and therefore rely on the engine's default tolerance rather than exact equality; if no such overload exists the comparison may fall through to an exact-match overload and become brittle. `TestEqual` is also used with an `int64` expected value (telemetry sample counters) and `TestNotEqual` with two `int32`s. All are ordinary usage; none is observed.
+
+### 5.26 — Reflection and container idioms used across the modules
+
+| Idiom | Where used | Risk if wrong |
+| --- | --- | --- |
+| `AActor::GetComponents<T>(TArray<T*>&)` | `AFVehiclePawn.cpp` | Signature/overload changed; local fix |
+| `FName::LexicalLess` as a sort predicate | `AFVehiclePawn.cpp` component ordering | Determinism of subsystem order lost |
+| `AActor::IsActorBeingDestroyed()` called from an interface override | `AFVehiclePawn.cpp` | Constness mismatch |
+| `CreateDefaultSubobject<UAFVehicleCompatibilityLayer>` for a plain `UObject` | `AFVehiclePawn.cpp` | Fallback is `NewObject` in `BeginPlay` |
+| A `UCLASS` deriving both `UActorComponent` and a `UINTERFACE` interface | `AFVehicleComponentBase` | Multiple-inheritance/UHT rejection |
+| `TSet::Add(Value, &bAlreadyInSet)` | `AFLapValidator.cpp` | Out-parameter overload absent |
+| `TArray::Last()` on a `TArray<USTRUCT>` | `AFSectorTimer.cpp` | None expected |
+| `FAFOnTelemetrySample::FDelegate` nested typedef, `CreateLambda` / `CreateWeakLambda` | `AFHudViewModel.cpp` | Subscription cannot be expressed as written |
+| `UPROPERTY(Transient)` on a `TWeakObjectPtr<UAFTelemetryBus>` | `AFHudViewModel.h` | UHT rejects weak pointer as a UPROPERTY |
+| `meta=(AllowedClasses="/Script/ApexFormulaCore.AFQualityProfile")` on `FSoftObjectPath` | `AFDeveloperSettings.h` | Filter ignored; picker shows everything |
+| `UDeveloperSettings::GetCategoryName()` as a virtual override | `AFDeveloperSettings.h/.cpp` | Settings appear in the wrong category |
+| `static constexpr int32` declared inside a `UCLASS` body | `AFSaveGame.h` | UHT parse error |
+| `Cast<IAFRaceParticipant>(AActor*)` | `AFCheckpoint.cpp` | Fallback is `Implements<UAFRaceParticipant>()` then `Cast` |
+| `SetGenerateOverlapEvents(true)` and `SetCollisionResponseToAllChannels(ECR_Overlap)` in a `UBoxComponent` constructor | `AFCheckpoint.cpp` | Overlaps never fire |
+| `TStringBuilder<2048>` with `Appendf` | `AFDataValidator.cpp` | Header/API moved |
+| A `UFUNCTION` returning `TArray<FAFValidationIssue>` | `AFDataValidator.h` | UHT return-type restriction |
+| `IMPLEMENT_SIMPLE_AUTOMATION_TEST` and `Misc/AutomationTest.h` reachable from a non-editor module | all six test files | Tests module must become editor-only |
+| `EditorSubsystem` as a private dependency of an Editor-type module | `ApexFormulaEditor.Build.cs` | Module name changed |
+
+### 5.27 — Nothing in this section has been compiled
+
+Every entry in §5.21 to §5.26 is a **statement about C++ that has never been fed to a compiler**. No Unreal Engine installation, no Unreal Build Tool, no MSVC and no clang exist in the environment where this project was authored. The whole of §5.21 to §5.26 therefore carries the label `requires local compilation`, and no claim to the contrary appears anywhere in this repository.
+
+What *was* mechanically verified is described in §5.28.
+
+### 5.28 — What the Milestone 1 static validator actually proves
+
+`Tools/af_static_validate.py` is pure-Python, standard-library only, and runs without Unreal or Blender. On the Milestone 1 tree it reports **2300 checks passed, 0 failures, 0 warnings, exit code 0**.
+
+It proves, mechanically: the module dependency graph matches `TECHNICAL_ARCHITECTURE.md` §2 and is acyclic; `ApexFormulaRace` does not depend on `ApexFormulaVehicle`; `ApexFormulaCore` depends on no ApexFormula module; every module declared in the `.uproject` has a `.Build.cs` and an `IMPLEMENT_MODULE`; every header has `#pragma once`; every include resolves to a file that exists; no prohibited token appears in any name; no absolute or container-specific path is hard-coded; no engine vehicle API appears outside the D-008 chokepoint; no telemetry channel string literal appears outside `AFTelemetryTypes.cpp`; every key in `DefaultApexFormula.ini` maps to a real `UPROPERTY(Config)`; and the Unreal bone convention agrees with `af_pipeline_config.py`.
+
+It proves **nothing** about whether the C++ compiles, whether the editor loads the modules, or whether the 27 declared automation tests pass. Those remain `requires local compilation` and `requires Unreal Editor verification`.
+
+### 5.29 — The bone check is an emulation, and that is deliberate
+
+The Blender/Unreal bone agreement is not checked by comparing text. The validator **imports `af_pipeline_config.py` live** as the source of truth, then parses `AFBoneNameMap.cpp`, extracts its prefix, literal bone names, corner order and the two `Printf` format strings, and *re-derives* the ordering and parent map the compiled C++ would produce. The derived structures are compared against the Python constants.
+
+This matters because the two known bone bugs in this project were both **doc comments that drifted away from correct code**, not wrong code. A textual diff would have compared the drifted comment; an emulation compares behaviour. Consequence: a change to the *style* of `AFBoneNameMap.cpp` — not its behaviour — can break the parser and must be accompanied by an emulator update.
+
+### 5.30 — The validator itself was mutation-tested
+
+A checker that cannot fail proves nothing. `/app/workspace/mutation_test.py` (a scratch harness, deliberately **not** committed) copies the tree to a temporary directory, injects one deliberate defect at a time, and asserts the validator rejects it.
+
+Result: **11 of 11 mutations detected**, plus one negative control — a prohibited word placed inside a comment — correctly *ignored*, and the tree correctly restored afterwards.
+
+Two findings deserve recording because they are the reason this section exists:
+
+1. **The first run appeared to show three validator gaps. Two were flaws in the test**, which injected leaks inside `//` comments that the validator strips by design. The lesson from Milestone 0B — when a residual issue contradicts a PASS, suspect the checker — has a symmetric form: **when a mutation is missed, suspect the mutation first, but prove it by reading the source.**
+2. **One gap was real.** `PROHIBITED_IDENTIFIER_PATTERNS` used `\bF1\b`, which *cannot* match `F1SeasonCount`, because the trailing `\b` fails when `1` is followed by a word character. The prohibited token must never appear in any *name*, so identifier-embedded occurrences were exactly the case being skipped. `Formula1` was invisible to every pattern, containing neither `F1` nor `FormulaOne`. The patterns are now substring matches and the suite reaches 11/11.
+
+Two earlier failures were also checker defects rather than code defects, and are recorded for the same reason: `check_portability` flagged the very line in `AFDeveloperSettings.cpp` whose job is to *reject* UNC paths, and `check_telemetry_literals` was the only containment check that did not strip comments before searching. Both were fixed; the path exemption carries three explicit guard assertions proving the exempted file still contains its rejection logic, so the exemption cannot silently start covering a file that validates nothing.
+
 ---
 
 ## 6. What Is Deliberately Not Pinned
@@ -133,4 +217,12 @@ When any of these becomes observed, it is recorded here with the date and the co
 | Every item in §5 is unverified | statically inspected — §5 exists precisely because these are unverified |
 | §5.16 to §5.19 are the version-sensitive surfaces introduced by the Milestone 0B scripts | statically inspected |
 | §5.20 records the one thing about the scripts that was actually measured, and states its limit | automatically validated |
+| §5.21 to §5.26 are the version-sensitive surfaces introduced by the Milestone 1 C++ | statically inspected |
+| Every API in §5.21 to §5.26 exists in UE 5.8 with the signature assumed | not claimed — `requires local compilation`; see §5.27 |
+| §5.22 (`double` in a dynamic delegate) and §5.24 (`AddExpectedError` on a Warning) are the two highest-risk assumptions | statically inspected — a judgement, not a measurement |
+| The validator reports 2300 checks, 0 failures, exit code 0 on the Milestone 1 tree | automatically validated |
+| The specific properties listed in §5.28 are the ones the validator actually enforces | automatically validated |
+| The bone check re-derives behaviour rather than diffing text (§5.29) | automatically validated |
+| The validator detects 11 of 11 injected defects and ignores the negative control (§5.30) | automatically validated |
+| Any Milestone 1 C++ file has been compiled, or any automation test executed | not claimed — no engine, UBT, MSVC or clang exists in the authoring environment |
 | Any listed tool is installed, runnable, or of the stated version | not claimed — see §5.1, §5.2, §5.11 |
