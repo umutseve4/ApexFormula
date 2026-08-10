@@ -97,6 +97,11 @@ Everything in this section is an **assumption**, not a fact. None of it has been
 | 5.13 | The face and bone budgets in `BLENDER_PIPELINE_DESIGN.md` are achievable for a formula-style vehicle at the intended visual quality | Generate the Milestone 4 vehicle and read the validation report | requires Blender execution, then requires visual inspection |
 | 5.14 | Placeholder materials authored in Blender import without polluting the Unreal material library | Import and inspect the created material assets | requires Unreal Editor verification |
 | 5.15 | Nothing in the committed tree contains private reference material, credentials, machine configuration or build output | Inspect the repository tree and `.gitignore` coverage | statically inspected |
+| 5.16 | The FBX exporter option names in `af_pipeline_config.FBX_EXPORT_SETTINGS` are the names Blender 5.2 LTS actually accepts | Run `af_export.py`; it introspects the operator's RNA and prints every key it had to drop (D-026) | requires Blender execution |
+| 5.17 | `bpy.types.MeshPolygon.edge_keys` and `bpy.types.MeshEdge.key` exist in Blender 5.2 LTS | Run `af_validate.py`; validation checks 3 and 4 (non-manifold and boundary edges) depend on them | requires Blender execution |
+| 5.18 | `bpy.ops.export_scene.fbx` is still the export operator's path in Blender 5.2 LTS, and the FBX add-on is enabled by default | Run `af_export.py` and observe whether the operator resolves | requires Blender execution |
+| 5.19 | The `DECIMATE` modifier's `COLLAPSE` ratio produces LOD meshes within the face budgets in `BLENDER_PIPELINE_DESIGN.md` | Generate LODs and read the measured polygon counts in the validation report | requires Blender execution |
+| 5.20 | The eight `af_*.py` scripts are syntactically valid Python for the interpreter Blender 5.2 LTS embeds | `python -m py_compile` passes on all eight under CPython 3.12; Blender's embedded interpreter version is unobserved | automatically validated for CPython 3.12 only |
 
 **Reading rule for this section:** if a later document, script comment or commit message asserts any of the above as settled, it is wrong unless it also cites the verification that settled it.
 
@@ -126,4 +131,6 @@ When any of these becomes observed, it is recorded here with the date and the co
 | The FBX-primary / GLB-optional policy in §3 matches `BLENDER_PIPELINE_DESIGN.md` §7 and §8 | statically inspected |
 | The version-sensitive areas in §4 are real risk surfaces | statically inspected — none has been triggered, because nothing has been run |
 | Every item in §5 is unverified | statically inspected — §5 exists precisely because these are unverified |
+| §5.16 to §5.19 are the version-sensitive surfaces introduced by the Milestone 0B scripts | statically inspected |
+| §5.20 records the one thing about the scripts that was actually measured, and states its limit | automatically validated |
 | Any listed tool is installed, runnable, or of the stated version | not claimed — see §5.1, §5.2, §5.11 |
