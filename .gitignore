@@ -1,0 +1,80 @@
+# =====================================================================
+# ApexFormula — Git ignore rules
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# Private / personal material — NEVER committed
+# ---------------------------------------------------------------------
+Local/
+**/Local/
+*DriverReference*
+
+# ---------------------------------------------------------------------
+# Unreal Engine — generated and machine-specific
+# ---------------------------------------------------------------------
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+.vs/
+.vscode/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+*.xcodeproj/
+*.xcworkspace/
+
+# Unreal crash / profiling output
+*.stackdump
+*.log
+Profiling/
+
+# ---------------------------------------------------------------------
+# Blender
+# ---------------------------------------------------------------------
+*.blend1
+*.blend2
+*.blend3
+__pycache__/
+*.py[cod]
+
+# ---------------------------------------------------------------------
+# Generated pipeline output — reproducible, therefore not committed
+# ---------------------------------------------------------------------
+Content/Blender/Generated/
+Pipeline/Generated/
+Pipeline/Reports/
+
+# ---------------------------------------------------------------------
+# Credentials and secrets — NEVER committed
+# ---------------------------------------------------------------------
+*.pem
+*.key
+*.pfx
+*.p12
+.env
+.env.*
+secrets.json
+credentials.json
+*apikey*
+*api_key*
+*token*.txt
+
+# ---------------------------------------------------------------------
+# Operating system noise
+# ---------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------------------------------------------------------------------
+# Temporary / scratch
+# ---------------------------------------------------------------------
+*.tmp
+*.temp
+*.bak
+*~
