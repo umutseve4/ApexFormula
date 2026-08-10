@@ -2,10 +2,6 @@
 
 An original 3D formula racing game built with Unreal Engine 5.8 and Blender 5.2 LTS.
 
-> **Current state:** Milestone 0A — technical foundation documents only.
-> There is no Unreal project, no Blender script, and no art asset in this repository yet.
-> Nothing here has been compiled, executed, imported or visually inspected.
-
 ---
 
 ## What this repository contains
@@ -87,7 +83,3 @@ Each document ends with a Verification Ledger applying these labels to its own c
 Reference photographs and any biometric-adjacent material must remain in a machine-local
 `LocalReference/` directory, which is excluded by `.gitignore` by name. No such material is
 committed, packaged or transmitted. See `Documentation/DRIVER_PIPELINE_DESIGN.md` §1–§2.
-
-## Next milestone
-
-**0B — Blender→Unreal pipeline foundation.** Not started. See `Documentation/MILESTONE_PLAN.md`.
