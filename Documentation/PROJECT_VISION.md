@@ -1,200 +1,162 @@
 # ApexFormula — Project Vision
 
-**Document status:** statically authored design document. No engine or tool execution occurred.
-**Milestone:** 0A — Technical architecture and decision records.
+**Document status:** statically authored design document (Milestone 0A). No engine or tool execution is claimed anywhere in this document.
 
 ---
 
 ## 1. Project Identity
 
-**Internal project name:** ApexFormula
+- **Internal project name:** ApexFormula
+- **Root project identity string:** `ApexFormula`
+- **Asset prefix:** `AF_`
+- **Blender Python script prefix:** `af_`
+- **Genre:** original 3D open-wheel formula-style racing game
+- **Intellectual property status:** original fictional motorsport IP
 
-ApexFormula is an original 3D open-wheel formula-style racing game. It is an
-original fictional motorsport intellectual property. It is not a simulation of,
-adaptation of, or successor to any real-world racing series.
+ApexFormula is an entirely fictional motorsport universe. It has its own championship, its own regulation set, its own teams, drivers, sponsors, circuits and liveries. It is not a simulation of, adaptation of, or companion to any existing real-world racing series.
 
-- Root project identity: `ApexFormula`
-- Unreal asset prefix: `AF_`
-- Blender Python script prefix: `af_`
-- Repository name: `ApexFormula`
+## 2. Originality Rules (binding)
 
-No real-world racing series abbreviation or mark is used in project names,
-filenames, class names, asset names, script names, folder names, documentation
-titles, or public-facing terminology.
+These rules are binding on all code, assets, documentation, commit messages and user-facing text.
 
-## 2. Originality Rules
+**Forbidden in project names, filenames, class names, asset names, script names, folder names, documentation titles and public-facing terminology:**
 
-The following are **prohibited** anywhere in the project — code, assets,
-documentation, UI text, marketing text, or metadata:
+- The token `F1`.
 
-- Any real motorsport series name, abbreviation, or mark
+**Forbidden as content:**
+
+- Formula 1 branding of any kind
 - Real racing team names
 - Real driver names
 - Real sponsor names
-- Official logos of any real series, team, or sponsor
+- Official logos of any real organisation
 - Real liveries
 - Exact real-world car reproductions
 - Exact real-world track reproductions
 - Any protected motorsport branding
 
-The following are **required** instead:
+**Required instead:**
 
-- Fictional teams
-- Fictional drivers
-- Fictional sponsors
-- Fictional vehicles
-- Fictional circuits
-- Fictional liveries, helmets, and racing suits
-- Fictional championship rules
+- Fictional teams, fictional drivers, fictional sponsors, fictional vehicles, fictional circuits, fictional liveries, fictional helmets, fictional racing suits and a fictional championship rule set, all authored for ApexFormula.
 
-Vehicle dimensions, aerodynamic values, tire models, and energy systems are
-**ApexFormula design values**. They are never described as the official
-measurements or official regulations of any real series or governing body.
+**Regulation references:** ApexFormula vehicle dimensions, aerodynamic limits, energy limits and tyre rules are *ApexFormula design values*. They must never be described as official FIA measurements or as any real sanctioning body's regulations. If real motorsport regulations are ever consulted as a general engineering reference, that use must be recorded separately in `Documentation/DECISION_LOG.md` with source, season, units and the limited purpose of the reference. No such reference is used in Milestone 0A.
 
-If real motorsport technical regulations are ever consulted as a general
-engineering reference, that use is documented separately with source, season,
-units, and limited purpose — and never presented as project-authoritative.
+**Driver likeness exception:** the product owner's own likeness is an intentional, authorised original character and is not third-party IP. Its handling is governed by `Documentation/DRIVER_PIPELINE_DESIGN.md`.
 
 ## 3. Design Goals
 
-1. **An original open-wheel racing experience** with high-downforce handling
-   character, sharp braking, and precise corner entry.
-2. **A believable simulation layer** covering aerodynamics, tires, brakes, fuel,
-   and hybrid energy — expressed through fictional, tunable design values.
-3. **Readable driver feedback.** The simulation must communicate its state to the
-   player through handling, HUD, audio, and telemetry — not through hidden math.
-4. **Deterministic, authoritative gameplay logic in C++**, so that replay and
-   future multiplayer remain viable without rewriting core systems.
-5. **A data-driven asset pipeline** where Blender-generated content flows into
-   Unreal through documented, repeatable, validated steps.
-6. **A separation of preview quality from final quality**, so that development on
-   modest hardware never caps the ceiling of the finished product.
+1. **Original identity first.** Every visible name, logo, livery and circuit is authored for ApexFormula.
+2. **Credible open-wheel feel.** High downforce, low mass, sharp braking, narrow tolerance for error — the vehicle should feel fast, delicate and rewarding.
+3. **Deterministic, inspectable simulation.** Race rules, lap validation and timing must be reproducible and auditable, not emergent side effects of visual code.
+4. **Data-driven tuning.** A designer must be able to change vehicle balance, aero maps, tyre models and session rules without recompiling C++.
+5. **Pipeline reproducibility.** Any generated asset must be regenerable from scripts and configuration, not from undocumented manual steps.
+6. **Milestone honesty.** Nothing is declared working until it has been verified on the product owner's machine.
 
 ## 4. Gameplay Direction
 
-The core loop is: **prepare the car → drive the session → evaluate the result.**
+The target experience is a **single-player-first, offline, session-based open-wheel racing game**, structured around:
 
-Target session types (implemented progressively across milestones, not at once):
+- Practice, qualifying and race sessions
+- Ordered checkpoints, sector timing, valid/invalid lap detection
+- A starting grid with false-start preparation
+- AI opponents with configurable pace and aggression
+- A pit lane with pit stops and stop timing
+- Race control with penalties
+- Telemetry and a HUD that surfaces tyre, brake, fuel, energy and delta information
+- Vehicle setup screens for aero balance, brake bias, differential, suspension and steering
 
-- Practice
-- Qualifying
-- Race
-
-Supporting gameplay pillars:
-
-- Ordered checkpoint and sector timing with valid/invalid lap rules
-- Vehicle setup screens that meaningfully change handling
-- Tire, brake, fuel, and energy state that evolves over a stint
-- AI opponents with race-legal behaviour
-- Pit lane, pit stops, race control, and penalties
-- HUD, telemetry, gamepad and steering wheel input
-- Replay preparation and future multiplayer preparation
+Multiplayer is **not a Milestone 0A–12 feature**. It is a *boundary requirement*: authoritative logic is placed where it could later be server-owned, so that adding replication is an extension rather than a rewrite.
 
 ## 5. Simulation versus Accessibility Philosophy
 
-ApexFormula is a **simulation-leaning racing game with layered accessibility**,
-not a hardcore-only simulator and not an arcade racer.
+ApexFormula targets the **"deep simulation core, layered assistance"** model.
 
-Guiding rules:
-
-1. **The underlying model is always the simulation model.** Assists are applied as
-   input conditioning and correction layers on top of a single physics truth.
-   There is no separate "arcade physics" code path.
-2. **Assists are explicit and enumerable.** Steering assist, braking assist,
-   traction control, stability control, automatic gearbox, and racing line are
-   individually toggleable and individually recorded in session metadata.
-3. **Difficulty never invalidates the rules.** Lap validity, penalties, and timing
-   behave identically at every assist level.
-4. **Depth is opt-in, not mandatory.** A player who never opens the setup screen
-   must still be able to complete a competitive session on a default setup.
-5. **The telemetry is the tutorial.** Advanced players learn the model by reading
-   the same telemetry the developers use.
+- The physical model is always fully simulated. Assists never disable the simulation; they modulate *input into* the simulation or *output torque from* it.
+- Assist layers planned: steering assist, braking assist, traction/stability assist, automatic gearbox, racing line guidance, automatic energy deployment, simplified tyre/fuel consumption multipliers.
+- Every assist is a named, serialisable value in a difficulty profile Data Asset, never a hardcoded branch inside physics code.
+- The default out-of-box profile is **approachable**: assists on, consumption multipliers reduced, damage cosmetic.
+- The reference profile is **unassisted**: all assists off, full consumption, full penalties. This is the profile used for tuning and for validation of the physical model.
+- No assist may create physically impossible behaviour (e.g. grip above the tyre model's own limit).
 
 ## 6. Platform Assumptions
 
-- **Primary development and build platform:** Windows
-- **Primary engine:** Unreal Engine 5.8
-- **Primary DCC tool:** Blender 5.2 LTS
-- **Primary gameplay language:** C++
-- **Configuration and presentation layer:** Blueprints
-- **Procedural asset generation and validation:** Blender Python
-- **Primary skeletal asset interchange:** FBX
-- **Optional static preview / interchange:** GLB
-- **Source control:** Git, with Git LFS for appropriate large binary assets
-
-Input targets: keyboard, gamepad, and steering wheel (with pedals). Steering
-wheel support is a first-class target, not an afterthought, because force
-feedback fidelity constrains how the vehicle model exposes forces.
-
-No console platform is assumed. No mobile platform is assumed. The architecture
-avoids Windows-only gameplay logic so that a future platform decision is not
-blocked, but no non-Windows target is promised.
+- **Primary development and build platform:** Windows.
+- **Primary engine:** Unreal Engine 5.8.
+- **Primary DCC tool:** Blender 5.2 LTS.
+- **Primary gameplay language:** C++, with Blueprints for configuration and presentation.
+- **Primary input:** gamepad. **Also targeted:** keyboard, and direct-drive/consumer force-feedback steering wheels with pedals.
+- **Source control:** Git, with Git LFS for large binary assets.
+- Console and non-Windows platforms are explicitly **out of scope** for the milestone plan defined in `Documentation/MILESTONE_PLAN.md`. Nothing in the architecture may make them impossible, but nothing is built or validated for them.
 
 ## 7. Quality Targets
 
-Quality is expressed in three tiers that apply across vehicles, tracks, and
-characters.
+Quality targets are expressed as *final-quality* targets. They are **not** reduced to match the current development laptop.
 
-| Tier | Purpose | Applies to |
-|---|---|---|
-| Preview | Fast iteration on modest hardware | Development only |
-| Production | Shipping in-game quality | The default deliverable |
-| Hero | Close-up cinematic presentation | Menus, garage, podium, replays |
+| Area | Final-quality target |
+| --- | --- |
+| Vehicle mesh | Original high-detail open-wheel car with LOD chain and dedicated collision meshes |
+| Vehicle physics | Sub-stepped, telemetry-instrumented, tyre/aero/energy aware |
+| Track | Original circuit geometry with correct racing surface classification, run-off, kerbs and pit lane |
+| Driver | MetaHuman-based original driver, Tier A/B/C as defined in `Documentation/DRIVER_PIPELINE_DESIGN.md` |
+| Presentation | Cinematic-grade garage, menu and podium scenes |
+| Frame budget (final target machine) | Stable 60 FPS at high settings during a full grid race |
+| Frame budget (development preview) | Playable, not shippable — visual fidelity may be sacrificed freely |
 
-Character-specific tiers (see `DRIVER_PIPELINE_DESIGN.md`):
-
-- **TIER A — Cockpit Driver:** gameplay-optimized, helmet normally worn, limited
-  face visibility, animation and performance prioritized.
-- **TIER B — Presentation Driver:** menus, garage, podium; recognizable likeness;
-  improved skin, eyes, hair, facial hair, and clothing.
-- **TIER C — Hero Driver:** close-up cinematic presentation, highest practical
-  facial and material quality, optional advanced facial animation. Not required
-  for the first playable release.
+**Explicit statement:** the current laptop's capability does not lower any number in this table. It only determines which *profile* is used day to day.
 
 ## 8. Preview versus Final-Quality Principles
 
-The development laptop may not be able to run every stage of the final
-production pipeline. This **does not** reduce the final quality target.
+Two named quality profiles exist for the entire project lifetime.
 
-Five binding principles:
+### Development Preview profile
 
-1. **Two profiles, one source of truth.** `DevelopmentPreview` and `FinalQuality`
-   are separate configuration profiles. Both read the same source assets and the
-   same design data. Neither profile is the "real" asset.
-2. **Preview is derived, never destructive.** Preview-quality output is written to
-   generated/derived locations. A preview run never overwrites, downsamples, or
-   deletes a source asset or a final-quality artifact.
-3. **Heavy stages are deferrable.** Lightmap and distance-field baking, high-LOD
-   generation, shader permutation compilation, texture compression at final
-   resolution, cinematic rendering, and packaging are all designed to be executed
-   later on a stronger Windows machine without reauthoring content.
-4. **Profile state is visible.** The active profile is logged at startup, shown in
-   development HUD builds, and stamped into validation reports, so a preview
-   result is never mistaken for a final result.
-5. **Acceptance criteria name their profile.** Every milestone acceptance
-   criterion states whether it is satisfied under Preview, Final, or both.
+- Purpose: allow gameplay iteration, logic testing and playtesting on weaker hardware.
+- Permitted: reduced texture resolution, reduced shadow quality, disabled ray tracing, disabled advanced post-processing, low-poly proxy meshes, reduced AI grid size, reduced physics sub-steps *for non-validation sessions*, skipped LOD bakes, fast/dirty light builds.
+- Location: engine scalability configuration plus an ApexFormula-specific preview settings object. Never a source-code branch.
+
+### Final Quality profile
+
+- Purpose: the actual shipping target, produced on a stronger Windows machine.
+- Includes: full-resolution textures, full LOD chains, full lighting bake/Lumen configuration, full grid, full physics sub-stepping, full validation passes.
+
+### Non-destruction rules
+
+1. **Source assets are never overwritten by preview generation.** Preview outputs go to a distinct generated directory; source assets live in a separate source directory (see `Documentation/BLENDER_PIPELINE_DESIGN.md`).
+2. **Preview settings are additive overrides.** Selecting the preview profile must never edit, downsample or delete a final-quality asset on disk.
+3. **Profile selection is data, not code.** Switching profiles must require no recompilation and no asset re-authoring.
+4. **Any generated artefact records which profile produced it**, so a preview-quality bake can never be mistaken for a final-quality bake.
+5. **Validation of physics and race rules always runs at final-quality physics settings**, even on weak hardware, even if the frame rate is poor. Correctness is never sampled at preview fidelity.
 
 ## 9. Verification Posture
 
-This project follows strict honesty rules. In all project documentation and all
-generated reports, every result carries one of the following labels:
+Every claim in this project is labelled with exactly one of:
 
-- statically inspected
-- automatically validated
-- requires Blender execution
-- requires Unreal Editor verification
-- requires local compilation
-- requires visual inspection
-- requires playtesting
+- `statically inspected`
+- `automatically validated`
+- `requires Blender execution`
+- `requires Unreal Editor verification`
+- `requires local compilation`
+- `requires visual inspection`
+- `requires playtesting`
 
-No document in this repository claims that Unreal Engine compiled, that an
-Unreal project opened, that a Blender script executed, that an FBX or GLB
-imported, or that any generated model was visually confirmed. Milestone 0A
-produced documentation only.
+No document in this repository asserts that Unreal Engine compiled, that an Unreal project opened, that a Blender script executed, that an FBX or GLB imported, or that a generated model looks correct. The Milestone 0A execution environment contained neither Unreal Engine nor Blender.
 
-## 10. Privacy Posture
+## 10. Related Documents
 
-Personal reference photographs remain local to the product owner's computer.
-They are never uploaded, transmitted, embedded, packaged, or committed. A
-private local input convention exists and is excluded from Git. No photographs
-are requested in Milestone 0A. See `DRIVER_PIPELINE_DESIGN.md`.
+- `Documentation/TECHNICAL_ARCHITECTURE.md`
+- `Documentation/VEHICLE_SYSTEM_DECISION.md`
+- `Documentation/BLENDER_PIPELINE_DESIGN.md`
+- `Documentation/DRIVER_PIPELINE_DESIGN.md`
+- `Documentation/MILESTONE_PLAN.md`
+- `Documentation/VERSION_MATRIX.md`
+- `Documentation/DECISION_LOG.md`
+
+## 11. Verification Ledger for This Document
+
+| Claim | Label |
+| --- | --- |
+| The originality rules stated here are complete and internally consistent | statically inspected |
+| The related documents listed in §10 exist in this repository | statically inspected |
+| Quality targets in §8 are achievable on target hardware | requires playtesting |
+| Preview and Final Quality profiles behave as described | requires Unreal Editor verification |
+| Any part of this project has been compiled, executed or rendered | not claimed — no engine or DCC ran during Milestone 0A |

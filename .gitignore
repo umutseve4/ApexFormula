@@ -1,80 +1,100 @@
-# =====================================================================
-# ApexFormula — Git ignore rules
-# =====================================================================
+# ============================================================
+# ApexFormula — repository exclusions
+# See Documentation/DECISION_LOG.md D-018 and D-022.
+# ============================================================
 
-# ---------------------------------------------------------------------
-# Private / personal material — NEVER committed
-# ---------------------------------------------------------------------
-Local/
-**/Local/
-*DriverReference*
+# ------------------------------------------------------------
+# Privacy — never commit reference or biometric-adjacent material
+# ------------------------------------------------------------
+LocalReference/
+**/LocalReference/
 
-# ---------------------------------------------------------------------
-# Unreal Engine — generated and machine-specific
-# ---------------------------------------------------------------------
+# ------------------------------------------------------------
+# Blender machine-local working files
+# NOTE: BlenderPipeline/reports/ is deliberately NOT ignored.
+# Validation reports are committed plain text (D-017).
+# ------------------------------------------------------------
+BlenderPipeline/local/
+*.blend1
+*.blend2
+*.blend@
+
+# ------------------------------------------------------------
+# Unreal Engine build output and caches
+# ------------------------------------------------------------
 Binaries/
 Build/
 DerivedDataCache/
 Intermediate/
 Saved/
+Platforms/*/Binaries/
+Platforms/*/Build/
+Platforms/*/Intermediate/
+Platforms/*/Saved/
 .vs/
 .vscode/
-*.sln
-*.suo
-*.opensdf
-*.sdf
+.idea/
 *.VC.db
 *.VC.opendb
-*.xcodeproj/
-*.xcworkspace/
+*.opensdf
+*.sdf
+*.sln
+*.suo
+*.xcodeproj
+*.xcworkspace
 
-# Unreal crash / profiling output
-*.stackdump
-*.log
-Profiling/
+# ------------------------------------------------------------
+# Packaged builds and archives
+# ------------------------------------------------------------
+Packaged/
+Dist/
+*.exe
+*.msi
+*.pak
+*.zip
+*.7z
+*.rar
 
-# ---------------------------------------------------------------------
-# Blender
-# ---------------------------------------------------------------------
-*.blend1
-*.blend2
-*.blend3
-__pycache__/
-*.py[cod]
-
-# ---------------------------------------------------------------------
-# Generated pipeline output — reproducible, therefore not committed
-# ---------------------------------------------------------------------
-Content/Blender/Generated/
-Pipeline/Generated/
-Pipeline/Reports/
-
-# ---------------------------------------------------------------------
-# Credentials and secrets — NEVER committed
-# ---------------------------------------------------------------------
+# ------------------------------------------------------------
+# Credentials, keys and machine configuration
+# ------------------------------------------------------------
 *.pem
 *.key
 *.pfx
 *.p12
+*.keystore
 .env
 .env.*
-secrets.json
-credentials.json
-*apikey*
-*api_key*
-*token*.txt
+secrets.*
+credentials.*
+LocalConfig/
+*.local.ini
+*.local.json
 
-# ---------------------------------------------------------------------
+# ------------------------------------------------------------
+# Python tooling artefacts
+# ------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# ------------------------------------------------------------
 # Operating system noise
-# ---------------------------------------------------------------------
-.DS_Store
+# ------------------------------------------------------------
 Thumbs.db
-desktop.ini
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
 
-# ---------------------------------------------------------------------
-# Temporary / scratch
-# ---------------------------------------------------------------------
-*.tmp
-*.temp
-*.bak
-*~
+# ------------------------------------------------------------
+# Logs and crash dumps
+# ------------------------------------------------------------
+*.log
+*.dmp
+*.stackdump
+Crashes/

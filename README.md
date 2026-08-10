@@ -1,105 +1,93 @@
 # ApexFormula
 
-An original 3D formula racing game built with **Unreal Engine 5.8** and
-**Blender 5.2 LTS**.
+An original 3D formula racing game built with Unreal Engine 5.8 and Blender 5.2 LTS.
 
-ApexFormula is an independent, original work. It does not reference, reproduce,
-or imply any real motorsport series, team, driver, sponsor, livery, circuit, or
-vehicle. All vehicles, circuits, identities, and audio are original creations.
-
----
-
-## Current status — Milestone 0A complete
-
-This repository currently contains **technical documentation only**.
-
-There is no Unreal project, no Blender script, no geometry, no rig, and no
-binary asset in this repository yet. Nothing here has been compiled, opened,
-executed, imported, or visually inspected.
-
-Milestone 0B (the Blender pipeline scripts) has **not** been started.
+> **Current state:** Milestone 0A — technical foundation documents only.
+> There is no Unreal project, no Blender script, and no art asset in this repository yet.
+> Nothing here has been compiled, executed, imported or visually inspected.
 
 ---
 
-## Honesty labels
+## What this repository contains
 
-Every claim in this repository carries exactly one of the following labels.
-Nothing is asserted as working unless it was actually observed to work.
+At Milestone 0A the repository contains **documentation only**: the architecture, pipeline
+contracts, milestone plan and decision records that later milestones are built against.
 
-| Label | Meaning |
-|---|---|
-| `statically inspected` | Reviewed by reading only |
-| `automatically validated` | Checked by an automated validator that was actually run |
-| `requires Blender execution` | Must be run inside Blender to be confirmed |
-| `requires Unreal Editor verification` | Must be confirmed in the Unreal Editor |
-| `requires local compilation` | Must be compiled locally to be confirmed |
-| `requires visual inspection` | Correctness is a visual judgement |
-| `requires playtesting` | Correctness is a gameplay-feel judgement |
-
-At the time of this commit, every statement in this repository is
-`statically inspected` unless the document says otherwise.
-
----
+```
+ApexFormula/
+├── Documentation/
+│   ├── PROJECT_VISION.md
+│   ├── TECHNICAL_ARCHITECTURE.md
+│   ├── VEHICLE_SYSTEM_DECISION.md
+│   ├── BLENDER_PIPELINE_DESIGN.md
+│   ├── DRIVER_PIPELINE_DESIGN.md
+│   ├── MILESTONE_PLAN.md
+│   ├── VERSION_MATRIX.md
+│   └── DECISION_LOG.md
+├── .gitattributes
+├── .gitignore
+└── README.md
+```
 
 ## Document index
 
 | Document | Purpose |
-|---|---|
-| [`Documentation/PROJECT_VISION.md`](Documentation/PROJECT_VISION.md) | Identity, originality rules, design goals, quality targets, verification and privacy posture |
-| [`Documentation/TECHNICAL_ARCHITECTURE.md`](Documentation/TECHNICAL_ARCHITECTURE.md) | Modules, Blueprint boundaries, components, Data Assets, configuration, bone convention, testing, logging, units |
-| [`Documentation/VEHICLE_SYSTEM_DECISION.md`](Documentation/VEHICLE_SYSTEM_DECISION.md) | TDR-001 — candidate vehicle systems, comparison, recommendation, re-evaluation triggers |
-| [`Documentation/BLENDER_PIPELINE_DESIGN.md`](Documentation/BLENDER_PIPELINE_DESIGN.md) | Script set and rules, collections, units and axes, FBX export and import settings, naming, LODs, validation, reporting |
-| [`Documentation/DRIVER_PIPELINE_DESIGN.md`](Documentation/DRIVER_PIPELINE_DESIGN.md) | Privacy boundaries, prohibited claims, source-mesh routes, MetaHuman responsibilities, quality tiers, manual checkpoints |
-| [`Documentation/MILESTONE_PLAN.md`](Documentation/MILESTONE_PLAN.md) | All milestones `0A`, `0B`, `1`–`12` with objectives, dependencies, acceptance criteria, risks, and exclusions |
-| [`Documentation/VERSION_MATRIX.md`](Documentation/VERSION_MATRIX.md) | Single source of truth for versions, responsibility split, interchange formats, compatibility layers, assumptions |
-| [`Documentation/DECISION_LOG.md`](Documentation/DECISION_LOG.md) | Every decision with ID, rationale, reversibility, status, and open items |
+| --- | --- |
+| `PROJECT_VISION.md` | Identity, design goals, originality rules, quality philosophy |
+| `TECHNICAL_ARCHITECTURE.md` | Layers, C++ modules, components, Data Assets, telemetry |
+| `VEHICLE_SYSTEM_DECISION.md` | Vehicle system evaluation, prototype and long-term decisions |
+| `BLENDER_PIPELINE_DESIGN.md` | Blender→Unreal contract: units, axes, naming, validation, export |
+| `DRIVER_PIPELINE_DESIGN.md` | Driver/MetaHuman workflow and its privacy constraints |
+| `MILESTONE_PLAN.md` | Milestones 0A–12 with acceptance criteria and exclusions |
+| `VERSION_MATRIX.md` | Pinned environment and version-sensitive assumptions |
+| `DECISION_LOG.md` | Numbered decision records D-001 onward |
 
-### Single sources of truth
+Suggested reading order: `PROJECT_VISION` → `TECHNICAL_ARCHITECTURE` →
+`VEHICLE_SYSTEM_DECISION` → `BLENDER_PIPELINE_DESIGN` → `DRIVER_PIPELINE_DESIGN` →
+`MILESTONE_PLAN` → `VERSION_MATRIX` → `DECISION_LOG`.
 
-To prevent contradictory duplicates, the following facts are defined in exactly
-one place:
+## Technology
 
-- **Versions** → `VERSION_MATRIX.md`
-- **Bone names and hierarchy** → `TECHNICAL_ARCHITECTURE.md` §7
-- **Units, axes, and export/import settings** → `BLENDER_PIPELINE_DESIGN.md` §5–§6
-- **Decisions** → `DECISION_LOG.md`
+| Area | Choice |
+| --- | --- |
+| Engine | Unreal Engine 5.8 |
+| DCC | Blender 5.2 LTS |
+| Platform | Windows |
+| Gameplay architecture | C++ |
+| Asset assignment, tuning, animation, UI, level config | Blueprints |
+| Procedural generation and validation | Blender Python |
+| Primary interchange format | FBX |
+| Optional preview format | GLB (never an import path) |
+| Version control | Git with Git LFS |
 
----
+Full detail and the list of assumptions that still require local verification are in
+`Documentation/VERSION_MATRIX.md`.
 
-## Naming conventions
+## Conventions
 
-| Scope | Convention | Example |
-|---|---|---|
-| Project identity | `ApexFormula` | `ApexFormulaVehicle` |
-| Unreal assets | `AF_` | `AF_VehicleDefinition` |
-| Blender scripts | `af_` | `af_export.py` |
-| Material instances | `MI_AF_<Category>_<Surface>` | `MI_AF_Chassis_Paint` |
+- Asset prefix `AF_`; C++ prefixes `UAF`, `AAF`, `FAF`, `IAF`; Blender script prefix `af_`.
+- Metres inside Blender, centimetres at the Unreal boundary (`CM_PER_UNIT = 100.0`).
+- Bone names are defined once (`af_pipeline_config.py` / `UAFBoneNameMap`) and never hardcoded.
+- The project uses no real motorsport branding, teams, drivers, sponsors, liveries, or exact
+  reproductions of real cars or circuits.
 
----
+## Verification labels
+
+Every claim in this repository carries one of the following labels. They are used literally,
+not decoratively.
+
+`statically inspected` · `automatically validated` · `requires Blender execution` ·
+`requires Unreal Editor verification` · `requires local compilation` ·
+`requires visual inspection` · `requires playtesting`
+
+Each document ends with a Verification Ledger applying these labels to its own claims.
 
 ## Privacy
 
-Personal reference material is never uploaded, transmitted, embedded, packaged,
-or committed. It stays on the local machine under `Local/`, which is excluded
-from version control in its entirety. No photographs have been requested and
-none are required to review this milestone.
+Reference photographs and any biometric-adjacent material must remain in a machine-local
+`LocalReference/` directory, which is excluded by `.gitignore` by name. No such material is
+committed, packaged or transmitted. See `Documentation/DRIVER_PIPELINE_DESIGN.md` §1–§2.
 
----
+## Next milestone
 
-## Repository layout
-
-```
-ApexFormula/
-├── .gitattributes
-├── .gitignore
-├── README.md
-└── Documentation/
-    ├── PROJECT_VISION.md
-    ├── TECHNICAL_ARCHITECTURE.md
-    ├── VEHICLE_SYSTEM_DECISION.md
-    ├── BLENDER_PIPELINE_DESIGN.md
-    ├── DRIVER_PIPELINE_DESIGN.md
-    ├── MILESTONE_PLAN.md
-    ├── VERSION_MATRIX.md
-    └── DECISION_LOG.md
-```
+**0B — Blender→Unreal pipeline foundation.** Not started. See `Documentation/MILESTONE_PLAN.md`.
