@@ -1,320 +1,130 @@
-# ApexFormula — Vehicle System Technical Decision Record
+# ApexFormula — Vehicle System Architecture Decision Record
 
-**Document status:** statically authored decision record.
-**Milestone:** 0A
-**Decision ID:** TDR-001
-**Target:** Unreal Engine 5.8, Windows, C++ primary.
+**Document status:** statically authored decision record (Milestone 0A). No vehicle code exists. No engine benchmark was run. No profiling data is presented, because none was collected.
 
----
-
-## 0. Scope and Honesty Statement
-
-This record compares four candidate vehicle architectures for ApexFormula and
-recommends one for the first playable prototype and one long-term direction.
-
-**No benchmark results are presented, because none were run.** No frame times,
-no substep timings, no comparative physics accuracy measurements, and no
-determinism test results exist for this project. Any statement that would
-require running Unreal Engine is labelled **requires Unreal Editor
-verification** or **requires local compilation**.
-
-**No undocumented engine capability is asserted.** Where the exact feature set,
-API surface, or maturity of a system in Unreal Engine 5.8 is not confirmed by
-the product owner's local installation, this document says so explicitly rather
-than claiming it.
-
-Terminology used below refers to Unreal's vehicle offerings by their commonly
-used names — Chaos Vehicles and Chaos Modular Vehicles. **Whether both are
-present, enabled by default, or production-ready in the specific Unreal Engine
-5.8 build installed locally is `requires Unreal Editor verification`.** This is
-the single largest open assumption in this record and is tracked in
-`VERSION_MATRIX.md` and `DECISION_LOG.md`.
+**Rule this document satisfies:** advanced vehicle implementation must not begin before a written architecture decision record exists. This is that record. It is the gate for Milestone 2 and Milestone 10.
 
 ---
 
-## 1. Candidate Architectures
+## 1. Decision Question
 
-### A. Chaos Vehicles
+Which vehicle physics foundation should ApexFormula use in Unreal Engine 5.8 for (a) the **first playable prototype** and (b) the **long-term simulation direction**?
 
-Unreal's established vehicle plugin providing a wheeled vehicle pawn with
-suspension raycasts/sweeps, wheel setup definitions, engine/transmission/
-differential modelling, and a movement component integrated with Chaos physics.
+## 2. Candidates
 
-### B. Chaos Modular Vehicles
+**A. Chaos Vehicles** — Unreal's built-in vehicle system. A wheeled vehicle movement component with wheel setups, suspension, engine/transmission/differential models, driven by bone-mapped wheels on a skeletal mesh.
 
-Unreal's newer modular approach, in which a vehicle is assembled from discrete
-simulation modules rather than a single monolithic movement component.
+**B. Chaos Modular Vehicles** — the newer modular decomposition of vehicle behaviour into composable simulation modules rather than one monolithic movement component.
 
-### C. Custom Simulation Layer on Unreal Physics
+**C. Custom simulation on top of Unreal physics** — ApexFormula authors its own tyre, suspension, aero and drivetrain models, applying forces to a rigid body each sub-step; the engine supplies rigid-body integration and collision only.
 
-A bespoke vehicle model written in C++ on top of Unreal's rigid body physics:
-custom suspension, custom tire model, custom drivetrain, custom integration
-step, with the engine providing only the rigid body and collision queries.
+**D. Hybrid** — a built-in system carries chassis, suspension and collision; ApexFormula overrides or layers the physically expressive parts (tyre force generation, aero, energy, fuel mass, brake thermals) on top.
 
-### D. Hybrid Architecture
+## 3. Evaluation Criteria
 
-Unreal's vehicle system provides the base rigid body, suspension, and wheel
-contact solution. ApexFormula-specific C++ components layer on top of it:
-aerodynamics, tire thermal and wear state, brake thermal state, fuel mass,
-fictional hybrid energy, setup application, and telemetry — applying forces and
-modulating parameters through documented, engine-provided interfaces.
+Each candidate is scored against fifteen criteria. Scores are **design-judgement estimates from documented system characteristics, not measurements**. There are no benchmark numbers in this document because no benchmark was run.
 
----
+Scale: `++` strong, `+` adequate, `~` neutral/uncertain, `-` weak, `--` poor. `?` means the honest answer is unknown until verified in the editor.
 
-## 2. Evaluation Criteria
-
-Each criterion is assessed qualitatively. Ratings are **engineering judgement**,
-not measurements.
-
-Legend: ●●● strong fit · ●●○ workable · ●○○ weak / high cost · ??? unverified
-
-| Criterion | A. Chaos Vehicles | B. Chaos Modular | C. Custom | D. Hybrid |
-|---|---|---|---|---|
-| High-downforce open-wheel racing | ●●○ | ●●○ | ●●● | ●●● |
-| Open-wheel suspension fidelity | ●●○ | ●●○ | ●●● | ●●○ |
-| Tire temperature and degradation | ●○○ | ●●○ | ●●● | ●●● |
-| Active aerodynamics | ●●○ | ●●○ | ●●● | ●●● |
-| Hybrid energy systems | ●○○ | ●●○ | ●●● | ●●● |
-| Advanced telemetry | ●●○ | ●●○ | ●●● | ●●● |
-| AI drivers | ●●● | ●●○ | ●○○ | ●●● |
-| Controller input | ●●● | ●●● | ●●○ | ●●● |
-| Steering wheel input / force feedback | ●●○ | ●●○ | ●●● | ●●● |
-| Determinism | ●●○ | ●●○ | ●●● | ●●○ |
-| Replay preparation | ●●○ | ●●○ | ●●● | ●●● |
-| Future multiplayer support | ●●● | ●●○ | ●○○ | ●●○ |
-| Debugging | ●●● | ●●○ | ●●○ | ●●● |
-| Maintainability | ●●● | ●●○ | ●○○ | ●●● |
-| Unreal Engine 5.8 support | ??? | ??? | ●●● | ??? |
+| # | Criterion | A. Chaos Vehicles | B. Chaos Modular | C. Custom | D. Hybrid |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Physical realism ceiling | + | + | ++ | ++ |
+| 2 | Tyre model control | - | ~ | ++ | ++ |
+| 3 | Suspension control | + | + | ++ | + |
+| 4 | Aerodynamic control | ~ | + | ++ | ++ |
+| 5 | Setup/tuning depth | + | + | ++ | ++ |
+| 6 | Determinism & repeatability | ~ | ~ | + | ~ |
+| 7 | Multiplayer readiness | + | ? | - | ~ |
+| 8 | Development speed to first drivable car | ++ | + | -- | + |
+| 9 | Engine-version upgrade risk | ++ | ~ | ++ | + |
+| 10 | Debuggability / introspection | ~ | + | ++ | + |
+| 11 | Telemetry richness | ~ | + | ++ | ++ |
+| 12 | AI opponent integration | + | + | ~ | + |
+| 13 | Team/solo maintenance cost | ++ | + | -- | ~ |
+| 14 | Documentation & community support | ++ | ~ | -- | + |
+| 15 | Risk of dead-end rewrite | + | ? | ~ | + |
 
 ### Criterion notes
 
-**High-downforce open-wheel racing.** Downforce is fundamentally an external
-force applied to the chassis as a function of velocity, ride height, and aero
-configuration. Every option can receive such a force; the difference is how
-naturally the tire and suspension model responds to the resulting large load
-transfer. A custom or hybrid model gives explicit control over that response.
+1. **Physical realism ceiling** — how good can it eventually get. Custom and hybrid are unbounded; built-in systems are bounded by their internal models.
+2. **Tyre model control** — the single most decisive criterion for a formula-style car. Grip, slip curves, temperature windows, wear and pressure response define the driving experience. Built-in tyre behaviour is comparatively opaque; a custom force model is fully owned.
+3. **Suspension control** — geometry, ride height sensitivity, anti-roll, damper response. Built-in suspension is usable; custom offers full control at high cost.
+4. **Aerodynamic control** — downforce vs. speed and ride height, aero balance shift, dirty air, active aero. All approaches allow *adding* aero forces; the difference is how cleanly aero couples to the suspension/ride-height state.
+5. **Setup/tuning depth** — how many meaningful, physically coupled setup parameters can be exposed to the player.
+6. **Determinism & repeatability** — needed for regression tests, replays and fair racing. No approach is assumed deterministic. A custom model reduces hidden state but cannot make the underlying solver deterministic by itself.
+7. **Multiplayer readiness** — built-in vehicle movement components ship with network prediction concepts already considered; a from-scratch model requires bespoke prediction work.
+8. **Development speed to first drivable car** — measured in developer effort to a car that steers, accelerates and brakes on a surface.
+9. **Engine-version upgrade risk** — how exposed the project is when the engine version moves.
+10. **Debuggability** — ability to see why the car did what it did.
+11. **Telemetry richness** — availability of per-corner slip, load, temperature and force values for the HUD and analysis.
+12. **AI opponent integration** — how straightforwardly an AI controller can drive the same vehicle.
+13. **Maintenance cost** — ongoing burden for a small team.
+14. **Documentation & community support** — availability of reference material when something breaks.
+15. **Risk of dead-end rewrite** — probability that the choice must be thrown away later.
 
-**Open-wheel suspension.** Formula-style suspension has very low travel, high
-stiffness, and significant aero-induced load variation. Ray/sweep-based
-suspension models are common and workable in games, but stiff, low-travel setups
-are the regime where they are most sensitive to substep count and contact
-stability. **The behaviour of the engine's suspension solver at ApexFormula's
-target stiffness is `requires local compilation` and `requires playtesting`.**
+### Honest uncertainty
 
-**Tire temperature and degradation.** This is domain-specific state that a
-general-purpose vehicle plugin is not expected to provide in the depth this
-project wants. In every option it is realistically ApexFormula's own code. The
-question is only whether that code can cleanly modulate the underlying grip
-each frame — which favours architectures with a documented parameter surface.
+Entries marked `?` are genuine unknowns for Unreal Engine 5.8 specifically:
 
-**Active aerodynamics.** Fictional active aero means the aero coefficients change
-at runtime based on a state machine. This is straightforward as an external
-force/coefficient system in all four options.
+- The exact module name, maturity, API surface and production-readiness of **Chaos Modular Vehicles** in 5.8.
+- Whether Chaos Modular Vehicles' networking support in 5.8 is at parity with the classic path.
+- Whether the classic Chaos Vehicles path remains fully supported, deprecated, or is in transition in 5.8.
 
-**Hybrid energy systems.** Fictional deployment and regeneration is a
-torque-and-budget accounting problem layered onto the drivetrain. Cleanest when
-ApexFormula owns the accounting and applies the result as additional or reduced
-drive torque.
+These are **assumptions requiring verification** and are listed in `Documentation/VERSION_MATRIX.md` §5. They must be resolved in the Unreal Editor before Milestone 10 begins. They do **not** block Milestone 2.
 
-**Advanced telemetry.** Depends on read access to per-corner load, slip, and
-contact state. A custom layer trivially exposes everything it computes. Plugin
-solutions expose what they choose to expose — **the precise per-wheel telemetry
-surface available in 5.8 is `requires Unreal Editor verification`.**
+## 4. Decision — First Playable Prototype
 
-**AI drivers.** AI benefits enormously from a vehicle system that already
-integrates with engine navigation, input abstraction, and existing tooling.
-Writing a fully custom vehicle also means writing the AI's control model against
-that custom vehicle with no engine support — a substantial extra cost.
+**Chosen: A. Chaos Vehicles (built-in), wrapped behind an ApexFormula abstraction layer.**
 
-**Controller and steering wheel input.** Input abstraction is largely
-independent of the physics choice. Force feedback fidelity, however, depends on
-having access to meaningful per-frame force data (self-aligning torque, load) —
-which again favours architectures where ApexFormula computes or can read those
-values.
+Rationale:
 
-**Determinism.** Fully deterministic vehicle simulation across machines is hard
-in any floating-point physics engine. A custom fixed-step integrator is the most
-controllable. Plugin-based solutions inherit the engine's substepping and solver
-behaviour. **No determinism testing has been performed for this project.**
+1. Milestone 2's objective is "a placeholder vehicle that drives", not "a correct formula car". Criterion 8 dominates at this stage.
+2. It exercises the whole pipeline — Blender-generated skeletal mesh with `AF_*` bones → FBX → import → wheel setup → drivable pawn — which is the actual risk being retired in Milestones 0B–2. Vehicle *fidelity* is not the risk; *pipeline integrity* is.
+3. Criterion 14 matters most when the developer is learning the engine's vehicle path.
+4. Choosing it does not foreclose C or D, **provided the abstraction layer exists from the first commit**.
 
-**Replay preparation.** Replay can be implemented either as state recording
-(record transforms/telemetry, play back) or as input recording plus
-deterministic re-simulation. State recording works with all four options and is
-the low-risk default. Input-based replay would require determinism guarantees
-that are unverified.
+### Mandatory conditions attached to this decision
 
-**Future multiplayer.** Established engine vehicle systems are more likely to
-have existing replication considerations; a fully custom model must solve
-replication from scratch. **The specific networking support of each option in
-5.8 is `requires Unreal Editor verification`.**
+This choice is only acceptable with all of the following in place:
 
-**Debugging and maintainability.** A custom simulation means owning every bug in
-suspension, contact, and integration — permanently, with one developer. This is
-the single strongest argument against option C for this project's staffing
-reality.
+- **`UAFVehicleCompatibilityLayer`** isolates every direct call into the engine vehicle API. Gameplay code never calls the engine vehicle component directly.
+- **ApexFormula-owned state stays ApexFormula-owned.** Tyre temperature/wear, aero, energy, fuel mass and brake thermals live in ApexFormula components from the start (see `Documentation/TECHNICAL_ARCHITECTURE.md` §4), even while the underlying force generation is still the built-in one. Only the *force source* is borrowed, never the *state model*.
+- **`StepSimulation(DeltaTime, InputFrame)`** is the entry point for ApexFormula subsystems, so the force source can later be swapped without touching call sites.
+- **Bone names come from `UAFBoneNameMap`**, never from hardcoded strings, so a later change of vehicle system does not become a rig rewrite.
+- **Telemetry is captured through `UAFTelemetryBus`** from day one, so behaviour before and after any future migration is comparable.
 
-**Unreal Engine 5.8 support.** Marked `???` for the three plugin-dependent
-options because the presence, default-enabled state, and production maturity of
-each system in the locally installed 5.8 build has not been verified. Option C
-is marked strong only in the narrow sense that it depends on core rigid body
-physics rather than on a specific vehicle plugin.
+## 5. Decision — Long-Term Direction
 
----
+**Chosen: D. Hybrid — engine-provided rigid body, collision and suspension solving; ApexFormula-authored tyre force generation, aerodynamics, energy, fuel-mass and brake-thermal models.**
 
-## 3. Analysis
+Rationale:
 
-### Why not A alone
+1. Criteria 1, 2, 4, 5 and 11 — the criteria that decide whether the game feels like a formula car — all favour ApexFormula owning the force model.
+2. Criteria 8, 13 and 14 — the criteria that decide whether the project survives — all favour not rewriting rigid-body dynamics, collision, or broadphase.
+3. Full custom (C) is rejected primarily on criteria 7, 13 and 14: bespoke network prediction plus bespoke solver maintenance is not a realistic burden for this project, and the realism gain over a hybrid is marginal.
+4. Pure built-in (A or B) is rejected as a *long-term* answer on criterion 2: the tyre model is the game, and it must be owned.
 
-Chaos Vehicles as a base is credible and well-understood, and it scores well on
-AI, debugging, maintainability, and networking familiarity. But ApexFormula's
-distinguishing systems — tire thermal/wear state, active aero, hybrid energy,
-deep telemetry, setup-driven handling — are all outside what a stock wheeled
-vehicle component is expected to provide. Using option A "alone" is not actually
-a real option: it inevitably becomes option D the moment those systems are
-added. Listing A alone therefore describes a scope this project does not want.
+**Migration path (A → D):** the abstraction layer means the migration is incremental, not a rewrite. Order: (1) aero forces move first — additive and low risk; (2) brake thermals and fuel mass — state-only, then force-affecting; (3) energy deployment; (4) tyre force generation last, because it is the largest behavioural change and requires the most re-tuning.
 
-### Why not B as the first step
+**Gate:** migration steps 1–3 may begin during Milestone 10. Step 4 requires a re-review of this document and a new dated entry in `Documentation/DECISION_LOG.md`.
 
-Modular vehicles are conceptually the best long-term match for ApexFormula's
-component-oriented architecture: independent simulation modules map almost
-one-to-one onto the component strategy in `TECHNICAL_ARCHITECTURE.md`. The
-obstacle is purely one of verification. **Its availability, API stability,
-documentation quality, and production maturity in the locally installed Unreal
-Engine 5.8 have not been confirmed.** Committing the first playable prototype to
-an unverified system risks discovering a blocking limitation at the worst
-possible time — during Milestone 2, when the goal is simply to get a car moving.
+## 6. Explicitly Rejected
 
-### Why not C
+- **B. Chaos Modular Vehicles as the prototype foundation** — rejected for now on unresolved uncertainty (criteria 7, 14, 15 and the `?` entries in §3), not on technical merit. It should be re-evaluated at the start of Milestone 10; if 5.8's modular path is mature and network-ready, it becomes a strong hybrid host and may replace the classic path underneath the same abstraction layer.
+- **C. Full custom simulation** — rejected on criteria 7, 8, 13, 14. Revisit only if the hybrid is proven insufficient with evidence from playtesting.
 
-A fully custom simulation gives maximum control and maximum determinism, and it
-is genuinely the right answer for some hardcore simulators. For ApexFormula it
-is the wrong trade:
+## 7. Verification Ledger for This Document
 
-- It front-loads months of suspension/contact/integration engineering before the
-  first playable milestone.
-- It provides no engine support for AI vehicle control.
-- It makes future multiplayer strictly harder, not easier.
-- It concentrates all long-term maintenance risk on a single developer.
-- It offers no benefit that a hybrid cannot substantially match for a game that
-  is simulation-leaning rather than a licensed-grade simulator.
+| Claim | Label |
+| --- | --- |
+| Criteria table is internally consistent and complete (15 criteria × 4 candidates) | statically inspected |
+| No benchmark, frame-time or physics-accuracy measurement is asserted anywhere in this document | statically inspected |
+| Chaos Vehicles exists and is usable in Unreal Engine 5.8 | requires Unreal Editor verification |
+| Chaos Modular Vehicles module name, maturity and network support in 5.8 | requires Unreal Editor verification |
+| Abstraction layer compiles and isolates the engine vehicle API as designed | requires local compilation |
+| Built-in vehicle behaviour is acceptable as a Milestone 2 placeholder | requires playtesting |
+| Hybrid tyre model produces better feel than built-in | requires playtesting |
 
-### Why D
+## 8. Reversibility
 
-The hybrid architecture matches the project's actual shape:
-
-- The engine solves the problems that are expensive to write and cheap to
-  inherit: rigid body dynamics, collision, suspension contact, wheel kinematics,
-  and integration with AI and input systems.
-- ApexFormula owns exactly the systems that define its identity: aerodynamics,
-  tires, brakes, fuel, hybrid energy, setup, and telemetry — all as independent
-  C++ components, exactly as `TECHNICAL_ARCHITECTURE.md` §4 specifies.
-- The seam between the two is a narrow, documented interface, which means the
-  underlying vehicle base can be swapped later without discarding ApexFormula's
-  simulation layer.
-
-That last point is decisive. In a hybrid architecture, ApexFormula's proprietary
-value lives above the seam. Changing the base vehicle system later is a
-migration, not a rewrite.
-
----
-
-## 4. Recommendation
-
-### 4.1 First playable prototype (Milestones 2–5)
-
-**Recommended: D — Hybrid architecture, using Chaos Vehicles as the base layer.**
-
-Rationale: it reaches a driveable car fastest, keeps AI and input support, and
-places every ApexFormula-specific system in project-owned C++ components from
-the very first implementation. The base is the most conservative available
-choice; the value layer is entirely ours.
-
-Implementation constraints for the prototype:
-
-1. All ApexFormula simulation components are written against a project-owned
-   interface (`IApexVehicleBase` or equivalent), **not** directly against the
-   plugin's concrete types.
-2. All plugin-specific calls are isolated behind a named compatibility layer
-   (`ApexFormulaCompat`), so a base-layer swap touches one file set.
-3. Bone names are resolved through the central `AF_BoneMapping` Data Asset only.
-4. No ApexFormula component assumes a specific suspension solver internal.
-5. Milestone 2 targets a *placeholder* vehicle — driveable, not tuned.
-
-### 4.2 Long-term direction
-
-**Recommended: remain on D, with a planned evaluation of Chaos Modular Vehicles
-as the base layer once it is verified locally.**
-
-The long-term architecture stays hybrid. What may change is which system sits
-below the seam. Modular vehicles are the preferred future base *if and only if*
-local verification confirms availability, maturity, and a workable API in 5.8.
-
-Re-evaluation triggers — any one of these reopens TDR-001:
-
-- Local verification confirms Chaos Modular Vehicles is available and mature in
-  the installed 5.8 build.
-- The base suspension solver proves unable to hold ApexFormula's target
-  stiffness and downforce range in playtesting.
-- Determinism requirements harden because multiplayer or input-based replay is
-  promoted from "prepared for" to "required".
-- Telemetry needs per-corner data the base layer does not expose.
-
-### 4.3 Explicitly rejected
-
-- **Option C (fully custom)** is rejected for the first playable prototype and
-  for the medium term. It is only reconsidered if a hard determinism requirement
-  emerges that neither base layer can satisfy.
-- **Option A described as "stock only"** is rejected because it does not
-  describe an architecture capable of delivering the project's stated systems.
-
----
-
-## 5. Consequences of This Decision
-
-**Accepted:**
-
-- ApexFormula inherits the base vehicle system's solver behaviour, including its
-  substepping characteristics and any determinism limitations.
-- Force feedback fidelity depends partly on data the base layer exposes.
-- A future base-layer migration is a real, planned possibility with real cost —
-  budgeted as a migration, not a rewrite.
-
-**Mitigated by:**
-
-- The compatibility layer and project-owned interface (§4.1.1, §4.1.2).
-- Owning tire, aero, brake, fuel, and energy models entirely in project code.
-- State-based replay as the default plan, avoiding a determinism dependency.
-
-**Not claimed:**
-
-- That this architecture compiles. **Requires local compilation.**
-- That it produces good handling. **Requires playtesting.**
-- That the base layer meets any specific performance figure. **No benchmarks
-  were run.**
-- That any named plugin exists in a particular form in the installed 5.8 build.
-  **Requires Unreal Editor verification.**
-
----
-
-## 6. Gate Condition
-
-Per project rules, advanced vehicle implementation does not begin until this
-decision record exists. This document satisfies that gate for the **prototype**
-decision.
-
-Before **Milestone 10** (advanced tire, aero, energy, fuel, brake, and setup
-simulation) begins, TDR-001 must be revisited and either reaffirmed or amended,
-using verification results gathered during Milestones 2–5.
-
----
-
-## 7. Verification Checklist (to be performed locally by the product owner)
-
-| # | Item | Label |
-|---|---|---|
-| 1 | Confirm which vehicle plugins ship with and are enabled in the installed Unreal Engine 5.8 | requires Unreal Editor verification |
-| 2 | Confirm the per-wheel data surface available for telemetry | requires Unreal Editor verification |
-| 3 | Confirm physics substepping configuration options and defaults | requires Unreal Editor verification |
-| 4 | Confirm the vehicle system's expectations for skeletal mesh hierarchy and wheel bone references against the AF_ bone convention | requires Unreal Editor verification |
-| 5 | Build a placeholder vehicle and assess suspension stability under high downforce | requires local compilation, then requires playtesting |
-| 6 | Assess force feedback data availability with a steering wheel | requires playtesting |
+This record is reversible. Superseding it requires: a new dated entry in `Documentation/DECISION_LOG.md`, an amendment section appended to this document (originals are not deleted), and an explicit statement of which milestone the change affects.
