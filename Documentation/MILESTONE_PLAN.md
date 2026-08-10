@@ -386,4 +386,30 @@
 | Dependencies form an acyclic order (0A → 0B → 1 → 2 → …) | statically inspected |
 | Every referenced document and section exists | statically inspected |
 | Acceptance criteria are checkable rather than aspirational | statically inspected |
-| Any milestone has actually been completed | not claimed — nothing beyond 0A has been started |
+
+## Milestone Status
+
+This section is the single authoritative answer to "how far has this project actually got?" It is
+maintained here rather than in `README.md` so that it cannot drift from the milestone definitions
+above. Rule 1 applies to it: a milestone is complete only when evidence exists carrying every
+label that milestone declares.
+
+| # | State | Evidence held | Labels still unmet |
+| --- | --- | --- | --- |
+| 0A | **Complete** | Eight documents exist, cross-references resolve, prohibited-token sweep clean | none — 0A declares only `statically inspected` |
+| 0B | **Authored, unverified** | Eight scripts byte-compile under Python 3.12; `af_pipeline_config.self_check()` exits 0; `bpy`-free helpers exercised offline at 47 checks, 0 failures | `requires Blender execution` — no script has ever run inside Blender, so the twenty-one scene checks, the exported bone list and the FBX exporter option names are unproven |
+| 1 | **Authored, unverified** | `Tools/af_static_validate.py --root .` reports 2300 checks passed, 0 failures, 0 warnings; the validator is mutation-tested at 11 of 11 injected defects detected (D-030) | `requires local compilation` and `requires Unreal Editor verification` — nothing has been compiled, no editor has been opened, and none of the 27 declared automation tests has been discovered or executed |
+| 2–12 | **Not started** | — | — |
+
+**Why 0B and 1 are not "complete".** Both were authored in an environment that has neither
+Blender nor Unreal Engine 5.8 nor a Windows C++ toolchain. Static validation is a real result and
+is reported as one, but it is evidence about *source text*, not about compiler, linker, engine or
+DCC behaviour. In particular the `ChaosVehicles` module names and the API signatures recorded in
+`VERSION_MATRIX.md` §5.21–§5.26 are **assumptions** and are labelled as such.
+
+**What changes this.** `.github/workflows/validate.yml` executes `af_smoke_test.py` in headless
+Blender on every push. When that job is green, the `requires Blender execution` rows above become
+evidence and Milestone 0B can move to **Verified**. Unreal Engine cannot run on hosted runners, so
+Milestone 1 stays **Authored, unverified** until the project is built on a real machine — which is
+also the gate on Milestones 2, 3 and 5 onward. Milestone 4 depends only on 0B and is the one
+forward path that needs no engine.
