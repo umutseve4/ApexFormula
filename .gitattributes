@@ -1,47 +1,79 @@
-# =====================================================================
+# ============================================================
 # ApexFormula — Git attributes
-# Binary assets are tracked with Git LFS.
-# Requires `git lfs install` on every machine that clones this repository.
-# =====================================================================
+# Git LFS is configured now so that no binary asset is ever
+# committed to plain Git history. See DECISION_LOG.md D-022.
+# No binary files exist at Milestone 0A; these rules are
+# pre-emptive and take effect from Milestone 0B onward.
+# ============================================================
 
-# --- 3D interchange -------------------------------------------------
-*.fbx    filter=lfs diff=lfs merge=lfs -text
-*.glb    filter=lfs diff=lfs merge=lfs -text
-*.gltf   filter=lfs diff=lfs merge=lfs -text
-*.blend  filter=lfs diff=lfs merge=lfs -text
-*.obj    filter=lfs diff=lfs merge=lfs -text
+# ------------------------------------------------------------
+# Line endings — Windows is the development platform
+# ------------------------------------------------------------
+* text=auto
+*.md   text eol=lf
+*.py   text eol=lf
+*.cpp  text eol=lf
+*.h    text eol=lf
+*.cs   text eol=lf
+*.ini  text eol=lf
+*.json text eol=lf
+*.bat  text eol=crlf
+*.ps1  text eol=crlf
 
-# --- Textures -------------------------------------------------------
-*.png    filter=lfs diff=lfs merge=lfs -text
-*.jpg    filter=lfs diff=lfs merge=lfs -text
-*.jpeg   filter=lfs diff=lfs merge=lfs -text
-*.tga    filter=lfs diff=lfs merge=lfs -text
-*.tif    filter=lfs diff=lfs merge=lfs -text
-*.tiff   filter=lfs diff=lfs merge=lfs -text
-*.exr    filter=lfs diff=lfs merge=lfs -text
-*.hdr    filter=lfs diff=lfs merge=lfs -text
-*.psd    filter=lfs diff=lfs merge=lfs -text
-
-# --- Audio ----------------------------------------------------------
-*.wav    filter=lfs diff=lfs merge=lfs -text
-*.ogg    filter=lfs diff=lfs merge=lfs -text
-*.flac   filter=lfs diff=lfs merge=lfs -text
-
-# --- Unreal binary assets -------------------------------------------
+# ------------------------------------------------------------
+# Unreal Engine binary assets
+# ------------------------------------------------------------
 *.uasset filter=lfs diff=lfs merge=lfs -text
 *.umap   filter=lfs diff=lfs merge=lfs -text
 
-# --- Fonts / archives ------------------------------------------------
-*.ttf    filter=lfs diff=lfs merge=lfs -text
-*.otf    filter=lfs diff=lfs merge=lfs -text
-*.zip    filter=lfs diff=lfs merge=lfs -text
+# ------------------------------------------------------------
+# 3D interchange formats
+# ------------------------------------------------------------
+*.fbx   filter=lfs diff=lfs merge=lfs -text
+*.glb   filter=lfs diff=lfs merge=lfs -text
+*.gltf  filter=lfs diff=lfs merge=lfs -text
+*.obj   filter=lfs diff=lfs merge=lfs -text
+*.abc   filter=lfs diff=lfs merge=lfs -text
+*.usd   filter=lfs diff=lfs merge=lfs -text
+*.usda  filter=lfs diff=lfs merge=lfs -text
+*.usdc  filter=lfs diff=lfs merge=lfs -text
+*.usdz  filter=lfs diff=lfs merge=lfs -text
 
-# --- Text normalisation ---------------------------------------------
-* text=auto
-*.md     text eol=lf
-*.py     text eol=lf
-*.cpp    text eol=lf
-*.h      text eol=lf
-*.cs     text eol=lf
-*.ini    text eol=lf
-*.json   text eol=lf
+# ------------------------------------------------------------
+# Blender source files
+# ------------------------------------------------------------
+*.blend filter=lfs diff=lfs merge=lfs -text
+
+# ------------------------------------------------------------
+# Textures and images
+# ------------------------------------------------------------
+*.png  filter=lfs diff=lfs merge=lfs -text
+*.jpg  filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+*.tga  filter=lfs diff=lfs merge=lfs -text
+*.tif  filter=lfs diff=lfs merge=lfs -text
+*.tiff filter=lfs diff=lfs merge=lfs -text
+*.bmp  filter=lfs diff=lfs merge=lfs -text
+*.psd  filter=lfs diff=lfs merge=lfs -text
+*.exr  filter=lfs diff=lfs merge=lfs -text
+*.hdr  filter=lfs diff=lfs merge=lfs -text
+
+# ------------------------------------------------------------
+# Audio
+# ------------------------------------------------------------
+*.wav  filter=lfs diff=lfs merge=lfs -text
+*.ogg  filter=lfs diff=lfs merge=lfs -text
+*.flac filter=lfs diff=lfs merge=lfs -text
+*.mp3  filter=lfs diff=lfs merge=lfs -text
+
+# ------------------------------------------------------------
+# Video
+# ------------------------------------------------------------
+*.mp4 filter=lfs diff=lfs merge=lfs -text
+*.mov filter=lfs diff=lfs merge=lfs -text
+
+# ------------------------------------------------------------
+# Fonts
+# ------------------------------------------------------------
+*.ttf filter=lfs diff=lfs merge=lfs -text
+*.otf filter=lfs diff=lfs merge=lfs -text
