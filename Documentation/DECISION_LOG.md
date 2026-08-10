@@ -278,6 +278,60 @@
 
 ---
 
+## D-027 — The Unreal project lives in `Unreal/`, not at the repository root
+
+**Date:** 2025-06-01
+**Decision.** `ApexFormula.uproject`, `Config/` and `Source/` live under a top-level `Unreal/` directory. The repository root holds `Documentation/`, `BlenderPipeline/`, `Unreal/`, `Tools/`, `README.md` and the git metadata files.
+**Rationale.** The project brief specifies the architecture, the module list and the naming rules, but **does not dictate a repository layout** — this was confirmed by searching the brief for `uproject`, `Source/` and `Config/`, which returned a single incidental hit. The layout is therefore a project decision and is recorded as one rather than left implicit.
+
+This project is not only an Unreal project. It is an Unreal project *plus* a Blender pipeline *plus* a document set *plus* standalone tooling, and three of those four are useless inside an Unreal tree. Putting the `.uproject` at the root would force `BlenderPipeline/` and `Documentation/` to sit alongside `Content/`, `Binaries/` and `Intermediate/`, where engine-generated directories would interleave with authored ones and `.gitignore` would have to distinguish them by name rather than by location. With the engine tree quarantined under `Unreal/`, every generated directory is ignorable by prefix.
+**Rejected.** `.uproject` at the repository root (standard for engine-only projects, wrong for this one); a nested `ApexFormula/ApexFormula.uproject` double-directory (the Unreal launcher convention, but it produces `ApexFormula/ApexFormula/Source/ApexFormula*` path stutter).
+**Consequence.** Any instruction to open the project must say `Unreal/ApexFormula.uproject`. Build artefacts appear at `Unreal/Binaries`, `Unreal/Intermediate`, `Unreal/Saved` and `Unreal/DerivedDataCache`, and `.gitignore` excludes them at that path.
+**Reversibility:** High, but not free. Moving the project is a directory rename plus a `.gitignore` edit; the C++ is unaffected because no source file refers to its own location.
+
+---
+
+## D-028 — Static validation is written as a program, not a checklist
+
+**Date:** 2025-06-01
+**Decision.** The Milestone 1 architectural rules — the dependency graph, the module boundaries, the D-008 vehicle chokepoint, telemetry literal containment, the prohibited-token rule, path portability, header hygiene and the bone convention — are enforced by an executable program, `Tools/af_static_validate.py`, which exits non-zero on any violation. They are not enforced by a review checklist.
+**Rationale.** No Unreal Engine, Unreal Build Tool, MSVC or clang exists in the authoring environment, so the compiler — normally the first thing that enforces a dependency graph — is unavailable. Without a substitute, every architectural claim in this milestone would rest on the author having looked carefully, which is exactly the kind of claim D-021 forbids stating as fact.
+
+A program converts "I believe Race does not depend on Vehicle" into "a process asserted it and returned 0". It is also the only artefact of this milestone that a reviewer can *run* rather than read, and it keeps working after the author has forgotten the rules.
+
+The validator is standard-library-only and takes a `--root`, so it runs anywhere Python 3 runs, including in CI, with no project-specific setup.
+**Rejected.** A written checklist (unenforceable, and rots); waiting for a machine with the engine installed (would leave the entire milestone unverified in the meantime); a linter configuration (cannot express project-specific rules such as the D-008 chokepoint).
+**Consequence.** The rules now have two representations — prose in `TECHNICAL_ARCHITECTURE.md` and code in the validator — which can drift. The validator is written to fail loudly rather than silently, and D-030 addresses drift directly.
+**Reversibility:** High. Once a compiler is available it becomes an additional check, not a replacement — a compiler enforces dependencies but says nothing about prohibited tokens, telemetry literal containment or bone agreement.
+
+---
+
+## D-029 — The bone convention is checked by emulation, never by textual comparison
+
+**Date:** 2025-06-01
+**Decision.** The validator imports `af_pipeline_config.py` live as the single source of truth for bone names, ordering and parenting, then parses `AFBoneNameMap.cpp`, extracts its prefix, literal names, corner order and `Printf` format strings, and **re-derives** the ordering and parent map that the compiled C++ would produce. The derived structures are compared against the Python constants. No bone list is duplicated in the validator.
+**Rationale.** Both bone bugs found in this project so far were **doc comments that had drifted away from correct code** — once in `AFBoneNameMap.h` (two wrong names in a comment) and once in `AFTelemetryTypes.h` (a comment embedding a live channel literal). A textual comparison would have happily compared the drifted comment. Emulation compares behaviour, so a comment cannot influence the result, and a third copy of the bone list — which would be a third thing to drift — is never created.
+**Rejected.** Hard-coding the eleven bone names in the validator (creates a third source of truth); diffing the C++ against a generated file (compares text, not behaviour); trusting the doc comments (already demonstrated to be the failure mode).
+**Consequence.** The validator is coupled to the *style* of `AFBoneNameMap.cpp`, not only its behaviour. A refactor that preserves behaviour but changes the shape of the constructor loop or `GetCornersInOrder()` will break the parser and must be accompanied by an emulator update. This is an accepted cost: a parser that breaks loudly is better than a comparison that passes wrongly.
+**Reversibility:** Medium. The approach could be replaced by code generation — deriving `AFBoneNameMap.cpp` from `af_pipeline_config.py` — which would eliminate the drift class entirely. That is a larger change and was not needed to satisfy Milestone 1.
+
+---
+
+## D-030 — Validators are mutation-tested before their results are believed
+
+**Date:** 2025-06-01
+**Decision.** Before any static validator's PASS is reported as evidence, the validator is subjected to deliberate defect injection: a scratch harness copies the tree to a temporary directory, injects one known violation at a time, and asserts a non-zero exit. A PASS is only quoted alongside the mutation score. The harness is scratch tooling and is **not** committed.
+**Rationale.** A checker that cannot fail is indistinguishable from a checker that always passes, and both print the same reassuring output. Milestone 0B produced a concrete instance: an audit reported PASS while a real name-literal leak sat in `bone_head_m()`, because the audit's own blind spot hid it.
+
+Mutation testing immediately paid for itself on this milestone. It found a **genuine gap**: the prohibited-token rule used `\bF1\b`, which cannot match `F1SeasonCount` because the trailing word boundary fails when `1` is followed by a word character — so the rule was checking the one place the token did not matter and skipping identifiers, the place it did. `Formula1` matched no pattern at all. Both are now substring matches.
+
+It also disciplined the investigation. Three apparent gaps in the first run turned out to be two flaws in the *test* — injections placed inside `//` comments, which the validator strips by design — and one wrong anchor. That produced the symmetric rule to the 0B lesson: **when a mutation is missed, suspect the mutation first, but prove it by reading the source.** A negative control was then added — a prohibited word inside a comment, which must remain undetected — so the suite verifies the validator's deliberate silences as well as its alarms.
+**Rejected.** Trusting a PASS on its own (the exact 0B failure); testing the validator only with hand-written unit tests (tests the checker's helpers, not its end-to-end verdict on a real tree); mutating the real tree in place (unsafe, and impossible anyway — the tree is root-owned and read-only to the sandbox user, which is why the harness copies first).
+**Consequence.** Every validator edit must be followed by two things: re-running the mutation suite, and checking the assertion-count arithmetic. When the prohibited-token patterns were tightened, the count moved 2117 → 2300, exactly 3 new patterns × 61 scanned files — arithmetic that proves the change added checks rather than silently weakening existing ones.
+**Reversibility:** High as a practice; there is no reason to stop.
+
+---
+
 ## Superseded Decisions
 
 None. No decision recorded here has yet been superseded.
@@ -294,3 +348,10 @@ None. No decision recorded here has yet been superseded.
 | The rigid binding scheme in D-025 is what `binding_plan()` returns — nine meshes, deform bones only, nothing on Root or Steering | automatically validated |
 | The Blender-side effects of D-024, D-025 and D-026 occur as described when the scripts run | requires Blender execution |
 | Any decision has been validated by running the pipeline inside Blender | not claimed — `bpy` has never been available in the authoring environment |
+| D-027 records a layout choice the project brief genuinely leaves open | statically inspected — confirmed by searching the brief |
+| The Milestone 1 tree is laid out as D-027 describes | automatically validated |
+| The rules named in D-028 are enforced by a program that exits non-zero on violation | automatically validated |
+| D-029 describes how the bone check actually works | automatically validated |
+| The mutation score and the assertion arithmetic quoted in D-030 are measured values | automatically validated |
+| The `\bF1\b` gap described in D-030 was real, and is now closed | automatically validated |
+| Any Milestone 1 C++ affected by these decisions has been compiled | not claimed — `requires local compilation` |
