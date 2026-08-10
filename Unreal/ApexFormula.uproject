@@ -1,0 +1,71 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "5.8",
+	"Category": "Racing",
+	"Description": "ApexFormula - an original 3D formula racing game. Not affiliated with, endorsed by, or derived from any real motorsport series, team, driver, circuit or governing body.",
+	"Modules": [
+		{
+			"Name": "ApexFormulaCore",
+			"Type": "Runtime",
+			"LoadingPhase": "PreDefault"
+		},
+		{
+			"Name": "ApexFormulaVehicle",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"ApexFormulaCore"
+			]
+		},
+		{
+			"Name": "ApexFormulaRace",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"ApexFormulaCore"
+			]
+		},
+		{
+			"Name": "ApexFormulaUI",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"ApexFormulaCore"
+			]
+		},
+		{
+			"Name": "ApexFormulaEditor",
+			"Type": "Editor",
+			"LoadingPhase": "PostEngineInit",
+			"AdditionalDependencies": [
+				"ApexFormulaCore",
+				"ApexFormulaVehicle",
+				"ApexFormulaRace"
+			]
+		},
+		{
+			"Name": "ApexFormulaTests",
+			"Type": "DeveloperTool",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"ApexFormulaCore",
+				"ApexFormulaVehicle",
+				"ApexFormulaRace"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "ChaosVehiclesPlugin",
+			"Enabled": true
+		},
+		{
+			"Name": "EnhancedInput",
+			"Enabled": true
+		},
+		{
+			"Name": "ModelingToolsEditorMode",
+			"Enabled": false
+		}
+	]
+}
