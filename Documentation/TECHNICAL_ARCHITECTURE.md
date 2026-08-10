@@ -1,190 +1,130 @@
 # ApexFormula — Technical Architecture
 
-**Document status:** statically authored design document. Nothing in this file
-was compiled, opened, executed, imported, or visually inspected.
-**Milestone:** 0A
-**Target environment:** Unreal Engine 5.8, Blender 5.2 LTS, Windows, C++ primary.
+**Document status:** statically authored design document (Milestone 0A). Nothing in this document has been compiled, opened in the Unreal Editor, or executed. All module, class and interface names below are *proposed* and become real only in Milestone 1.
+
+**Fixed environment:** Unreal Engine 5.8, Blender 5.2 LTS, Windows, C++ primary, Blueprints for configuration and presentation. See `Documentation/VERSION_MATRIX.md`.
 
 ---
 
 ## 1. Overall System Architecture
 
-ApexFormula is composed of four cooperating systems.
+ApexFormula is structured as **five horizontal layers**. Dependencies point downward only. A lower layer never includes a higher layer's headers.
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│ 1. AUTHORING SYSTEM (Blender 5.2 LTS + Blender Python)        │
-│    procedural generation, rigging, validation, FBX export     │
-└───────────────┬─────────────────────────────────────────┘
-                │ FBX (skeletal/static)  ·  GLB (optional preview)
-                ▼
-┌─────────────────────────────────────────────────────────┐
-│ 2. CONTENT SYSTEM (Unreal assets + Blueprints + Data Assets)  │
-│    visual assignment, level assembly, UI, audio, tuning data  │
-└───────────────┬─────────────────────────────────────────┘
-                │ typed interfaces, Data Assets, config structs
-                ▼
-┌─────────────────────────────────────────────────────────┐
-│ 3. GAMEPLAY SYSTEM (Unreal C++ modules)                       │
-│    vehicle sim extensions, race rules, timing, telemetry, AI  │
-└───────────────┬─────────────────────────────────────────┘
-                │ logs, telemetry frames, save data
-                ▼
-┌─────────────────────────────────────────────────────────┐
-│ 4. TOOLING & VALIDATION SYSTEM                                │
-│    naming checks, report generation, profile enforcement      │
-└─────────────────────────────────────────────────────────┘
+Layer 5  Presentation      HUD, menus, garage, podium, cameras, audio, VFX
+Layer 4  Session           practice / qualifying / race, grid, race control, penalties
+Layer 3  Rules & Timing    checkpoints, sectors, lap validation, standings, pit rules
+Layer 2  Vehicle           physics extension, tyres, aero, energy, fuel, brakes, setup
+Layer 1  Core              data models, config, math, telemetry, logging, save data
 ```
 
-**Directional rule:** authoring flows forward into content, content flows forward
-into gameplay. Gameplay code never reaches backward into Blender-specific
-assumptions, and Blender scripts never encode undocumented Unreal internals.
+Cross-layer communication rules:
+
+1. **Downward calls:** direct, via interfaces or component accessors.
+2. **Upward notification:** never a direct call. Upward flow uses declared delegates (`FOnLapCompleted`, `FOnSectorCrossed`, `FOnPenaltyIssued`, `FOnPitStopCompleted`, etc.) or the telemetry bus.
+3. **Sideways within a layer:** allowed only through interfaces, never concrete classes.
+
+This layering is what makes the future multiplayer boundary (section 8) and the testing strategy (section 9) tractable.
 
 ## 2. Unreal C++ Module Boundaries
 
-The project is split into focused modules rather than one monolithic game
-module. Module names use the `ApexFormula` root identity.
+Proposed module split. Each is a real Unreal build module with its own `.Build.cs`.
 
-| Module | Type | Responsibility | Depends on |
-|---|---|---|---|
-| `ApexFormulaCore` | Runtime | Shared types, enums, math helpers, unit constants, logging categories, config structs. No gameplay behaviour. | Engine core only |
-| `ApexFormulaVehicle` | Runtime | Vehicle pawn, vehicle simulation components, aero, tires, brakes, fuel, hybrid energy, setup application, bone-name mapping. | Core |
-| `ApexFormulaRace` | Runtime | Checkpoints, sectors, lap validation, timing, session state (practice/qualifying/race), grid, race control, penalties, pit rules. | Core, Vehicle (interfaces only) |
-| `ApexFormulaAI` | Runtime | AI driver controllers, racing line following, opponent behaviour, difficulty scaling. | Core, Vehicle, Race |
-| `ApexFormulaTelemetry` | Runtime | Telemetry frame definition, sampling, ring buffer, export, replay-oriented recording. | Core |
-| `ApexFormulaUI` | Runtime | C++-side HUD/view-model data providers and setup-screen data contracts. Layout itself lives in Blueprints/UMG. | Core, Race, Vehicle, Telemetry |
-| `ApexFormulaEditor` | Editor | Editor-only validation commandlets, asset naming checks, data asset auditing. | All runtime modules |
-| `ApexFormulaTests` | Developer | Automation tests for pure logic (timing, lap validity, energy budgets, unit conversion). | All runtime modules |
+| Module | Type | Depends on | Owns |
+| --- | --- | --- | --- |
+| `ApexFormulaCore` | Runtime | Engine, CoreUObject | Data models, config structs, unit helpers, math utilities, telemetry bus, logging categories, save data definitions, shared enums, shared interfaces |
+| `ApexFormulaVehicle` | Runtime | Core, ChaosVehicles* | Vehicle pawn, vehicle simulation components (tyre, aero, energy, fuel, brake), setup application, vehicle telemetry sources, input mapping to vehicle controls |
+| `ApexFormulaRace` | Runtime | Core | Checkpoints, sector definitions, lap validation, timing, standings, session state machine, grid, race control, penalties, pit rules, AI driver logic |
+| `ApexFormulaUI` | Runtime | Core, UMG, Slate | HUD view models, setup screen view models, telemetry display models, menu backing data |
+| `ApexFormulaEditor` | Editor | Core, Vehicle, Race, UnrealEd | Data Asset validation, naming-convention checks, track authoring helpers, asset audit commandlets |
+| `ApexFormulaTests` | Runtime (dev) | Core, Vehicle, Race | Automation tests, deterministic replay harness |
+
+`*` The exact Chaos Vehicles module dependency name and availability in Unreal Engine 5.8 is **an assumption requiring verification** — see `Documentation/VERSION_MATRIX.md` §5 and `Documentation/VEHICLE_SYSTEM_DECISION.md` §7.
 
 **Boundary rules:**
 
-1. `ApexFormulaCore` never depends on any other project module.
-2. `ApexFormulaRace` must not include vehicle implementation headers; it consumes
-   vehicle state through interfaces defined in `ApexFormulaCore`.
-3. No runtime module may depend on `ApexFormulaEditor`.
-4. Circular module dependencies are prohibited. If two modules appear to need
-   each other, the shared contract moves down into `ApexFormulaCore`.
-5. Anything performance-sensitive, rules-defining, or multiplayer-authoritative
-   belongs in C++, never in Blueprints.
+- `ApexFormulaCore` depends on no other ApexFormula module. It must remain free of vehicle-specific and race-specific types.
+- `ApexFormulaRace` must not depend on `ApexFormulaVehicle`. It talks to vehicles only through interfaces declared in Core (e.g. `IAFRaceParticipant`, `IAFTelemetrySource`). This is what allows AI cars, player cars and future networked cars to be treated uniformly.
+- `ApexFormulaUI` reads; it does not decide. No race rule, penalty or lap validity may be computed in the UI module.
+- Editor-only code never leaks into runtime modules.
 
 ## 3. Blueprint Responsibilities
 
-Blueprints **own or configure**:
+**Blueprints own or configure:**
 
-- Visual asset assignment (meshes, materials, decals, livery slots)
-- Vehicle appearance and cosmetic variation
-- Level assembly and level-specific configuration
-- UI layout (UMG widget trees, styling, animation)
-- Animation connections (Animation Blueprints, blend logic wiring)
-- Audio assignment and audio parameter routing
-- Camera presentation and camera rigs
-- Exposed tuning values surfaced by C++ as `UPROPERTY(EditAnywhere)`
-- Design iteration that does not require architectural change
+- Visual asset assignment (meshes, materials, decals, liveries)
+- Vehicle appearance and cosmetic variants
+- Level assembly and placement of track pieces, checkpoints, grid slots, pit boxes
+- UI layout, widget hierarchy, animation of widgets
+- Animation Blueprint connections (driver, steering wheel, suspension visuals)
+- Audio assignment and audio component wiring
+- Camera presentation, camera rigs, post-process volumes
+- Level-specific configuration overrides
+- Exposed tuning values marked `EditAnywhere` / `BlueprintReadWrite`
+- Design iteration that does not change architecture
 
-Blueprints **must not** own:
+**Blueprints must never own:**
 
-- Race rules, lap validity, or penalty determination
-- Timing, sector logic, or checkpoint ordering
-- Vehicle simulation math (aero, tire, brake, fuel, energy)
-- Save data definitions
-- Telemetry frame layout
-- Anything intended to be authoritative in future multiplayer
-- Tick-heavy per-frame numeric loops
+- Lap validity, sector timing, penalty decisions, standings
+- Tyre, aero, energy, fuel or brake state evolution
+- Save data format
+- Anything that will later need to be server-authoritative
+- Anything performance-critical evaluated per physics sub-step
 
-**Interface convention:** every C++ system exposes a small, stable
-`BlueprintCallable` / `BlueprintPure` surface plus `BlueprintImplementableEvent`
-or `BlueprintNativeEvent` hooks for presentation. Blueprint reads state and
-reacts; it does not compute state.
+**Pattern:** every gameplay C++ class exposes a *thin Blueprint-facing surface* — `BlueprintNativeEvent` hooks for presentation reactions, `BlueprintCallable` read accessors, and `EditDefaultsOnly` configuration pointers to Data Assets. Blueprints subclass C++ classes; C++ never subclasses Blueprints.
 
 ## 4. Component Strategy
 
-**Composition over inheritance is mandatory.** Deep pawn inheritance chains are
-prohibited.
+**Composition over inheritance is mandatory.** Deep pawn inheritance chains are prohibited.
 
-The vehicle pawn is a thin actor that owns independent components:
+Proposed vehicle composition (`AAFVehiclePawn` + components):
 
-| Component | Responsibility |
-|---|---|
-| `AeroComponent` | Front/rear downforce, drag, configurable aero balance, fictional active aero state |
-| `TireComponent` (per axle or per corner) | Temperature, wear, grip state |
-| `BrakeComponent` | Brake temperature, brake bias |
-| `FuelComponent` | Fuel mass, consumption, mass feedback into the vehicle |
-| `HybridEnergyComponent` | Fictional deployment and regeneration budget |
-| `DrivetrainComponent` | Differential configuration, torque delivery |
-| `SetupComponent` | Applies a setup Data Asset to all other components |
-| `VehicleTelemetryComponent` | Samples the above into telemetry frames |
-| `LapTrackerComponent` | Per-vehicle checkpoint/sector progress, reported to race subsystem |
+- `UAFTyreSetComponent` — per-corner temperature, wear, grip state, pressure
+- `UAFAeroComponent` — front/rear downforce, drag, aero balance, active aero state
+- `UAFEnergySystemComponent` — hybrid deployment, regeneration, stored energy
+- `UAFFuelComponent` — fuel mass, consumption, mass feedback into physics
+- `UAFBrakeComponent` — brake temperature, brake bias, fade model
+- `UAFDrivetrainComponent` — differential configuration, gear selection
+- `UAFVehicleSetupComponent` — applies a setup Data Asset to all of the above
+- `UAFVehicleTelemetryComponent` — samples all of the above onto the telemetry bus
+- `UAFRaceParticipantComponent` — implements `IAFRaceParticipant`, holds checkpoint progress, lap state, penalties
 
 Rules:
 
-1. Components communicate through the owning vehicle's interface, not by
-   directly reaching into sibling components' internals.
-2. Each component owns its own state and exposes read-only accessors.
-3. Each component is independently testable with synthetic inputs.
-4. A component that needs a value from another component receives it through an
-   explicitly ordered update step on the vehicle, not through hidden coupling.
-5. Update order among simulation components is explicit and documented in code,
-   because implicit tick ordering is a determinism hazard.
+1. A component owns exactly one concern and one state block.
+2. Components communicate through the owning pawn or through Core interfaces, not by casting to each other's concrete types where an interface will do.
+3. Any component that mutates physically meaningful state exposes a pure read accessor for telemetry and UI.
+4. Components are individually testable with a null/mock owner where practical.
+5. Adding a new simulated subsystem must mean adding a component, not editing the pawn.
 
 ## 5. Data Asset Strategy
 
-All tunable content-facing data lives in typed Data Assets, not in code
-constants and not in loose Blueprint variables.
+All tuning lives in Data Assets. Proposed set (all `UPrimaryDataAsset` subclasses in `ApexFormulaCore` or `ApexFormulaVehicle`):
 
-Planned Data Asset families (created in later milestones, defined here):
-
-| Data Asset | Contents |
-|---|---|
-| `AF_VehicleDefinition` | Mass, dimensions, wheelbase, track width, CG, inertia targets |
-| `AF_AeroProfile` | Downforce curves, drag coefficients, aero balance range, active aero states |
-| `AF_TireCompound` | Grip curves, temperature windows, wear rates, degradation model inputs |
-| `AF_BrakeProfile` | Torque, thermal capacity, cooling, bias range |
-| `AF_EnergyProfile` | Fictional deployment/regeneration budgets and rates |
-| `AF_VehicleSetup` | Player-editable setup values with valid ranges |
-| `AF_BoneMapping` | Central bone-name mapping (see §7) |
-| `AF_TrackDefinition` | Checkpoint order, sector boundaries, pit lane geometry references |
-| `AF_SessionRules` | Session type, lap count, penalty rules, validity rules |
-| `AF_QualityProfile` | Preview vs Final quality settings |
-| `AF_TeamIdentity` | Fictional team name, livery slots, colours |
-| `AF_DriverIdentity` | Fictional driver name, number, helmet reference |
+| Data Asset | Purpose |
+| --- | --- |
+| `UAFVehicleDefinition` | Mass, dimensions, wheelbase, track width, inertia, bone-name mapping table, default setup |
+| `UAFTyreCompound` | Grip curves, optimal temperature window, wear rate, degradation response |
+| `UAFAeroProfile` | Downforce and drag coefficients vs. speed and ride height, aero balance range, active aero states |
+| `UAFEnergyProfile` | Deployment rate, regeneration rate, capacity, per-lap limits |
+| `UAFBrakeProfile` | Thermal capacity, fade curve, bias range |
+| `UAFVehicleSetup` | A saveable, player-editable configuration instance |
+| `UAFTrackDefinition` | Checkpoint order, sector boundaries, pit lane entry/exit, grid slots, track limits policy |
+| `UAFSessionRules` | Session type, length, penalty table, false-start rules, pit rules |
+| `UAFAIDriverProfile` | Fictional driver identity, pace, aggression, error rate, tyre management |
+| `UAFDifficultyProfile` | Assist configuration, consumption multipliers |
+| `UAFQualityProfile` | Development Preview vs. Final Quality overrides |
+| `UAFBoneNameMap` | The single central location for all skeletal bone names (see §6) |
 
 Rules:
 
-1. Every Data Asset has documented units and valid ranges.
-2. Every numeric field that a designer can change has a defined default.
-3. Data Assets are validated by an editor-side validator (`ApexFormulaEditor`).
-4. No gameplay code reads a magic number that is not sourced from a Data Asset,
-   a typed settings object, or a named constant in `ApexFormulaCore`.
+- **No magic numbers in code.** Any physically or design-meaningful constant lives in a Data Asset or a named `UAFSettings` config field.
+- Data Assets are validated by `ApexFormulaEditor` (`UAFDataValidator`), which reports missing curves, out-of-range values and broken bone mappings.
+- Data Assets are versioned; a `DataVersion` integer allows migration code in Core.
 
-## 6. Configuration Strategy
+### Central bone-name convention
 
-Three configuration layers, in increasing specificity:
-
-1. **Project settings (`UDeveloperSettings`)** — engine-lifetime values such as
-   the active quality profile, telemetry sampling rate, logging verbosity, and
-   the bone mapping asset reference. Editable in Project Settings, saved to
-   `Config/DefaultApexFormula.ini`.
-2. **Data Assets** — content-authored, per-vehicle / per-track / per-session.
-3. **Instance overrides** — per-level or per-actor overrides via Blueprint
-   exposed properties, used only for level-specific configuration.
-
-Quality profiles:
-
-- `DevelopmentPreview` — reduced texture streaming pool, reduced shadow and
-  reflection cost, lower LOD bias, simplified post-processing, reduced AI
-  opponent count. Intended for a modest laptop.
-- `FinalQuality` — full settings, full baking, full LODs, full effects.
-
-Binding rule: switching to `DevelopmentPreview` changes only runtime/derived
-settings. It never rewrites source assets, never re-imports at lower resolution,
-and never overwrites final-quality generated output.
-
-## 7. Vehicle Bone and Mapping Convention
-
-The project defines its own stable convention rather than assuming a single
-universal Chaos Vehicles bone naming standard.
-
-Initial ApexFormula convention:
+The initial ApexFormula skeletal convention is:
 
 ```
 AF_Root
@@ -200,148 +140,129 @@ AF_Suspension_RL
 AF_Suspension_RR
 ```
 
-Rules:
+This convention is **not** assumed to be any Chaos Vehicles default. It is an ApexFormula convention. It is stored in exactly one place — `UAFBoneNameMap` — and both the Unreal wheel/suspension setup and the Blender generator read their names from a shared source of truth (`af_pipeline_config.py` mirrors the same list; see `Documentation/BLENDER_PIPELINE_DESIGN.md`). Changing a bone name must be a one-file change plus a re-export, never a code hunt.
 
-1. These names are stored in **one central location** — the `AF_BoneMapping`
-   Data Asset, referenced from project settings.
-2. No C++ or Blueprint code hardcodes a bone-name string literal. All lookups go
-   through the mapping.
-3. The Blender generator reads the same logical names from its own centralized
-   pipeline config (`af_pipeline_config.py`) so both sides can be changed
-   together.
-4. The convention changes **only** if a documented Unreal Engine 5.8 requirement
-   proves it must. Any such change is recorded in `DECISION_LOG.md`.
+**Status:** `requires Unreal Editor verification` — that Unreal Engine 5.8's vehicle setup accepts a fully data-driven bone mapping with these names.
 
-**Uncertainty label:** whether Unreal Engine 5.8 imposes any additional naming or
-hierarchy constraint on the chosen vehicle system is **requires Unreal Editor
-verification**. It is not asserted here.
+## 6. Configuration Strategy
 
-## 8. Asset Pipeline Boundaries
+Three tiers, in increasing specificity:
 
-| Concern | Owner |
-|---|---|
-| Mesh generation, topology, UVs, rig construction | Blender |
-| Collision mesh authoring intent | Blender (exported), reviewed in Unreal |
-| LOD source generation | Blender |
-| Material *definition* and shading | Unreal |
-| Material *slot naming and assignment intent* | Blender (slot names), Unreal (actual materials) |
-| Texture authoring | External / Blender bake outputs |
-| Skeleton and bone naming | Blender, per the central convention |
-| Physics asset tuning | Unreal |
-| Animation Blueprint wiring | Unreal Blueprints |
-| Unit conversion at the boundary | Blender export step, documented explicitly |
-
-Hard boundary: **Blender does not attempt to author Unreal materials.** It emits
-deterministic material slot names; Unreal owns the actual material graphs.
-
-## 9. Future Multiplayer Boundaries
-
-Multiplayer is not implemented in early milestones, but the architecture is
-prepared now so it does not require a rewrite.
-
-Preparation rules:
-
-1. **Authoritative logic is server-shaped from day one.** Race rules, lap
-   validity, timing, penalties, and energy/fuel accounting live in C++ in
-   `ApexFormulaRace` and vehicle simulation components, written so they could
-   execute authoritatively.
-2. **Input is separated from state.** Player intent (throttle, brake, steer,
-   gear, deploy) is captured as a discrete input struct, distinct from resulting
-   vehicle state. This is the natural seam for future replication and for replay.
-3. **No gameplay decision depends on client-only presentation.** Camera, HUD,
-   audio, and effects never feed back into rules.
-4. **Determinism hazards are documented, not ignored.** Variable tick rate,
-   floating-point divergence, and physics substepping are known hazards; the
-   vehicle architecture decision (`VEHICLE_SYSTEM_DECISION.md`) evaluates them
-   explicitly.
-5. **State that would need replication is identified early**, even while
-   single-player, and kept in plain replicable-friendly types.
-
-Explicitly **not** promised in early milestones: netcode, rollback, client
-prediction, dedicated server support, or matchmaking.
-
-## 10. Testing Philosophy
-
-Four layers:
-
-1. **Static inspection** — naming conventions, module dependency direction,
-   documentation consistency. Cheap, runs without the engine.
-2. **Automated logic tests** (`ApexFormulaTests`) — pure functions and
-   deterministic subsystems: lap validity, sector timing arithmetic, unit
-   conversion, energy budget accounting, setup range clamping. These require
-   local compilation to run.
-3. **Editor validation** (`ApexFormulaEditor`) — Data Asset completeness, bone
-   mapping resolution, missing references, out-of-range values. Requires Unreal
-   Editor verification.
-4. **Human validation** — visual inspection and playtesting for handling feel,
-   visual correctness, and likeness. Never automated, never claimed by the
-   assistant.
+1. **Project settings** — `UAFDeveloperSettings` (`UDeveloperSettings` subclass), stored in `Config/DefaultApexFormula.ini`. Holds pipeline paths, default Data Asset references, telemetry toggles, quality profile default.
+2. **Data Assets** — all gameplay and vehicle tuning, as in §5.
+3. **Level / instance overrides** — Blueprint-exposed properties on placed actors, for level-specific configuration only.
 
 Rules:
 
-- Physics *feel* is never asserted by a test; it is a playtest outcome.
-- A test that cannot run without the engine is labelled as requiring local
-  compilation, and its result is never assumed.
-- Every validation report states which of the seven honesty labels applies.
+- No gameplay constant is read from a hardcoded literal in a `.cpp` file.
+- Machine-specific configuration (local paths, personal reference directories, editor layout) is **never committed**; it is excluded by `.gitignore`.
+- Console variables (`af.` prefix) are permitted for debugging and profiling only, never as the primary configuration route.
 
-## 11. Logging and Telemetry Strategy
+## 7. Asset Pipeline Boundaries
 
-**Logging.** Dedicated log categories declared in `ApexFormulaCore`:
+The Blender/Unreal boundary is a **hard, documented contract**, defined in full in `Documentation/BLENDER_PIPELINE_DESIGN.md`. Summary of the boundary as it affects architecture:
+
+- **Blender owns:** procedural geometry generation, UV layout, LOD generation, collision mesh authoring, rig/armature construction, FBX export, pre-export validation, JSON validation reports.
+- **Unreal owns:** import settings, material instancing, physics asset configuration, LOD assignment policy inside the engine, texture streaming, final shading.
+- **Neither owns unilaterally:** the bone-name convention, unit scale, forward/up axis, and the vehicle dimension design values. These are *contract items* — they are documented in both `af_pipeline_config.py` and `UAFBoneNameMap`/`UAFVehicleDefinition`, and any change must be made in both, in the same change set.
+- **Transfer formats:** FBX is the primary skeletal pipeline format. GLB is optional, and only for static preview or interchange — never the authoritative skeletal path.
+- **Directory separation:** Blender source files and generated exports live in separate trees; generated exports are reproducible and are candidates for Git LFS, not for hand editing.
+
+## 8. Future Multiplayer Boundaries
+
+Multiplayer is **not implemented** in the current milestone plan. The architecture nonetheless observes these boundaries from day one, because retrofitting them is expensive:
+
+1. **Authority classification.** Every piece of state is classified as `Authoritative`, `Predicted` or `Cosmetic` in its owning class's header comment.
+   - Authoritative: lap validity, sector times, penalties, standings, session state, pit stop completion, fuel/energy/tyre/brake state.
+   - Predicted: vehicle transform and velocity.
+   - Cosmetic: VFX, audio, camera, HUD animation.
+2. **No authoritative state in Blueprints.** Enforced by review and by the `ApexFormulaEditor` audit.
+3. **No authoritative state in the UI module.**
+4. **Input is a value object.** Vehicle input is captured into a serialisable `FAFVehicleInputFrame` struct with a frame index and timestamp, then applied. This same struct is what a future client would send and what the replay system records.
+5. **Simulation stepping is explicit.** Vehicle subsystems advance via an explicit `StepSimulation(DeltaTime, InputFrame)` call rather than scattered `Tick` side effects, so a future server can drive them deterministically.
+6. **No reliance on singletons for participant state.** Participants are discovered through the race subsystem, not through global mutable state.
+7. **Determinism concerns are documented, not promised.** Full lockstep determinism is *not* claimed for Unreal's physics. The replay strategy (§10) is therefore state-recording, not input-replay-only.
+
+## 9. Testing Philosophy
+
+Four tiers:
+
+1. **Static validation (automatable, no engine):** naming conventions, document/tree consistency, JSON report schema checks, Python-side pipeline checks. This is the only tier that can run in an environment without Unreal or Blender.
+2. **Editor/Automation tests (`ApexFormulaTests`):** pure-logic tests for lap validation, sector timing, checkpoint ordering, penalty rules, energy/fuel accounting, setup application, save/load round trips. These must not require a rendered frame. **Status:** `requires local compilation`.
+3. **Scripted scenario tests:** a headless or minimal level that drives a vehicle through a scripted input sequence and asserts on timing/validity outcomes. **Status:** `requires Unreal Editor verification`.
+4. **Human verification:** visual inspection of assets and presentation, and playtesting of feel, balance and difficulty. These can never be automated away and are always labelled `requires visual inspection` or `requires playtesting`.
+
+Principle: **rules logic must be testable without a car, a track or a frame.** If a rule can only be tested by driving, it is in the wrong layer.
+
+## 10. Logging and Telemetry Strategy
+
+### Logging
+
+- Dedicated categories: `LogAFCore`, `LogAFVehicle`, `LogAFRace`, `LogAFPipeline`, `LogAFUI`.
+- Verbosity is configuration-driven, not compile-time.
+- Every rule decision that affects the player (lap invalidated, penalty issued, pit stop judged) logs at `Log` level with participant id, session time and the reason. Silent rule decisions are prohibited.
+
+### Telemetry
+
+- A single `UAFTelemetryBus` in `ApexFormulaCore`. Producers push named channels; consumers (HUD, recorder, debug overlay) subscribe. Producers never know their consumers.
+- Channel schema: `FAFTelemetrySample { FName Channel; double SessionTime; int32 ParticipantId; double Value; }` for scalars, with a parallel vector variant.
+- Planned channels: speed, engine/motor RPM, gear, throttle, brake, steering, per-corner tyre temperature, per-corner tyre wear, per-corner slip, brake temperature per axle, fuel mass, energy store, energy deploy rate, downforce front/rear, drag, aero balance, ride height, delta to reference lap.
+- **Recording:** telemetry is written to a session file for later analysis and to support the replay preparation milestone. Recording is a Final-Quality-safe operation and must not alter simulation results.
+- **Replay preparation:** because engine-level physics determinism is not assumed, replay is designed as *periodic authoritative state snapshots plus interpolation*, with the input frames recorded alongside for analysis. This decision is recorded in `Documentation/DECISION_LOG.md` (D-014).
+
+## 11. Proposed Runtime Class Sketch
+
+Illustrative only; nothing below has been compiled.
 
 ```
-LogApexFormula          general
-LogApexFormulaVehicle   vehicle simulation
-LogApexFormulaRace      rules, timing, penalties
-LogApexFormulaAI        AI drivers
-LogApexFormulaPipeline  asset/import/validation
-LogApexFormulaTelemetry telemetry subsystem
+ApexFormulaCore
+  UAFDeveloperSettings
+  UAFTelemetryBus
+  IAFRaceParticipant
+  IAFTelemetrySource
+  FAFVehicleInputFrame
+  UAFBoneNameMap
+  UAFQualityProfile
+  UAFSaveGame
+
+ApexFormulaVehicle
+  AAFVehiclePawn
+  UAFTyreSetComponent
+  UAFAeroComponent
+  UAFEnergySystemComponent
+  UAFFuelComponent
+  UAFBrakeComponent
+  UAFDrivetrainComponent
+  UAFVehicleSetupComponent
+  UAFVehicleTelemetryComponent
+  UAFVehicleCompatibilityLayer   // isolates version-sensitive engine vehicle API calls
+
+ApexFormulaRace
+  AAFCheckpoint
+  UAFLapValidator
+  UAFSectorTimer
+  UAFSessionSubsystem
+  UAFRaceControl
+  UAFPenaltyLedger
+  AAFPitBox
+  UAFAIDriverController
+
+ApexFormulaUI
+  UAFHudViewModel
+  UAFSetupScreenViewModel
+  UAFTelemetryViewModel
 ```
 
-Conventions: verbosity is configurable per category; shipping builds default to
-warnings and errors; the active quality profile is logged at startup; no
-personally identifying information is ever logged.
+`UAFVehicleCompatibilityLayer` exists specifically to satisfy the rule that version-sensitive or uncertain engine API usage is isolated behind a clearly named compatibility layer with documented uncertainty.
 
-**Telemetry.** A telemetry frame is a plain, versioned struct sampled at a fixed
-configurable rate, independent of render frame rate.
+## 12. Verification Ledger for This Document
 
-Frame contents (initial intent, extended in later milestones): timestamp,
-session time, lap number, sector, position/rotation/velocity, throttle, brake,
-steering, gear, engine state, per-corner tire temperature and wear, per-corner
-brake temperature, fuel mass, hybrid energy state, aero balance, downforce and
-drag magnitudes, lap-validity flag.
-
-Rules:
-
-1. Telemetry is **read-only observation.** Recording telemetry never alters
-   simulation results.
-2. The frame struct is **versioned**; a version integer is written with every
-   recording so older captures remain interpretable.
-3. Telemetry uses a fixed-size ring buffer in memory with optional flush to
-   disk, so a long session cannot exhaust memory.
-4. The telemetry frame is designed to be a viable foundation for **replay**
-   preparation, but replay is not implemented in early milestones.
-5. Telemetry output is written to a generated/derived location, never mixed with
-   source assets.
-
-## 12. Units and Conventions
-
-- Unreal-facing linear unit: **centimetres**.
-- Unreal-facing angular unit: degrees.
-- Unreal-facing mass unit: kilograms.
-- Time: seconds (double precision for accumulated session time).
-- All conversion at the Blender/Unreal boundary is explicit and documented in
-  `BLENDER_PIPELINE_DESIGN.md` — including forward axis, up axis, scale factor,
-  and applied transforms. Vague phrasing such as "convert Z-up to Unreal" is not
-  acceptable anywhere in this project.
-
-## 13. Compatibility Layer Policy
-
-Any API surface that is version-sensitive or uncertain for Unreal Engine 5.8 or
-Blender 5.2 LTS is isolated behind a clearly named compatibility wrapper — for
-example a `ApexFormulaCompat` namespace in C++ and an `af_compat.py` module on
-the Blender side — with the uncertainty documented in `VERSION_MATRIX.md`.
-
-No Unreal Engine, Chaos Vehicles, Blender, MetaHuman, FBX, or Blueprint API is
-invented in this project. Where an exact API name or signature is not confirmed,
-the document says so and marks it as requiring verification rather than
-asserting it.
+| Claim | Label |
+| --- | --- |
+| Layering and module boundaries are internally consistent | statically inspected |
+| No real motorsport brand appears as an identifier | statically inspected |
+| Proposed module names compile as Unreal modules | requires local compilation |
+| Chaos Vehicles module availability/naming in UE 5.8 | requires Unreal Editor verification |
+| Data-driven bone mapping accepted by UE 5.8 vehicle setup | requires Unreal Editor verification |
+| Telemetry recording does not perturb simulation | requires playtesting |
+| Component split performs acceptably at full grid size | requires playtesting |
