@@ -106,6 +106,33 @@ overall length, centre-of-mass bias and height. Powertrain and aerodynamic value
 struct defaults rather than being invented here, because a definition asset is chassis geometry
 and duplicating tuning data across two assets is what D-007 exists to prevent (**D-038**).
 
+### Where vehicle dimensions come from (D-041)
+
+`BlenderPipeline/scripts/af_pipeline_config.py`, dictionary `DESIGN`, is the **single source of
+truth** for every vehicle dimension in this project. `UAFVehicleDefinition` carries a subset of
+those numbers so that Unreal-side code does not have to parse a Python file, and that subset is
+required to agree.
+
+It did not agree. Milestone 2 found two live contradictions:
+
+| Field | `UAFVehicleDefinition` before | `af_pipeline_config.py::DESIGN` | Now |
+| --- | --- | --- | --- |
+| `OverallLengthM` | 5.30 | `overall_length_m` = 5.60 | **5.60** |
+| `RearTrackM` | 1.55 | `track_rear_m` = 1.540 | **1.54** |
+
+The Blender values won because Blender is what actually builds the mesh: the generated body is
+5.600 m long and the rear track is 1.540 m, and the pre-export validator measures the result and
+compares it against `DESIGN`. Had the Unreal numbers won, the physics chassis would have been
+30 cm longer than the visual mesh sitting on top of it — the kind of defect that reads as
+"the collision feels wrong" three milestones later.
+
+`AFVehicleDefinition.h` now carries a source-of-truth comment block naming the file, the
+dictionary and the specific keys, so the next person to edit a number is told where the other
+copy lives before they change one and not the other.
+
+Unchanged and still agreeing: `WheelbaseM` 3.60, `FrontTrackM` 1.60, `DryMassKg` 740.0,
+`CentreOfMassBiasRear` 0.55, `CentreOfMassHeightM` 0.28. `DataVersion` is 2.
+
 All default numeric values are **ApexFormula design values**. They are not measurements of any
 real vehicle or circuit and are not claimed to be realistic.
 
@@ -134,9 +161,18 @@ Recorded as decision **D-029**.
 Consequence: changing the *style* of `AFBoneNameMap.cpp` can break the validator's parser even if
 behaviour is unchanged, and requires an emulator update.
 
-Note that agreement between the two *conventions* is not the same as agreement between a
-convention and an *imported asset*. Milestone 2 acceptance criterion 4 concerns the latter, and
-it `requires Unreal Editor verification`.
+There are now two independent checks on the Blender side of this contract, and they cover
+different things:
+
+- The **static** check, above, proves the two *conventions* agree with each other.
+- The **executed** check, in CI, proves the Blender rig stage actually *produces* that
+  convention. Every push runs `af_smoke_test.py` under headless Blender, and stage 3 prints all
+  eleven bones with parent and head position in metres and centimetres, then asserts
+  `bone_order_matches_config == True` and `bone_count == 11` against nine bound meshes.
+
+Neither is the same as agreement between a convention and an **imported asset**. Milestone 2
+acceptance criterion 4 concerns that third thing, and it still `requires Unreal Editor
+verification` — no FBX has been imported here, because no editor exists here.
 
 ---
 
@@ -158,7 +194,7 @@ convention, configuration keys, and test declarations.
 
 Its Milestone 1 measurement was `checks passed: 2300, failures: 0, warnings: 0`. That count is
 **not** quoted as the current figure — the tree has grown since and the number has not been
-re-measured into this document. The live result is the CI run on this branch, which passes.
+re-measured into this document. The live result is the CI run on `main`, which passes.
 
 It has been mutation-tested — **11 of 11 injected defects detected**, with a negative control (a
 prohibited word inside a comment) correctly ignored. Recorded as decision **D-030**; details in
@@ -177,6 +213,11 @@ Its documented blind spot: an out-of-line definition written `FVector *Class::Me
 matched. The header declaration is still checked, and no interface in this project returns a
 pointer.
 
+Neither validator can see a defect that only exists once geometry is built. D-040 is the worked
+example: a 24 mm halo overshoot that every static check passed and the executed Blender stage
+caught immediately. That is the argument for the third CI job, not a general claim that static
+checking is weak.
+
 ---
 
 ## 7. Verification Ledger for This Document
@@ -190,11 +231,15 @@ pointer.
 | A Chaos backend is bound *in code* by `AFVehicleCompatibilityLayer.cpp` (§3) | statically inspected |
 | That backend binding does anything at run time (§3) | not claimed — `requires local compilation`, then `requires playtesting` |
 | Every key in `DefaultApexFormula.ini` maps to a real `UPROPERTY(Config)` (§4) | automatically validated |
+| `UAFVehicleDefinition` dimensions now agree with `af_pipeline_config.py::DESIGN` (§4, D-041) | statically inspected |
+| The Blender mesh really is 5.600 m long and 1.540 m rear track (§4) | automatically validated — measured by the pre-export validator in CI |
 | The Blender and Unreal bone conventions agree with each other (§5) | automatically validated |
+| The Blender rig stage produces 11 bones in config order with 9 bound meshes (§5) | automatically validated — executed under headless Blender on every push |
 | An imported skeleton's bone names match `UAFBoneNameMap` (§5) | not claimed — `requires Unreal Editor verification` |
 | Every `override` agrees in return type with the interface it implements (§6) | automatically validated |
 | The mutation scores quoted in §6 are measured values | automatically validated |
 | The 2300 figure in §6 is the Milestone 1 measurement, not the current tree | statically inspected |
+| The D-040 halo overshoot was caught by the executed stage, not a static check (§6) | automatically validated |
 | Design intent, rationale and the reasons behind each decision | statically inspected |
 | Default numeric values are ApexFormula design values, not measurements | statically inspected |
 | Any file in this directory compiles | not claimed — `requires local compilation` |
@@ -203,4 +248,4 @@ pointer.
 | The vehicle accelerates, brakes, steers, or stays on the ground | not claimed — `requires playtesting` |
 | `ChaosVehicles` and `ChaosVehiclesPlugin` are the correct 5.8 names | not claimed — see `VERSION_MATRIX.md` §5.21 |
 | The APIs assumed throughout the C++ exist with the assumed signatures | not claimed — see `VERSION_MATRIX.md` §5.21–§5.26 |
-| Anything here has been run, opened, packaged or played | not claimed — no engine exists in the authoring environment |
+| Anything **in this directory** has been run, opened, packaged or played | not claimed — no engine exists in the authoring environment |
