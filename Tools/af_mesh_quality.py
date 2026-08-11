@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ApexFormula - mesh integrity gate for generated vehicle geometry.
+"""UludagFormula - mesh integrity gate for generated vehicle geometry.
 
 WHAT THIS FILE IS
 -----------------
@@ -42,7 +42,7 @@ CHECK CATALOGUE
   C11 collision sanity         piece count, convexity, containment
   C12 design envelope          measured bounds against DESIGN dimensions
 
-Author: ApexFormula project tooling.  No third-party dependencies.
+Author: UludagFormula project tooling.  No third-party dependencies.
 """
 
 from __future__ import annotations
@@ -747,7 +747,7 @@ def _run_self_tests(verbose=False):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        description="ApexFormula generated-mesh integrity gate")
+        description="UludagFormula generated-mesh integrity gate")
     parser.add_argument("--self-test", action="store_true",
                         help="run built-in unit tests and exit")
     parser.add_argument("--verbose", action="store_true",
@@ -763,7 +763,7 @@ def main(argv=None):
         print("af_mesh_quality: cannot import the generator modules: %s" % exc)
         return 2
 
-    print("ApexFormula mesh quality audit")
+    print("UludagFormula mesh quality audit")
     print(report.render(verbose=args.verbose))
     if report.ok:
         print("RESULT: pass")
