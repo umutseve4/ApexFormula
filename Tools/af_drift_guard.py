@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
+# Copyright UludagFormula. Original work. Not affiliated with any real motorsport series.
 """
 af_drift_guard.py - executable guard against C++/Python rule drift (Milestone 3).
 
@@ -900,8 +900,8 @@ class SelfTest(object):
 
     def test_detects_dropped_rule_cpp_side(self):
         mutated = FIXTURE_VALIDATOR_CPP.replace(
-            "	Result.LapTimeSeconds = FMath::Max(0.0, SessionTime - CurrentLapStartTime);",
-            "	Result.LapTimeSeconds = SessionTime - CurrentLapStartTime;",
+            "\tResult.LapTimeSeconds = FMath::Max(0.0, SessionTime - CurrentLapStartTime);",
+            "\tResult.LapTimeSeconds = SessionTime - CurrentLapStartTime;",
         )
         findings = self._findings(validator=mutated)
         self.check(
@@ -934,8 +934,8 @@ class SelfTest(object):
 
     def test_detects_first_cause_wins_removal(self):
         mutated = FIXTURE_VALIDATOR_CPP.replace(
-            "	if (CurrentReason == EAFLapInvalidationReason::NotInvalidated) { CurrentReason = Reason; }",
-            "	CurrentReason = Reason;",
+            "\tif (CurrentReason == EAFLapInvalidationReason::NotInvalidated) { CurrentReason = Reason; }",
+            "\tCurrentReason = Reason;",
         )
         findings = self._findings(validator=mutated)
         self.check(
@@ -998,7 +998,7 @@ def read_text(path):
 def run_against_repository(root, verbose):
     missing = [rel for rel in REQUIRED_SOURCES if not os.path.isfile(os.path.join(root, rel))]
     if missing:
-        print("ApexFormula drift guard - CANNOT RUN")
+        print("UludagFormula drift guard - CANNOT RUN")
         for rel in missing:
             print("  missing source: %s" % rel)
         return 2
@@ -1014,7 +1014,7 @@ def run_against_repository(root, verbose):
         if verbose:
             print(message)
 
-    print("ApexFormula C++/Python drift guard")
+    print("UludagFormula C++/Python drift guard")
     print("  root    : %s" % os.path.abspath(root))
     print("  python  : %d.%d.%d" % sys.version_info[:3])
     print("  rules   : %d" % len(RULES))
@@ -1077,7 +1077,7 @@ def main(argv=None):
         parser.error("--self-test and --root are mutually exclusive")
 
     if args.self_test:
-        print("ApexFormula drift guard - self-test")
+        print("UludagFormula drift guard - self-test")
         print("  python  : %d.%d.%d" % sys.version_info[:3])
         print("")
         suite = SelfTest(verbose=args.verbose)
