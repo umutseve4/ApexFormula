@@ -61,6 +61,25 @@ jobs:
       - name: Lap rules reference model self-test
         run: python3 Tools/af_lap_rules_model.py --self-test
 
+      # Milestone 3, decision D-044. The step above proves the reference
+      # model is self-consistent. It cannot notice that the model has
+      # stopped describing the C++ it mirrors - that was the admitted hole
+      # in D-042, whose mitigation was "review discipline, not automation".
+      #
+      # These two steps close it. The self-test runs FIRST and on purpose:
+      # it mutates fixtures and asserts the guard REPORTS the drift, so a
+      # guard that has quietly stopped detecting anything fails here rather
+      # than passing the real check for the wrong reason.
+      - name: Drift guard self-test
+        run: python3 Tools/af_drift_guard.py --self-test
+
+      # Then the same guard against the genuine checked-out sources.
+      # A failure here means AFSectorTimer.cpp / AFLapValidator.cpp and
+      # Tools/af_lap_rules_model.py disagree. Fix both sides. Do not
+      # delete this step, and do not add continue-on-error to it.
+      - name: C++/Python drift guard
+        run: python3 Tools/af_drift_guard.py --root . --verbose
+
       # Milestone 3, acceptance criterion 5. This EXECUTES the test circuit
       # geometry generator. Same reasoning as the step above: compileall
       # would prove only that the file parses.
