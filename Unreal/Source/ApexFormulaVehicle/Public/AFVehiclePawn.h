@@ -35,6 +35,13 @@ class UAFVehicleComponentBase;
  * compatibility layer creates and owns the engine movement component and hands
  * this pawn back only an opaque UActorComponent pointer.
  *
+ * D-035. GetParticipantDisplayName returns FString because that is what
+ * IAFRaceParticipant declares. DriverDisplayName remains FText because it is
+ * authored content that must be localisable; the override converts at the
+ * boundary. A mismatched override return type is not an overload - it is a
+ * compile error, and it survived Milestone 1 only because nothing in this
+ * repository can compile C++.
+ *
  * Milestone 2 scope. Physics backend bound, driver input consumed, chase camera
  * present, reset affordance present. No cockpit camera (Milestone 6), no
  * powertrain model (Milestone 10), no timing (Milestone 3).
@@ -123,7 +130,7 @@ public:
 
 	//~ Begin IAFRaceParticipant interface
 	virtual int32 GetParticipantId() const override;
-	virtual FText GetParticipantDisplayName() const override;
+	virtual FString GetParticipantDisplayName() const override;
 	virtual FVector GetParticipantLocation() const override;
 	virtual FVector GetParticipantForward() const override;
 	virtual double GetParticipantSpeedKph() const override;
