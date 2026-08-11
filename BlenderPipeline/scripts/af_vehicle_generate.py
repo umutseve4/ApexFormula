@@ -25,6 +25,13 @@ so the tallest point of the vehicle can never breach the design envelope.
 Blender is touched, so an envelope regression fails fast and locally instead
 of surfacing later as a validate-stage failure.
 
+Face winding (D-047): every face produced here is wound counter-clockwise as
+seen from outside the solid, so the outward normal follows the right-hand
+rule and the signed volume of any closed block is positive. Tools/
+af_mesh_quality.py check C6 enforces this. Inward winding is not a cosmetic
+detail: it inverts lighting, hides surfaces under backface culling, and
+travels through the FBX into Unreal.
+
 Usage
 -----
     blender --background --python af_vehicle_generate.py
@@ -118,6 +125,10 @@ def box_mesh(centre, half_extent):
     """Return ``(verts, faces)`` for an axis-aligned box.
 
     Vertex order is fixed so the output is deterministic.
+
+    Faces are wound counter-clockwise seen from outside the box (D-047), so
+    every outward normal follows the right-hand rule and the signed volume is
+    positive. The comment on each face names the outward direction.
     """
     cx, cy, cz = centre
     hx, hy, hz = half_extent
@@ -132,12 +143,12 @@ def box_mesh(centre, half_extent):
         (cx - hx, cy + hy, cz + hz),
     ]
     faces = [
-        (0, 1, 2, 3),  # bottom
-        (4, 7, 6, 5),  # top
-        (0, 4, 5, 1),  # -Y
-        (1, 5, 6, 2),  # +X
-        (2, 6, 7, 3),  # +Y
-        (3, 7, 4, 0),  # -X
+        (3, 2, 1, 0),  # bottom, outward -Z
+        (5, 6, 7, 4),  # top,    outward +Z
+        (1, 5, 4, 0),  # outward -Y
+        (2, 6, 5, 1),  # outward +X
+        (3, 7, 6, 2),  # outward +Y
+        (0, 4, 7, 3),  # outward -X
     ]
     return verts, faces
 
@@ -147,6 +158,11 @@ def cylinder_mesh(centre, radius, width, segments, axis="Y"):
 
     ``axis`` is the cylinder's spin axis. Wheels spin about Y in the
     ApexFormula convention (+Y is vehicle left).
+
+    Side quads and both cap fans are wound so their normals point away from
+    the cylinder body (D-047): the sides face radially outward, the -offset
+    cap faces along the negative axis and the +offset cap along the positive
+    axis. The signed volume of the result is positive.
     """
     if segments < 3:
         raise ValueError("a cylinder needs at least 3 segments")
@@ -171,7 +187,7 @@ def cylinder_mesh(centre, radius, width, segments, axis="Y"):
     faces = []
     for i in range(segments):
         nxt = (i + 1) % segments
-        faces.append((i, nxt, segments + nxt, segments + i))
+        faces.append((segments + i, segments + nxt, nxt, i))
 
     # Cap fans, using a centre vertex per side so caps stay planar n-gons free.
     left_centre = len(verts)
@@ -183,8 +199,8 @@ def cylinder_mesh(centre, radius, width, segments, axis="Y"):
 
     for i in range(segments):
         nxt = (i + 1) % segments
-        faces.append((left_centre, nxt, i))
-        faces.append((right_centre, segments + i, segments + nxt))
+        faces.append((left_centre, i, nxt))
+        faces.append((right_centre, segments + nxt, segments + i))
 
     return verts, faces
 
