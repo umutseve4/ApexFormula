@@ -1,6 +1,6 @@
 # ApexFormula — Version Matrix
 
-**Document status:** statically authored (Milestone 0A). No tool listed here has been launched, compiled against or executed by this document's author. Every entry is a *pinned intent*, not an observed installation.
+**Document status:** statically authored. First written at Milestone 0A; §5.21–§5.30 added at Milestone 1; §5.31–§5.32 added at Milestone 2. No tool listed in §1 has been launched, compiled against or executed by this document's author. Every entry in §1 is a *pinned intent*, not an observed installation. The only things in this document that were mechanically measured are the ones explicitly labelled `automatically validated`.
 
 ---
 
@@ -109,7 +109,9 @@ Everything in this section is an **assumption**, not a fact. None of it has been
 
 `ApexFormulaVehicle.Build.cs` lists `ChaosVehicles` as a private dependency and `ApexFormula.uproject` enables the plugin `ChaosVehiclesPlugin`. Both strings are stated intent, not observed fact. The module name and the plugin name are *not* the same string, and either could have been renamed in 5.8. If the module name is wrong, `ApexFormulaVehicle` fails to build with an unresolved module error; if the plugin name is wrong, the editor reports a missing plugin on project load.
 
-This is contained by decision D-008: no ApexFormula file outside `AFVehicleCompatibilityLayer.h/.cpp` names any engine vehicle type, and the compatibility layer currently binds **no backend at all** (`BackendId` is `none`, `bBackendAvailable` is `false`). So a wrong module name is a build-configuration fix in one file, not a code rewrite.
+This is contained by decision D-008: no ApexFormula file outside `AFVehicleCompatibilityLayer.h/.cpp` names any engine vehicle type. That containment is statically enforced by `Tools/af_static_validate.py` and has not weakened.
+
+**Corrected at Milestone 2.** An earlier revision of this section stated that the compatibility layer "binds **no backend at all** (`BackendId` is `none`, `bBackendAvailable` is `false`)". That was accurate for the Milestone 1 tree and is **no longer accurate**: `AFVehicleCompatibilityLayer.cpp` now binds a Chaos backend, sets `BackendId` accordingly and can report `bBackendAvailable == true`. The consequence is that a wrong module or plugin name is *no longer* a pure build-configuration fix in one file — it is still confined to one file, but that file now contains real binding logic that would need to change with it. Nothing about that binding has been compiled or executed; see §5.31.
 
 ### 5.22 — `DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams` with a `double` parameter
 
@@ -119,9 +121,9 @@ This is contained by decision D-008: no ApexFormula file outside `AFVehicleCompa
 
 ### 5.23 — `EAutomationTestFlags` used as an `int32` mask
 
-All six test files declare a file-local `static const int32 AF<Area>TestFlags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::CommandletContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter;`. This is the historical idiom and relies on the flags being a plain (unscoped) enum that decays to `int32`.
+All six Milestone 1 test files declare a file-local `static const int32 AF<Area>TestFlags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::CommandletContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter;`. This is the historical idiom and relies on the flags being a plain (unscoped) enum that decays to `int32`.
 
-If 5.8 converted `EAutomationTestFlags` to an `enum class`, every one of the six files fails to compile at that line. The fix is mechanical but touches all six: either use the engine's own flag type for the constant or insert explicit casts. Flagged here because a single upstream change produces six simultaneous failures that could otherwise look like six unrelated bugs.
+If 5.8 converted `EAutomationTestFlags` to an `enum class`, every one of those files fails to compile at that line. The fix is mechanical but touches all of them: either use the engine's own flag type for the constant or insert explicit casts. Flagged here because a single upstream change produces many simultaneous failures that could otherwise look like many unrelated bugs. The Milestone 2 test file added in `AFVehicleBackendSetupTests.cpp` follows the same idiom and is exposed to the same risk.
 
 ### 5.24 — `AddExpectedError(...)` matching a `UE_LOG(..., Warning, ...)`
 
@@ -153,28 +155,32 @@ Double comparisons pass an explicit tolerance (`1.0e-9`). Two call sites compare
 | `SetGenerateOverlapEvents(true)` and `SetCollisionResponseToAllChannels(ECR_Overlap)` in a `UBoxComponent` constructor | `AFCheckpoint.cpp` | Overlaps never fire |
 | `TStringBuilder<2048>` with `Appendf` | `AFDataValidator.cpp` | Header/API moved |
 | A `UFUNCTION` returning `TArray<FAFValidationIssue>` | `AFDataValidator.h` | UHT return-type restriction |
-| `IMPLEMENT_SIMPLE_AUTOMATION_TEST` and `Misc/AutomationTest.h` reachable from a non-editor module | all six test files | Tests module must become editor-only |
+| `IMPLEMENT_SIMPLE_AUTOMATION_TEST` and `Misc/AutomationTest.h` reachable from a non-editor module | all test files | Tests module must become editor-only |
 | `EditorSubsystem` as a private dependency of an Editor-type module | `ApexFormulaEditor.Build.cs` | Module name changed |
 
 ### 5.27 — Nothing in this section has been compiled
 
-Every entry in §5.21 to §5.26 is a **statement about C++ that has never been fed to a compiler**. No Unreal Engine installation, no Unreal Build Tool, no MSVC and no clang exist in the environment where this project was authored. The whole of §5.21 to §5.26 therefore carries the label `requires local compilation`, and no claim to the contrary appears anywhere in this repository.
+Every entry in §5.21 to §5.26 is a **statement about C++ that has never been fed to a compiler**. No Unreal Engine installation, no Unreal Build Tool, no MSVC and no clang exist in the environment where this project was authored. The whole of §5.21 to §5.26 therefore carries the label `requires local compilation`, and no claim to the contrary appears anywhere in this repository. The same is true of §5.31.
 
-What *was* mechanically verified is described in §5.28.
+What *was* mechanically verified is described in §5.28 and §5.32.
 
-### 5.28 — What the Milestone 1 static validator actually proves
+### 5.28 — What the static validator actually proves
 
-`Tools/af_static_validate.py` is pure-Python, standard-library only, and runs without Unreal or Blender. On the Milestone 1 tree it reports **2300 checks passed, 0 failures, 0 warnings, exit code 0**.
+`Tools/af_static_validate.py` is pure-Python, standard-library only, and runs without Unreal or Blender.
+
+**On the Milestone 1 tree it reported 2300 checks passed, 0 failures, 0 warnings, exit code 0.** That number is a *Milestone 1 measurement* and is quoted here as history, not as a current figure. Milestone 2 added five source files, so the current count is certainly higher; it has deliberately **not** been re-guessed. The live figure is whatever the `af_static_validate` job prints in the most recent CI run — that job is the authority, not this sentence.
 
 It proves, mechanically: the module dependency graph matches `TECHNICAL_ARCHITECTURE.md` §2 and is acyclic; `ApexFormulaRace` does not depend on `ApexFormulaVehicle`; `ApexFormulaCore` depends on no ApexFormula module; every module declared in the `.uproject` has a `.Build.cs` and an `IMPLEMENT_MODULE`; every header has `#pragma once`; every include resolves to a file that exists; no prohibited token appears in any name; no absolute or container-specific path is hard-coded; no engine vehicle API appears outside the D-008 chokepoint; no telemetry channel string literal appears outside `AFTelemetryTypes.cpp`; every key in `DefaultApexFormula.ini` maps to a real `UPROPERTY(Config)`; and the Unreal bone convention agrees with `af_pipeline_config.py`.
 
-It proves **nothing** about whether the C++ compiles, whether the editor loads the modules, or whether the 27 declared automation tests pass. Those remain `requires local compilation` and `requires Unreal Editor verification`.
+It proves **nothing** about whether the C++ compiles, whether the editor loads the modules, or whether the declared automation tests pass. After Milestone 2 there are **37** declared automation tests (27 from Milestone 1, 10 added in `AFVehicleBackendSetupTests.cpp`); that count is obtained by counting declarations in the source, not by running anything. Execution remains `requires local compilation` and `requires Unreal Editor verification`.
 
 ### 5.29 — The bone check is an emulation, and that is deliberate
 
 The Blender/Unreal bone agreement is not checked by comparing text. The validator **imports `af_pipeline_config.py` live** as the source of truth, then parses `AFBoneNameMap.cpp`, extracts its prefix, literal bone names, corner order and the two `Printf` format strings, and *re-derives* the ordering and parent map the compiled C++ would produce. The derived structures are compared against the Python constants.
 
 This matters because the two known bone bugs in this project were both **doc comments that drifted away from correct code**, not wrong code. A textual diff would have compared the drifted comment; an emulation compares behaviour. Consequence: a change to the *style* of `AFBoneNameMap.cpp` — not its behaviour — can break the parser and must be accompanied by an emulator update.
+
+**Scope limit worth restating at Milestone 2:** this check proves the two *conventions* agree. It says nothing about whether an actually imported skeleton carries those bone names, because no FBX has been exported or imported. That is Milestone 2 acceptance criterion 4 and it is not met.
 
 ### 5.30 — The validator itself was mutation-tested
 
@@ -188,6 +194,42 @@ Two findings deserve recording because they are the reason this section exists:
 2. **One gap was real.** `PROHIBITED_IDENTIFIER_PATTERNS` used `\bF1\b`, which *cannot* match `F1SeasonCount`, because the trailing `\b` fails when `1` is followed by a word character. The prohibited token must never appear in any *name*, so identifier-embedded occurrences were exactly the case being skipped. `Formula1` was invisible to every pattern, containing neither `F1` nor `FormulaOne`. The patterns are now substring matches and the suite reaches 11/11.
 
 Two earlier failures were also checker defects rather than code defects, and are recorded for the same reason: `check_portability` flagged the very line in `AFDeveloperSettings.cpp` whose job is to *reject* UNC paths, and `check_telemetry_literals` was the only containment check that did not strip comments before searching. Both were fixed; the path exemption carries three explicit guard assertions proving the exempted file still contains its rejection logic, so the exemption cannot silently start covering a file that validates nothing.
+
+### 5.31 — Version-sensitive surfaces introduced by the Milestone 2 C++
+
+Milestone 2 added `AFVehicleCompatibilityLayer.cpp`, `AFVehiclePawn.cpp`, `AFPlayerController.cpp` and `AFVehicleBackendSetupTests.cpp`. Every engine API named below is an **assumption** with the label `requires local compilation`.
+
+| # | Assumption | Failure mode if wrong |
+| --- | --- | --- |
+| 5.31.1 | The Chaos Vehicles movement-component type, its wheel-setup container and its per-wheel class exist in 5.8 under the names used in `AFVehicleCompatibilityLayer.cpp` | The layer does not compile; contained to one file by D-008 |
+| 5.31.2 | Wheel radius, width, steering, suspension, brake and handbrake parameters are settable through the properties the layer writes | Compiles but the vehicle is misconfigured; a `requires playtesting` failure, not a build failure |
+| 5.31.3 | Engine wheel radii are expressed in centimetres, so the layer's metres→centimetres conversion at the boundary is the correct direction | Wheels 100× wrong; vehicle sinks or launches |
+| 5.31.4 | Deferred wheel application (D-036) is safe — that the backend tolerates wheel parameters being written after component registration rather than in the constructor | Parameters silently ignored; `AreWheelParametersApplied()` reports true while nothing took effect |
+| 5.31.5 | Enhanced Input types (`UInputMappingContext`, `UInputAction`, `UEnhancedInputComponent::BindAction`, `UEnhancedInputLocalPlayerSubsystem`) are reachable with the signatures used in `AFPlayerController.cpp` | The controller does not compile; input is unbound |
+| 5.31.6 | `USpringArmComponent::SocketName`, `bEnableCameraRotationLag` and `CameraRotationLagSpeed` exist as used in `AFVehiclePawn.cpp` | Camera boom misconfigured or does not compile |
+| 5.31.7 | The Milestone 2 test file's assumptions hold: `NewObject<>(GetTransientPackage())` is sufficient to construct the layer under test, and the accessors `GetForwardSpeedKph()`, `GetAppliedFrameCount()` and `AreAllWheelsGrounded()` behave as the tests expect | Tests compile but fail, or fail to compile |
+| 5.31.8 | `FAFVehicleBackendSetup::ValidateSelf()` emits the exact message substrings the tests match on | Tests fail on message text rather than on behaviour |
+
+**None of §5.31 has been compiled or executed.** The vehicle has never moved, because nothing has ever been built or run. Milestone 2 acceptance criteria 1 (accelerates, brakes, steers), 2 (stable at rest) and 4 (imported skeleton bone names match) are **not met**. Criterion 3 (all engine vehicle access goes through `UAFVehicleCompatibilityLayer`) **is** met and is statically enforced.
+
+### 5.32 — What the interface checker proves
+
+`Tools/af_validate_interfaces.py` is a second, separate validator added at Milestone 2 (decision D-037). It is pure-Python, standard-library only, and targets Python 3.9 and above.
+
+It parses every `.h` and `.cpp` under `Unreal/Source`, collects the pure-virtual method signatures declared by interfaces, and compares the **return type** of every implementing declaration and out-of-line definition against the interface's. A mismatch is an error.
+
+This exists because Milestone 2 began with exactly that defect: `IAFRaceParticipant::GetParticipantDisplayName()` returns `FString`, while `AAFVehiclePawn` declared and defined it returning `FText`. That is a class of bug the compiler would catch immediately but which no existing static check could see, and it survived from Milestone 1 into Milestone 2 unnoticed. Decision D-035 resolved it in favour of the interface contract.
+
+**What it proves:** it carries a `--self-test` flag driving a **9-case mutation suite**, which passes on both Python 3.9 and Python 3.12 in CI, and it reports zero errors against the real tree in the same CI run. Both facts are `automatically validated`.
+
+**Documented limits, stated so they are not mistaken for coverage:**
+
+- It compares return types only. Parameter lists, constness and reference qualifiers are not compared.
+- An unrelated method that happens to share a name with an interface method will be compared against that interface's contract — a possible false positive.
+- **Known blind spot:** an out-of-line definition written as `FVector *Class::Method()` — with the pointer asterisk bound to the type rather than the name — is not matched and is therefore not checked.
+- Where two interfaces declare the same method name with *different* return types, the checker **drops** that name rather than guessing which contract applies.
+
+It is a separate script rather than a change to `af_static_validate.py` because amending the primary validator would have required re-transmitting roughly 60 KB of source verbatim through a whole-file write API, risking silent corruption of the project's main checker. That trade-off is recorded as D-037.
 
 ---
 
@@ -219,10 +261,19 @@ When any of these becomes observed, it is recorded here with the date and the co
 | §5.20 records the one thing about the scripts that was actually measured, and states its limit | automatically validated |
 | §5.21 to §5.26 are the version-sensitive surfaces introduced by the Milestone 1 C++ | statically inspected |
 | Every API in §5.21 to §5.26 exists in UE 5.8 with the signature assumed | not claimed — `requires local compilation`; see §5.27 |
-| §5.22 (`double` in a dynamic delegate) and §5.24 (`AddExpectedError` on a Warning) are the two highest-risk assumptions | statically inspected — a judgement, not a measurement |
-| The validator reports 2300 checks, 0 failures, exit code 0 on the Milestone 1 tree | automatically validated |
+| §5.22 (`double` in a dynamic delegate) and §5.24 (`AddExpectedError` on a Warning) are the two highest-risk Milestone 1 assumptions | statically inspected — a judgement, not a measurement |
+| The validator reported 2300 checks, 0 failures, exit code 0 **on the Milestone 1 tree** | automatically validated — a Milestone 1 measurement, not a current figure |
+| The current check count after Milestone 2 | not claimed — read the latest CI run; it has deliberately not been re-guessed |
 | The specific properties listed in §5.28 are the ones the validator actually enforces | automatically validated |
 | The bone check re-derives behaviour rather than diffing text (§5.29) | automatically validated |
-| The validator detects 11 of 11 injected defects and ignores the negative control (§5.30) | automatically validated |
-| Any Milestone 1 C++ file has been compiled, or any automation test executed | not claimed — no engine, UBT, MSVC or clang exists in the authoring environment |
+| The bone check says anything about an actually imported skeleton | not claimed — no FBX has been exported or imported; see §5.29 |
+| `af_static_validate.py` detects 11 of 11 injected defects and ignores the negative control (§5.30) | automatically validated |
+| §5.31 lists the version-sensitive surfaces introduced by the Milestone 2 C++ | statically inspected |
+| Any Milestone 2 C++ file has been compiled, or the vehicle has moved | not claimed — `requires local compilation`, then `requires playtesting` |
+| Milestone 2 acceptance criterion 3 (all engine vehicle access is behind the compatibility layer) holds | automatically validated |
+| Milestone 2 acceptance criteria 1, 2 and 4 hold | not claimed — nothing has been built, imported or driven |
+| There are 37 declared automation tests after Milestone 2 | statically inspected — counted from declarations, none executed |
+| Any automation test has been executed | not claimed — no engine, UBT, MSVC or clang exists in the authoring environment |
+| `af_validate_interfaces.py` passes its 9-case self-test on Python 3.9 and 3.12, and reports zero errors on the real tree | automatically validated |
+| `af_validate_interfaces.py` checks anything beyond return types | not claimed — see the limits listed in §5.32 |
 | Any listed tool is installed, runnable, or of the stated version | not claimed — see §5.1, §5.2, §5.11 |
