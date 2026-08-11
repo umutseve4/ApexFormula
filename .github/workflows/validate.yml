@@ -168,6 +168,27 @@ jobs:
       - name: Mesh quality gate
         run: python3 Tools/af_mesh_quality.py
 
+      # Milestone 4, decision D-056. The bodywork geometry core carries its
+      # own cases, and this line is what runs them. The compileall step
+      # below imports nothing, so without this the module could ship green
+      # with its maths inert - which is precisely the failure mode that
+      # cost the previous af_bodywork_profile.py its acceptance: a suite
+      # that never ran on any machine but the author's.
+      #
+      # This is the config-free half of the module. It EXECUTES the section
+      # maths, the superellipse rings, the loft winding correction, the
+      # manifold diagnostics, the convexity report and the planar texture
+      # projection against synthetic control solids. A failure means the
+      # geometry primitives are wrong - fix the module, never the cases,
+      # and never add continue-on-error to this step.
+      #
+      # It does not start Blender, generates no part of the actual car and
+      # does not prove any bodywork looks correct. The design-driven half
+      # of the module, and the 42-case suite held on branch
+      # milestone-4-bodywork, are both still outstanding.
+      - name: Bodywork geometry core self-test
+        run: python3 BlenderPipeline/scripts/af_bodywork_profile.py --self-test
+
       - name: Byte-compile every script
         run: python3 -m compileall -q BlenderPipeline/scripts Tools
 
