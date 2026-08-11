@@ -1,8 +1,10 @@
-# ApexFormula — Blender → Unreal Pipeline Design
+# Uludağ Formula — Blender → Unreal Pipeline Design
 
 **Document status:** statically authored design document (Milestone 0A). **No Blender script exists yet.** Nothing in this document has been executed. No `.blend` file, no FBX, no GLB and no mesh has been produced. Script names below are the *planned* file names for Milestone 0B.
 
 **Fixed environment:** Blender 5.2 LTS, Unreal Engine 5.8, Windows. Blender Python is used for procedural generation and validation. FBX is the primary skeletal pipeline format; GLB is optional and preview-only.
+
+> **Naming note (D-048).** The product is **Uludağ Formula** (previously *Apex Formula*). Every `af_` script name, every `AF_` object, collection, bone, material and export-file name in this document is **permanent and unchanged**: D-048 reclassified `AF_`/`af_` from "old product name" to the project's **internal code name**. In particular the eleven bone names are asserted directly by `Tools/af_static_validate.py` (the prefix check, the `AF_Root`/`AF_Steering` presence checks and the `bone.startswith("AF_")` loop) and are mirrored in `af_pipeline_config.py`, so they are load-bearing, not leftovers. Only product prose has been renamed in this document.
 
 ---
 
@@ -61,7 +63,7 @@ AF_Rig
 AF_Export
 ```
 
-Before generation, `af_scene_setup.py` clears `AF_Generated`, `AF_Rig` and `AF_Export` only. Deleting anything outside the `AF_` collection namespace is prohibited.
+Before generation, `af_scene_setup.py` clears `AF_Generated`, `AF_Rig` and `AF_Export` only. Deleting anything outside the `AF_` collection namespace is prohibited. The `AF_` collection namespace is permanent under D-048 and is unaffected by the product rename.
 
 ## 2. Unit, Axis and Scale Conventions — Explicit
 
@@ -74,7 +76,7 @@ This section is deliberately explicit. Vague statements such as "convert Z-up to
 - **Length unit displayed:** Meters.
 - **Interpretation:** 1 Blender unit = 1 metre.
 - **World axes:** X = right, Y = forward-into-screen in the default view, **Z = up**.
-- **ApexFormula authoring convention:** the vehicle is modelled with **+X as the vehicle's forward direction**, **+Z as up**, **+Y as the vehicle's left side**. The vehicle origin sits at the ground plane directly below the chassis reference point, i.e. `Z = 0` is the tyre contact plane at design ride height.
+- **Uludağ Formula authoring convention:** the vehicle is modelled with **+X as the vehicle's forward direction**, **+Z as up**, **+Y as the vehicle's left side**. The vehicle origin sits at the ground plane directly below the chassis reference point, i.e. `Z = 0` is the tyre contact plane at design ride height.
 - **Scene scale property** (`scene.unit_settings.scale_length`) is left at `1.0` and is never used to compensate for size errors.
 
 ### 2.2 Unreal side
@@ -85,12 +87,12 @@ This section is deliberately explicit. Vague statements such as "convert Z-up to
 
 ### 2.3 The conversion, stated precisely
 
-Because ApexFormula authors with +X forward and +Z up in Blender, and Unreal uses +X forward and +Z up:
+Because this project authors with +X forward and +Z up in Blender, and Unreal uses +X forward and +Z up:
 
 - **No axis re-mapping of the vertical or longitudinal axis is required.** Blender +Z maps to Unreal +Z. Blender +X maps to Unreal +X.
 - **The lateral axis is mirrored:** Blender +Y (vehicle left) maps to Unreal −Y; Unreal +Y is the vehicle's right. This is the handedness flip, not an authoring error. It is handled by the FBX exporter's axis settings (§7), **not** by manually rotating objects in the scene and **not** by negative object scale.
 - **Scale conversion is ×100.** A vehicle modelled 5.0 Blender units long is 500 Unreal units = 5 metres long. This factor is applied by the FBX export scale setting (§7), so that Blender source data stays in metres and Unreal receives centimetres.
-- **The centimetre boundary is the Unreal-facing boundary.** All ApexFormula design values quoted to Unreal — wheelbase, track width, ride height, wheel radius, centre-of-mass offset — are quoted in **centimetres** in Data Assets. All values inside Blender scripts are in **metres**. `af_pipeline_config.py` stores metres and exposes a single documented `CM_PER_UNIT = 100.0` constant used only when emitting values intended for Unreal (e.g. in the validation report), so the two representations never drift silently.
+- **The centimetre boundary is the Unreal-facing boundary.** All Uludağ Formula design values quoted to Unreal — wheelbase, track width, ride height, wheel radius, centre-of-mass offset — are quoted in **centimetres** in Data Assets. All values inside Blender scripts are in **metres**. `af_pipeline_config.py` stores metres and exposes a single documented `CM_PER_UNIT = 100.0` constant used only when emitting values intended for Unreal (e.g. in the validation report), so the two representations never drift silently.
 
 ### 2.4 Applied transforms
 
@@ -113,7 +115,7 @@ Before export, `af_export.py` must, for every exported object:
 
 ## 3. Object and Data Naming
 
-All pipeline-produced Blender data uses the `AF_` prefix. All pipeline scripts use the `af_` prefix. The token `F1` is prohibited in every name.
+All pipeline-produced Blender data uses the `AF_` prefix. All pipeline scripts use the `af_` prefix. Both prefixes are permanent (D-048). The token `F1` is prohibited in every name.
 
 | Data | Pattern | Example |
 | --- | --- | --- |
@@ -196,7 +198,7 @@ The exact settings `af_export.py` will request. **These are the intended setting
 | Path mode | Copy, embed textures **off** | Textures are managed in Unreal, not embedded |
 | Selected objects only | On | Export exactly the `AF_Export` set |
 | Object types | Armature + Mesh only | No cameras, lights or empties |
-| Forward axis | `X Forward` | Matches the ApexFormula authoring convention (§2.1) and Unreal's +X forward |
+| Forward axis | `X Forward` | Matches the Uludağ Formula authoring convention (§2.1) and Unreal's +X forward |
 | Up axis | `Z Up` | Both Blender and Unreal use Z up |
 | Apply scalings | `FBX All` | Bakes scale cleanly; avoids unit-scale surprises downstream |
 | Global scale | `1.0` at export, with the metre→centimetre factor carried by the FBX scene unit | Blender stays in metres; Unreal receives centimetres |
@@ -217,7 +219,7 @@ The exact settings `af_export.py` will request. **These are the intended setting
 - GLB is emitted **only** as an optional preview artefact for quick visual checks and interchange.
 - GLB is **never** the authoritative skeletal pipeline. Unreal skeletal import uses FBX.
 - The GLB export is skipped by default and enabled by a config flag.
-- No ApexFormula decision, validation rule or acceptance criterion may depend on a GLB.
+- No Uludağ Formula decision, validation rule or acceptance criterion may depend on a GLB.
 
 ## 9. Unreal Import Review Checklist
 
@@ -251,7 +253,7 @@ Each item's outcome must be recorded. Until then, all twelve are `requires Unrea
 - Bone list is exactly the eleven bones defined in `af_pipeline_config.py` and mirrored in `UAFBoneNameMap`:
   `AF_Root`, `AF_Chassis`, `AF_Steering`, `AF_Wheel_FL/FR/RL/RR`, `AF_Suspension_FL/FR/RL/RR`.
 - Hierarchy: `AF_Root` → `AF_Chassis` → { `AF_Steering`, `AF_Suspension_*` }; each `AF_Wheel_*` parented to its matching `AF_Suspension_*`.
-- These names are an **ApexFormula convention**, not an assumed engine default. Whether Unreal Engine 5.8's vehicle setup accepts arbitrary bone names via data-driven mapping is `requires Unreal Editor verification`.
+- These names are **this project's own convention**, not an assumed engine default, and they are **permanent under D-048** — the rename to Uludağ Formula explicitly does not touch them. Whether Unreal Engine 5.8's vehicle setup accepts arbitrary bone names via data-driven mapping is `requires Unreal Editor verification`.
 - Bone orientation and roll are set from config, never left implicit.
 - The rig is built by script, so it is reproducible; it is never hand-tweaked in `generated/`.
 
@@ -269,7 +271,7 @@ Every pipeline run produces a JSON report (§4). Beyond per-check results it rec
 - Export file paths, byte sizes and timestamps.
 - Overall pass/fail and the list of failed checks.
 
-**The report is the only acceptable evidence that the pipeline ran.** No ApexFormula document, commit message or status update may claim a successful export without a corresponding report file.
+**The report is the only acceptable evidence that the pipeline ran.** No document, commit message or status update in this project may claim a successful export without a corresponding report file.
 
 ## 13. Verification Ledger for This Document
 
@@ -278,6 +280,8 @@ Every pipeline run produces a JSON report (§4). Beyond per-check results it rec
 | Conventions in this document are internally consistent and non-contradictory | statically inspected |
 | Script names match the required `af_` naming set | statically inspected |
 | The token `F1` appears in no name in this document | statically inspected |
+| The product name "Uludağ Formula" matches none of the prohibited identifier patterns in `af_static_validate.py` | automatically validated |
+| The `AF_`/`af_` prefixes are retained deliberately as the internal code name (D-048) | statically inspected |
 | Blender 5.2 LTS FBX exporter option names and defaults | requires Blender execution |
 | Scripts run without error and produce the described outputs | requires Blender execution |
 | Bone list survives export exactly, with no leaf bones added | requires Blender execution, then requires Unreal Editor verification |
