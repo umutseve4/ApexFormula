@@ -4,6 +4,17 @@ Status of this document: written alongside the Milestone 2 code. It
 describes what the code is intended to do. It is not a report of
 observed behaviour, because no behaviour has been observed.
 
+> **Naming note (D-048).** The product is now called **Uludağ Formula**; it was
+> previously *Apex Formula*. Old-name strings that remain in this document are
+> deliberate, not oversights, and fall into two classes:
+>
+> - **Queued for wave 2** — the module directories `ApexFormulaVehicle/` and
+>   `ApexFormulaTests/`, and the automation test namespace `ApexFormula.Vehicle.*`.
+>   These name artefacts that still exist under those exact names.
+> - **Permanent** — the `AF_` asset/bone prefix and the `UAF*`/`FAF*`/`AAF*`
+>   C++ symbol prefixes. These are reclassified as the project's internal code
+>   name and will not be renamed.
+
 ---
 
 ## 1. Verification status
@@ -58,13 +69,18 @@ assessment does not.
 | `ApexFormulaTests/Private/AFVehicleBackendSetupTests.cpp` | New. Ten tests, never executed. |
 | `Tools/af_validate_interfaces.py` | New. Executed, in CI. |
 
+The two module directory names in this table are the current on-disk names.
+They are scheduled to become `UludagFormulaVehicle/` and `UludagFormulaTests/`
+in wave 2 of D-048, together with the corresponding entries in
+`Tools/af_static_validate.py`, in the same commit.
+
 ---
 
 ## 3. The compatibility layer contract
 
 `UAFVehicleCompatibilityLayer` exists so that exactly one file in the
 repository names an engine vehicle type. Every other module talks to
-the layer in ApexFormula's own vocabulary — metres, kilograms,
+the layer in Uludağ Formula's own vocabulary — metres, kilograms,
 newton-metres, `FAFWheelSetup`, `FAFVehicleInputFrame` — and never sees
 a Chaos symbol.
 
@@ -93,7 +109,7 @@ check.
 
 ### Units at the boundary
 
-ApexFormula stores metres. Unreal stores centimetres. The conversion
+This project stores metres. Unreal stores centimetres. The conversion
 happens in the layer and nowhere else, through `UAFUnitsHelper`
 (`CmPerMetre = 100.0`). A metre value that reaches the engine
 unconverted is a hundred-fold error, which is why the conversion is not
@@ -212,6 +228,10 @@ to catch it. See section 7.
 
 **These have never been run.** `requires local compilation`
 
+The `ApexFormula.Vehicle.*` namespace is a string literal in C++ source. It is
+part of wave 2 of D-048 and moves in the same commit as the module rename, not
+before.
+
 Note what they cover and what they do not. They test
 `FAFVehicleBackendSetup::ValidateSelf()` — that bad configuration is
 rejected before it reaches physics. A green run would say the
@@ -285,7 +305,8 @@ Complete list, so none of it has to be discovered in the diff.
   setups without touching C++.
 - That the skeleton imports with bones named `AF_Wheel_FL`,
   `AF_Wheel_FR`, `AF_Wheel_RL`, `AF_Wheel_RR` per D-012 — criterion 4
-  is untestable until an asset exists.
+  is untestable until an asset exists. These bone names are permanent;
+  D-048 explicitly does not rename them.
 
 **Requires playtesting**
 
