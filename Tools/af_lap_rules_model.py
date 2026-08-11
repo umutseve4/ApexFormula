@@ -37,9 +37,13 @@ Read this part before quoting the green tick anywhere.
     been compiled. This is a transcription, not the shipped translation unit.
   - It does NOT prove the C++ and this model cannot drift apart. They are
     two artefacts. If someone edits one .cpp and not this file, this file
-    will keep passing while describing code that no longer exists. The
-    guard against that is review discipline, not automation, and pretending
-    otherwise would be exactly the kind of flattery this project bans.
+    will keep passing while describing code that no longer exists. Since
+    D-044 that risk is narrowed mechanically by Tools/af_drift_guard.py,
+    which compares the class and method surface and the rule fragments of
+    both sides on every CI run. That guard is TEXT-ONLY: it does not
+    compile the C++ and does not execute it, so a change applied
+    identically and wrongly to both sides would still pass unnoticed.
+    See D-044.
   - It does NOT prove anything about geometry, volumes, overlap events,
     frame rate, or how track limits feel to drive. Those need an editor and
     a human, and carry `requires Unreal Editor verification` and
