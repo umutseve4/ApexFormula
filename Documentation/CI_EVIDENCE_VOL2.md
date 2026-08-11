@@ -60,7 +60,9 @@ procedure adopted is:
 4. Open the pull request against `main`, read its check runs, then close it without merging.
 
 Step 2 ordering is not optional. A branch cut before the final write produces evidence for a tree
-that is missing that write.
+that is missing that write. This was learned the expensive way: an earlier branch,
+`ci/doc-wave-verify`, was cut too early and had to be abandoned in favour of
+`ci/doc-wave-verify-2`.
 
 ---
 
@@ -85,14 +87,26 @@ trip it.
 | 11 | `Documentation/MILESTONE_PLAN.md` | `dd93bd2f` | 24,860 B | 20:17:22Z |
 | 12 | `Unreal/README.md` | `7156b335` | 15,948 B | 20:19:42Z |
 | 13 | `BlenderPipeline/README.md` | `71ef6d45` | 10,868 B | 20:22:09Z |
+| 14 | `Documentation/CI_EVIDENCE_VOL2.md` (this file, created) | `76fdcb31` | 8,487 B | 20:23:10Z |
+| 15 | `Documentation/DECISION_LOG_VOL2.md` (D-049 appended) | `078b4383` | 14,596 B | 20:25:20Z |
 
-Rows 1–6 were confirmed green by the `20:06:39Z`–`20:07:47Z` batch. **Rows 7–13 had no fresh
-evidence at the time this file was written** — that is precisely the gap §2 explains and the
-verification pull request closes.
+Rows 1–6 were confirmed green by the `20:06:39Z`–`20:07:47Z` batch. **Rows 7–15 had no fresh
+evidence at the time this file was first written** — that is precisely the gap §2 explains and the
+verification pull request in §5 closes.
+
+One further commit exists and is **not** in the table above, on purpose:
+
+| Path | Commit | Size | Author date (UTC) | Location |
+| --- | --- | --- | --- | --- |
+| `Documentation/CI_RUN_NOTE.md` | `f6de019f` | 1,687 B | 20:27:06Z | branch `ci/doc-wave-verify-2` only |
+
+That is the marker commit from step 3 of the procedure. It exists solely to give the verification
+pull request a non-empty diff, it lives on the branch and **must never be merged to `main`.** It
+is listed here so that a future reader who finds it in the reflog is not left guessing.
 
 `Documentation/MILESTONE_3_CIRCUIT.md` was triaged and **deliberately not rewritten**: it carries
 no product prose, only circuit identifiers and merge SHAs. Absence of a commit for it is a
-recorded decision, not an oversight.
+recorded decision, not an oversight. See D-049.
 
 `Documentation/DECISION_LOG.md` (50,726 B) is **frozen** by the same policy that produced this
 volume.
@@ -115,24 +129,49 @@ Not an assumption — this was established by extracting `Tools/af_static_valida
 The name-collision result is stronger than "we checked by hand": the originality check runs on
 every push, so the new product name is **continuously** cleared rather than cleared once.
 
+The prediction in this section was made before the verification run and is recorded here
+unchanged. §5 reports what actually happened. Predicting first and measuring second is the point;
+a prediction rewritten after the fact is not evidence of anything.
+
 ---
 
-## 5. Acceptance criteria for the verification run
+## 5. The verification run — result
 
-The verification pull request is accepted only if **all** of the following hold:
+**Status: passed.** The prediction in §4 held.
 
-1. **10 of 10 check runs report `success`.** The expected set is fixed: `Blender smoke test
+| Field | Value |
+| --- | --- |
+| Pull request | **#17**, `ci/doc-wave-verify-2` → `main`, draft |
+| Head commit | `f6de019f` (marker commit, author date 20:27:06Z) |
+| Check runs | **10 of 10 `success`** |
+| Earliest start | `2026-08-11T20:27:19Z` |
+| Latest start | `2026-08-11T20:27:37Z` |
+| Latest completion | `2026-08-11T20:28:12Z` |
+| Disposition | **closed without merging** |
+
+The acceptance criteria were fixed **before** the run, not after:
+
+1. **Ten of ten check runs report `success`.** The expected set is fixed: `Blender smoke test
    (headless)` ×2, `Static validation (no engine, no DCC)` ×2, `af_static_validate (py3.9)` ×2,
-   `af_static_validate (py3.12)` ×2, `Python syntax check` ×2.
-2. **Every `started_at` is later than `2026-08-11T20:22:09Z`**, the author date of the last
-   documentation commit. A green batch that started earlier proves nothing about this tree and
-   must be rejected as stale.
-3. The pull request head contains all thirteen commits in §3.
+   `af_static_validate (py3.12)` ×2, `Python syntax check` ×2. — **met.** All ten names appeared,
+   all ten concluded `success`.
+2. **Every `started_at` is later than the newest commit in the tree**, `20:27:06Z`. A green batch
+   that started earlier proves nothing about this tree and must be rejected as stale. — **met.**
+   The earliest start, `20:27:19Z`, is thirteen seconds after the marker commit; the previous
+   batch at `20:06:39Z` is correctly excluded.
+3. The pull request head contains every commit in §3. — **met**, by construction: the branch was
+   cut from `main` after commit `078b4383`, the last write of the wave.
 4. The pull request is **closed without merging** afterwards. It exists to produce evidence, not
-   to change `main`.
+   to change `main`. — **met.**
 
-Criterion 2 is the one that was missing before, and it is the reason this file states it as a
-rule rather than as a note.
+Criterion 2 is the one that was missing before, and it is the reason this file states it as a rule
+rather than as a note. Four workflow runs fired — `31533005896`, `31533006001`, `31533015325`,
+`31533015328` — which is the expected fan-out for two workflows across two trigger events.
+
+Note on reading discipline: the first read of the check runs returned nine `success` and one
+`in_progress`. That is **not** a passing result and was not recorded as one. The run was re-read
+after the remaining job completed. A partially green batch reported as green is exactly the class
+of error this file exists to prevent.
 
 ---
 
@@ -151,11 +190,24 @@ rule rather than as a note.
 
 **A green CI batch here means the documentation wave is consistent and safe. It does not upgrade
 a single milestone status.** No status in `MILESTONE_PLAN.md` was changed by this wave, and none
-may be changed by it.
+may be changed by it. The green result in §5 changes nothing about that sentence.
 
 ---
 
-## 7. Volume index
+## 7. What remains open after this run
+
+Recorded here so the wave is not mistaken for finished:
+
+| Item | State |
+| --- | --- |
+| `Documentation/MILESTONE_3_IMPLEMENTATION.md` (37,137 B) | still carries the previous product prose |
+| `Documentation/VERSION_MATRIX.md` (40,427 B) | still carries the previous product prose; a volume-style side file is the preferred remedy, per D-049 |
+| Wave 2 — modules, `.uproject`, targets, project ini, guard | not started |
+| Compilation, Editor, Blender and driving evidence | unavailable in this environment; only Umut can produce it |
+
+---
+
+## 8. Volume index
 
 | Volume | Range | State |
 | --- | --- | --- |
