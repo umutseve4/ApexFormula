@@ -25,6 +25,20 @@ pull request, and on manual dispatch.
 The Blender job declares `needs: static-validation`, so a static failure
 short-circuits it and the smoke test does not run at all.
 
+The `Static validation` job also carries the explicit **execution** steps —
+the lap rules model self-test, the lap-rules drift guard self-test, that guard
+itself, the circuit generator self-test, the track drift guard self-test, and
+that guard itself. None of them carry `continue-on-error`. They exist as
+separate steps because the `compileall` step byte-compiles every script and
+executes none of them; without a dedicated step a self-test would compile
+cleanly and prove nothing.
+
+Note on where the steps live: all six execution steps are in
+`.github/workflows/validate.yml`, **not** in `static-validation.yml`. The
+latter runs only `af_static_validate.py`, `af_validate_interfaces.py` and
+`compileall`. This is recorded because the distinction was got wrong once
+while wiring D-045 and had to be corrected before the pull request was opened.
+
 ---
 
 ## 2. What the Blender job proves
@@ -88,7 +102,153 @@ A file can satisfy every rule above and still fail to build.
 
 ---
 
-## 4. The two defects CI has caught so far
+## 3A. What the lap-rules drift guard proves
+
+`automatically validated`. Added by **D-044**, recorded in full in
+`MILESTONE_3_IMPLEMENTATION.md` §6A. Merged as
+`bf602b2c053fb886a0d83741d4e6f8c51b6003dd` (PR #10).
+
+Two steps run inside `Static validation`, in this order, neither with
+`continue-on-error`:
+
+```yaml
+- name: Drift guard self-test
+  run: python3 Tools/af_drift_guard.py --self-test
+
+- name: Drift guard (C++ / Python parity)
+  run: python3 Tools/af_drift_guard.py --root . --verbose
+```
+
+`Tools/af_drift_guard.py` (38,557 bytes, standard library only, Python 3.9
+compatible) reads the C++ sources and `Tools/af_lap_rules_model.py` **as
+text** and fails the job when they disagree on:
+
+| Check | Compares |
+|---|---|
+| A — enum parity | `EAFLapInvalidationReason` in `AFTypes.h` against `LapInvalidationReason` in the model — membership **and** order |
+| B — method surface | `Class::Method` definitions in `AFSectorTimer.cpp` / `AFLapValidator.cpp` against `def` names in the mirrored Python classes |
+| C — behavioural rules | 16 named rules (R-01…R-16), each asserting a specific construct is present on both sides |
+
+The Python side is parsed with `ast`, never `exec`, so validating the model
+can never execute it as a side effect. Exit codes: `0` parity holds, `1`
+drift detected, `2` a source is missing or the invocation is wrong — `2` is
+distinct from `1` on purpose, because a guard that cannot find its inputs
+must not be mistaken for a guard that found nothing wrong.
+
+### Why this is believed to work
+
+Three levels, in increasing strength:
+
+1. The guard passes against the current repository. On its own this proves
+   nothing — a guard that returns `0` unconditionally also passes.
+2. Its self-test passes: **31 cases over 17 methods**, locally and in CI.
+3. **11 mutation tests** corrupt a copy of each input — remove an enum
+   member, reorder the enum, rename a method, delete a rule construct on one
+   side — and assert the guard exits non-zero. Only this level distinguishes
+   a working guard from a decorative one.
+
+### What it does not prove
+
+- **Nothing about compilation.** The guard reads text. A file can be
+  parity-correct and still fail to build. `not claimed` is unchanged.
+- **Not semantic equivalence.** Parity is proven on the enum, on the method
+  surface, and on sixteen named rules. That is a subset. A change touching
+  none of the three can still drift silently.
+- ~~**Not the circuit mirror.** `validate_track_definition()` versus
+  `UAFTrackDefinition::ValidateSelf()` (D-043 decision B) has the same drift
+  exposure and **no** guard. Open gap.~~ Closed by **D-045** — see §3B. The
+  original bullet is struck through rather than deleted so the record shows
+  when the gap existed.
+- **Not observed at step level.** See §6.
+
+---
+
+## 3B. What the track drift guard proves
+
+`automatically validated`. Added by **D-045**, recorded in full in
+`MILESTONE_3_IMPLEMENTATION.md` §6B. Merged as
+`a77dcd50cad331242d8c3fca0739010f0f832006` (PR #12).
+
+It is a **separate program**, `Tools/af_track_drift_guard.py`, not an
+extension of `af_drift_guard.py`. Two further steps run inside
+`Static validation`, after the circuit generator self-test, neither with
+`continue-on-error`:
+
+```yaml
+- name: Track drift guard self-test
+  run: python3 Tools/af_track_drift_guard.py --self-test
+
+- name: Track definition drift guard
+  run: python3 Tools/af_track_drift_guard.py --root . --verbose
+```
+
+It compares `UAFTrackDefinition::ValidateSelf()` in
+`Unreal/Source/ApexFormulaRace/Private/AFTrackDefinition.cpp` against
+`validate_track_definition()` in
+`BlenderPipeline/scripts/af_circuit_generate.py`:
+
+| Check | Compares | Count |
+|---|---|---|
+| A — diagnostic parity | Every message reaching `Problems.Add` on the C++ side and `problems.append`/`problems.extend` on the Python side, **in source order**, byte for byte | 16 templates |
+| B — predicate parity | For each diagnostic, that the guarding condition on both sides contains a named fragment — e.g. `LapLengthM <= 0.0` and `track["lap_length_m"] <= 0.0` | 16 pairs |
+| C — field parity | That each C++ member has a matching Python dict key, matched as a quoted literal so it must be a real read | 11 pairs |
+
+Why byte-identical message parity is a usable invariant, rather than a
+fragile one: the two message tables were already written to be identical, and
+Python's implicit string concatenation is resolved by the `ast` parser before
+comparison, so multi-line templates compare exactly like single-line ones. A
+false positive therefore requires someone to change wording on one side only —
+which is precisely the drift the guard exists to catch.
+
+Exit codes match the D-044 guard: `0` parity holds, `1` drift, `2` bad
+invocation or missing source.
+
+### Why this is believed to work
+
+1. Passes against the current repository — on its own, no evidence.
+2. Self-test: **27 cases over 21 methods**, driven by tiny synthetic fixtures
+   rather than the real files. Locally: 27 cases, 0 failed, exit 0.
+3. **Five negative mutations**, each kept syntactically valid, run against
+   copies of a local tree. Every one exited 1 with the expected prefix:
+
+| Mutation | Reported |
+|---|---|
+| delete one C++ `Problems.Add(TEXT("DisplayName must be set"));` | `A:` — 15 vs 16, plus "present in Python but missing in C++" |
+| reword the Python `GridSlotCount must be >= 1` message | `A:` — two findings, one C++-only and one Python-only |
+| change C++ `LapLengthM <= 0.0` to `LapLengthM < 0.0001` | `B: P-06` — C++ fragment not found |
+| rename the first `"pit_lane_speed_limit_kph"` occurrence | `B: P-16` — Python fragment not found |
+| rename **both** `"grid_slot_count"` occurrences | `B: P-07` **and** `C:` — Python never reads key `grid_slot_count` |
+
+The last row is the interesting one, and it is why the mutation set is five
+rather than four: a single-occurrence rename trips check B only. Check C is
+reached only when every occurrence is renamed. A four-mutation set would have
+left check C unexercised while appearing thorough.
+
+### A design note worth carrying forward
+
+`af_drift_guard.py` reads its rule tables from module globals, which means its
+self-test can only ever run against the real rules. `af_track_drift_guard.py`
+takes the rule tables as **parameters**, so its self-test drives synthetic
+fixtures of a few dozen lines. That is why 27 cases can cover the guard's own
+logic — including the failure paths — without depending on the repository's
+real content. The older guard was deliberately left unchanged; this is
+recorded as the preferred shape for any future guard, not as a defect report.
+
+### What it does not prove
+
+- **Nothing about compilation or execution.** No C++ was compiled and
+  `af_circuit_generate.py` was never executed by the guard. It is text
+  analysis only.
+- **Not behavioural equivalence.** The two validators are proven to *state*
+  the same 16 rules with the same 16 messages over the same 11 fields. Two
+  implementations can agree on all of that and still behave differently.
+- **Not exhaustive over the file.** Anything outside `ValidateSelf()` and
+  `validate_track_definition()` is invisible to it.
+- **Not observed at step level.** See §6.
+
+---
+
+## 4. The defects and defect classes CI has addressed so far
 
 Recorded in full in `DECISION_LOG.md` and `VERSION_MATRIX.md` section 5.33.
 
@@ -109,6 +269,33 @@ is now named the single source of truth, the Unreal values were corrected to
 follow it, and `DataVersion` was bumped to 2. This conflict was static and had
 been sitting in the tree unnoticed; CI did not detect it, a human reading the
 CI output did.
+
+**D-044 — a defect class, caught before it occurred.** D-041 was one instance
+of a general shape: the same fact written twice, in two files, kept in
+agreement by attention. D-042 and D-043 each deliberately created another
+instance of that shape in exchange for executable evidence. No drift defect
+has actually been observed in the lap rules mirror — the guard was added
+because the failure mode is **silent**, and a silent failure of an evidence
+mechanism is worse than having no mechanism. This entry is recorded here for
+symmetry with D-040 and D-041, with the distinction stated rather than
+blurred: those two were found, this one was pre-empted.
+
+**D-045 — the same class, at its last known site.** D-044 closed two of the
+three recorded mirrors and, in doing so, made the third one's exposure
+explicit: `MILESTONE_3_CIRCUIT.md` carried a table with one row reading
+"no — open gap". D-045 closed that row. As with D-044, **no drift defect was
+ever observed** in the track definition mirror; the guard exists because the
+failure mode is silent. Leaving one row unguarded while claiming the class was
+handled would have been the more comfortable outcome and the less honest one.
+
+A process note belongs with this entry. The first commit on the D-045 branch,
+`5fb08f2010510b275adb97414db14a150d0fd687`, carried a message claiming the CI
+steps were wired. They were not; that commit contained the guard only. The
+wiring landed in `99cf8078d834b34f76dfdb2ec27cb42bc098ced4`. The overstatement
+was caught before the pull request was opened, disclosed in the pull request
+body and in the squash-merge message, and is recorded here rather than left in
+the commit history unremarked. Commit messages are evidence in this project
+and are held to the same standard as documentation.
 
 ---
 
@@ -140,6 +327,108 @@ request has an **unobserved** status until something opens a pull request whose
 head contains it. Unobserved is not the same as failing, and it is not the same
 as green. Documents in this repository must say which one they mean.
 
+### Check runs are readable at job level only
+
+This is a hard limitation of the tooling used here and it constrains every
+step-level claim in this repository.
+
+What is retrievable per check run: `name`, `status`, `conclusion` and an
+`html_url`. **Step-level logs are not retrievable.** So a sentence such as
+"the drift guard ran on the runner" is an **inference** from three facts —
+the step exists in the committed workflow, it carries no
+`continue-on-error`, and the job it belongs to concluded `success`. A
+non-zero exit from that step would have failed the job, so the inference is
+sound. It is still an inference, not a log reading, and documents in this
+repository must not upgrade it to one.
+
+A second consequence: post-merge, the only mechanical evidence available is
+the merge commit's own diff. An **additions-only** diff on a file is
+therefore treated as meaningful, because `.github/workflows/validate.yml`
+was once silently truncated by roughly 900 bytes and had to be restored in
+PR #7.
+
+---
+
+## 6A. Milestone 3 pull request evidence
+
+| PR | Contents | Merge commit | Diff |
+|---|---|---|---|
+| #5 | `Tools/af_lap_rules_model.py` (68 cases) + workflow step | `7ec380e14fe315a245a4898c79dee3c7aef0650b` | — |
+| #6 | `Documentation/MILESTONE_3_IMPLEMENTATION.md` | `6b8038fa05fd5a6a40e2fc1dbf7ef6febbfa5e1a` | — |
+| #7 | `af_circuit_generate.py` (84 cases), workflow step, workflow restore | `7617a530392d155039a4ea81e5ed032f0b0f3d3f` | — |
+| #10 | `Tools/af_drift_guard.py` (31 cases, 11 mutation tests) + two workflow steps | `bf602b2c053fb886a0d83741d4e6f8c51b6003dd` | 2 files, **+1132 / −0** |
+| #11 | D-044 documentation | `dfc696cff6efeeed523a7ac468c2a66268771303` | 3 files, **+411 / −25** |
+| #12 | `Tools/af_track_drift_guard.py` (27 cases, 5 mutation proofs) + two workflow steps | `a77dcd50cad331242d8c3fca0739010f0f832006` | 2 files, **+854 / −0** |
+
+**PR #10 detail.** Every distinct check name concluded `success`. Workflow
+runs observed: `31513676365`, `31513676386`, `31513773974`, `31513774193`.
+Each check name appears twice because push and pull-request triggers create
+parallel runs with identical job names; the merge criterion applied was
+**every distinct check name green**, not a run count.
+
+The diff is additions-only: `Tools/af_drift_guard.py` +1113 (new file) and
+`.github/workflows/validate.yml` +19 (modified). Zero deletions on the
+workflow is direct evidence the PR #7 truncation class of bug did not recur.
+
+Post-merge blob verification on `main`:
+
+| Path | Blob SHA | Bytes |
+|---|---|---|
+| `Tools/af_drift_guard.py` | `a296588c8f2068232d1f02782ab88f5da945b847` | 38,557 |
+| `.github/workflows/validate.yml` | `f69ff898294292456d7b8404b5a1cd342d82ef26` | 7,652 |
+
+The guard blob SHA equals the Git blob SHA computed locally over the exact
+bytes that passed the self-test before the push, so the file CI executed is
+byte-identical to the file that was verified.
+
+Job duration is recorded elsewhere for completeness only and is **not**
+evidence of anything.
+
+---
+
+## 7A. PR #12 evidence — D-045
+
+`automatically validated` for the check-run facts; `statically inspected` for
+the diff.
+
+Check runs read from the pull request: **`total_count: 10`, every run
+`status: completed` and `conclusion: success`**, across five distinct names,
+each appearing twice (push trigger and pull-request trigger).
+
+| Distinct check name | Conclusion |
+|---|---|
+| Static validation (no engine, no DCC) | `success` (×2) |
+| Blender smoke test (headless) | `success` (×2) |
+| `af_static_validate (py3.9)` | `success` (×2) |
+| `af_static_validate (py3.12)` | `success` (×2) |
+| Python syntax check | `success` (×2) |
+
+Workflow runs observed: `31517348832`, `31517348846`, `31517409235`,
+`31517409242`.
+
+Merge commit diff: **2 files, +854 / −0** —
+`Tools/af_track_drift_guard.py` +829 as a new file and
+`.github/workflows/validate.yml` +25 as a modification. Additions-only on the
+workflow, so the PR #7 truncation class did not recur.
+
+**Why this run is stronger evidence than the local runs.** The local proof
+tree used a 3,290-byte reconstruction of `af_circuit_generate.py`, because the
+real file is 42,975 bytes and had to be reduced to author a mutation fixture.
+A reduction is a weaker artefact than the original: it could have omitted the
+very construct that breaks the parser. On the runner the guard executed with
+`--root .` against the real 42,975-byte generator and the real
+`AFTrackDefinition.cpp`, and the job concluded `success`. That retires the
+open risk carried in the pull request body.
+
+**What it still does not establish.** Per §6, this is a job-level conclusion.
+No step log was read. The claim "the track drift guard exited 0 on the runner"
+remains an inference from the step being present, carrying no
+`continue-on-error`, and the job concluding `success`.
+
+Unlike PR #10, the post-merge blob SHA of `Tools/af_track_drift_guard.py` was
+**not** independently recomputed and compared. That verification step is
+recorded as not performed rather than assumed to hold.
+
 ---
 
 ## 7. Verification ledger
@@ -151,6 +440,17 @@ as green. Documents in this repository must say which one they mean.
 | All seven smoke-test stages pass | `automatically validated` |
 | The generated placeholder is 132 polygons, 176 vertices, 11 bones | `automatically validated` |
 | Bone order matches the configured order; 9 meshes bound | `automatically validated` |
+| The lap-rules drift guard's own self-test passes (31 cases, 17 methods) | `automatically validated` |
+| The lap-rules drift guard fails on corrupted input (11 mutation tests) | `automatically validated` |
+| `EAFLapInvalidationReason` and the Python mirror agree on membership and order | `automatically validated` |
+| The track drift guard's own self-test passes (27 cases, 21 methods) | `automatically validated` |
+| The track drift guard fails on corrupted input (5 mutation proofs, checks A, B and C each demonstrated) | `automatically validated` |
+| `validate_track_definition()` and `UAFTrackDefinition::ValidateSelf()` carry the same 16 diagnostics, 16 predicates and 11 fields | `automatically validated` |
+| The two lap-rules implementations are semantically equivalent beyond the 16 checked rules | `not claimed` |
+| The two track validators are semantically equivalent beyond the 16 diagnostics, 16 predicates and 11 fields | `not claimed` |
+| `af_circuit_generate.py` was executed by the track drift guard | `not claimed` — the guard parses, it does not run the generator |
+| The post-merge blob SHA of `Tools/af_track_drift_guard.py` was recomputed and compared | `not claimed` — not performed |
+| Any individual CI **step** was observed executing | `not claimed` — job level only, see §6 |
 | FBX exporter option drops | `not claimed` |
 | Blender behaves the same on the pinned Windows workstation | `not claimed` |
 | Any C++ in this repository compiles | `not claimed` |

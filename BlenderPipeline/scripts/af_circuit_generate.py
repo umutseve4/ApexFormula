@@ -40,8 +40,14 @@ WHAT THIS DOES NOT PROVE
   * It does NOT prove the ribbon mesh looks correct, is drivable, or imports
     into Unreal. That is "requires Blender execution" and "requires Unreal
     Editor verification".
-  * The mirror of ``ValidateSelf()`` is maintained BY HAND. Nothing
-    mechanically ties it to the C++. See D-043.
+  * The mirror of ``ValidateSelf()`` is still WRITTEN by hand, but since
+    D-045 it is no longer UNGUARDED: ``Tools/af_track_drift_guard.py`` runs
+    in CI and fails the build if the diagnostic messages, the predicates or
+    the field names drift apart from ``AFTrackDefinition.cpp``. That guard is
+    TEXT-ONLY - it does not compile or execute the C++, so behavioural
+    equivalence is NOT proven and identical drift applied to both sides at
+    once would pass unnoticed. See D-043 for the original risk and D-045 for
+    the control.
 
 ORIGINALITY
 -----------
@@ -416,8 +422,12 @@ def build_track_definition(vertices=CIRCUIT_VERTICES,
 # ---------------------------------------------------------------------------
 # Python mirror of UAFTrackDefinition::ValidateSelf()
 #
-# Hand-maintained. Mirrors AFTrackDefinition.cpp check for check, in the same
-# order, with the same thresholds. See D-043 for the drift risk.
+# Written by hand. Mirrors AFTrackDefinition.cpp check for check, in the same
+# order, with the same thresholds. D-043 records the drift risk this created.
+# Since D-045 that risk is controlled mechanically: Tools/af_track_drift_guard.py
+# runs in CI and fails the build if the diagnostic messages, the predicates or
+# the field names here stop matching the C++. The guard is TEXT-ONLY - it does
+# not compile or run the C++, so behavioural equivalence is still unproven.
 # ---------------------------------------------------------------------------
 
 def validate_track_definition(track):
