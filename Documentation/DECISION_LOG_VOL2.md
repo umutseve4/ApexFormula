@@ -32,9 +32,10 @@ decisions already recorded.
 | D-047 | Mesh quality gate, and the inward winding fix | merged, registered retrospectively |
 | D-048 | Rename: Apex Formula becomes Uludağ Formula | wave 1 merged, later waves planned |
 | D-049 | Documentation wave scope, triage rule, and evidence procedure | merged |
+| D-050 | Doc-tail triage verdicts, and a correction to D-049 | merged |
 | OPEN-M4-01 | Collision proxies authored from the wrong datum | open |
 
-Next free decision identifier: **D-050**.
+Next free decision identifier: **D-051**.
 
 ---
 
@@ -257,6 +258,13 @@ Deferral is a decision with a stated reason. It is not a backlog item
 that quietly never happens, and the state of these files is not to be
 described as complete.
 
+> **Correction, D-050.** The paragraph above was written before either
+> file had been read end to end, and it is wrong about the first one.
+> `MILESTONE_3_IMPLEMENTATION.md` carries **no** product prose. The
+> corrected verdicts, and the reason the error was possible, are in
+> D-050. This paragraph is left standing rather than edited, because the
+> point of a ledger is to show what was believed and when.
+
 **Evidence procedure, corrected.** Check runs in this environment are
 readable only through a pull request, and a pull request's check runs
 belong to its **head commit**. Work pushed directly to `main` is
@@ -288,6 +296,112 @@ its own page.
 
 **Status.** merged. *automatically validated* at job level, subject to
 the acceptance criteria above.
+
+---
+
+## D-050 — doc-tail triage verdicts, and a correction to D-049
+
+**Decision.** Close wave 1 of D-048 by reading the two remaining large
+documents end to end and issuing a verdict for each, rather than leaving
+them described as "deferred" on the strength of their file size alone.
+
+### D-050.1 The correction
+
+D-049 stated that `MILESTONE_3_IMPLEMENTATION.md` and
+`VERSION_MATRIX.md` "still carry the previous product name in prose".
+That sentence was written from a size estimate and an occurrence count,
+not from a reading. Half of it is false.
+
+This matters more than the file it is about. D-049 itself adopted the
+triage-before-rewrite rule, and then its own deferral paragraph broke
+that rule by classifying two files without reading them. A rule that its
+author does not follow in the same document is worth nothing. The
+original wording is left visible in D-049 and corrected here.
+
+### D-050.2 `MILESTONE_3_IMPLEMENTATION.md` — no rewrite, ever
+
+37,137 B, fetched in full and scanned.
+
+**Verdict: no rewrite required, and none should be made in a later wave
+either.** Every occurrence of the old identity in that file is
+`Unreal/Source/ApexFormulaRace/` — a **source path**, not a product
+name. The file describes where the Milestone 3 C++ lives. That path is
+literally correct today and will be renamed by the wave 2 module
+migration, at which point the document must be updated to match the tree
+in the same commit, under the D-048 lockstep rule.
+
+Changing it now would make the document name a directory that does not
+exist. That is a worse defect than the one it would be trying to fix.
+
+**A hazard found while triaging, recorded because it changes the risk
+calculus.** Section 7 of that file contains:
+
+```
+config_hash = c9ef9f7e985a1aaf
+```
+
+That is a sixteen-character hex token immediately after a `config_hash`
+anchor — exactly the shape `Tools/af_config_hash_guard.py` check B looks
+for within its eighty-character claim window. It passes only because the
+value is the correct short form of the pinned digest. Any
+retranscription of this file therefore carries a live CI failure mode
+that has nothing to do with the rename: one mistyped hex character turns
+the build red. A second independent reason not to rewrite it.
+
+### D-050.3 `VERSION_MATRIX.md` — deferred to wave 2, transcribed once
+
+40,427 B, fetched in full and scanned. Unlike the file above, this one
+**does** contain genuine product prose. The occurrences split cleanly
+into two classes:
+
+| Class | Where | Count | Action |
+| --- | --- | --- | --- |
+| Product name | The H1 title; "no `ApexFormula` file outside…" in 5.21; "depends on no `ApexFormula` module" in 5.28 | 3 | belongs to wave 1 |
+| Module, file, ini and script identifiers | `ApexFormulaVehicle.Build.cs`, `ApexFormula.uproject`, `/Script/ApexFormulaCore.AFQualityProfile`, `ApexFormulaEditor.Build.cs`, `ApexFormulaRace`, `ApexFormulaCore`, `DefaultApexFormula.ini`, and others across 5.21, 5.26 and 5.28 | ~15 | belongs to wave 2, must stay literal until the artefacts are renamed |
+
+**Decision: defer the whole file to wave 2 and transcribe it once.**
+
+The arithmetic is not close. Rewriting now buys three corrected strings
+at the cost of a 40 KB retranscription, and wave 2 then forces a second
+40 KB retranscription for the fifteen identifiers. Two exposures to the
+truncation defect that damaged `validate.yml` in PR #7, for a title
+line. Deferring buys one exposure, and the identifiers and the title
+become correct in the same commit — which is what the D-048 lockstep
+rule requires of everything else in wave 2 anyway.
+
+**A volume-split side file was considered and rejected.** That policy
+works for append-only ledgers, where volume 1 can be frozen honestly
+because nothing in it is wrong. It does not work here: a
+`VERSION_MATRIX_VOL2.md` cannot correct the H1 title of volume 1. It
+would leave a wrong product name at the top of a 40 KB document and add
+a second document explaining why. That is not a fix, it is a footnote,
+and it makes the corpus harder to read rather than more correct.
+
+**Consequence.** `VERSION_MATRIX.md` is a **wave 2 deliverable**, listed
+with the module migration and not with the documentation wave. Until
+wave 2 lands, its title is knowingly stale. That is recorded here so no
+one has to guess whether it was missed.
+
+### D-050.4 Wave 1 is closed
+
+With both verdicts issued, wave 1 of D-048 has no remaining candidates.
+Its scope was: display identity and documentation prose. Its result is
+in section 3 of `CI_EVIDENCE_VOL2.md`, its verification in section 5 of
+the same file — pull request #17, ten of ten check runs `success`,
+started between `20:27:19Z` and `20:27:37Z`, closed without merging.
+
+**What closing wave 1 does not mean.** It upgrades no milestone. Nothing
+in this repository has been compiled, no Unreal Editor has been opened,
+no mesh has been imported or looked at, and no lap has been driven. A
+green documentation batch is evidence that prose is consistent and that
+no guard was disturbed. It is evidence of nothing else, and it must not
+be cited as if it were.
+
+**Status.** merged. *automatically validated* at job level for the
+commits it describes. The two verdicts themselves are
+*verified by inspection* — both files were read in full before the
+verdict was written, which is the whole point of the rule this decision
+restores.
 
 ---
 
