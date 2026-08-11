@@ -107,7 +107,7 @@ struct APEXFORMULAVEHICLE_API FAFVehicleBackendSetup
 /**
  * UAFVehicleCompatibilityLayer - the ONLY place engine vehicle API may be used.
  *
- * Decision reference: DECISION_LOG.md D-008, D-031, D-032.
+ * Decision reference: DECISION_LOG.md D-008, D-031, D-032, D-036.
  * Architecture reference: TECHNICAL_ARCHITECTURE.md section 11.
  * Milestone reference: MILESTONE_2_IMPLEMENTATION.md section 3.
  *
@@ -127,7 +127,8 @@ struct APEXFORMULAVEHICLE_API FAFVehicleBackendSetup
  * Status: statically inspected. requires local compilation.
  * The backend binding itself is unverified: the Chaos Vehicles module and
  * plugin names for Unreal Engine 5.8 are assumptions recorded in
- * VERSION_MATRIX.md section 5.21.
+ * VERSION_MATRIX.md section 5.21, and every engine call site in the .cpp
+ * carries an ASSUMPTION comment.
  */
 UCLASS(BlueprintType)
 class APEXFORMULAVEHICLE_API UAFVehicleCompatibilityLayer : public UObject
@@ -241,6 +242,22 @@ public:
 	UFUNCTION(BlueprintPure, Category = "ApexFormula|Vehicle")
 	bool IsBackendConfigured() const { return bBackendConfigured; }
 
+	/**
+	 * True once the per-wheel numeric parameters have reached the backend's
+	 * wheel objects. See D-036: those objects do not exist until the movement
+	 * component registers, which is after ConfigureBackend runs.
+	 */
+	UFUNCTION(BlueprintPure, Category = "ApexFormula|Vehicle")
+	bool AreWheelParametersApplied() const { return bWheelParametersApplied; }
+
+	/**
+	 * Attempts to push the retained wheel parameters into the backend's wheel
+	 * objects. Returns true when they are applied, or were already applied.
+	 * Cheap and idempotent; called from ApplyInputFrame until it succeeds.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "ApexFormula|Vehicle")
+	bool TryApplyWheelParameters();
+
 private:
 	/** Cached backend description, filled in the constructor. */
 	FAFVehicleBackendInfo BackendInfo;
@@ -253,6 +270,12 @@ private:
 
 	/** True once ConfigureBackend has succeeded. */
 	bool bBackendConfigured = false;
+
+	/** Metric wheel data retained from ConfigureBackend. See D-036. */
+	TArray<FAFWheelSetup> PendingWheels;
+
+	/** True once PendingWheels has reached the backend's wheel objects. */
+	bool bWheelParametersApplied = false;
 
 	/**
 	 * The engine movement component, held as the most-derived type this header

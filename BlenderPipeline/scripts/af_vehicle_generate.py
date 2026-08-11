@@ -18,9 +18,12 @@ What it creates, all inside AF_Generated:
 Determinism: the mesh is built from explicit vertex lists and config values.
 The same config always produces the same vertices in the same order.
 
-Honesty note: this script has NOT been executed inside Blender. All geometry
-claims are "requires Blender execution". Only syntax and structure have been
-statically inspected.
+Design envelope (D-040): the halo arc height is solved from
+``overall_height_m`` rather than being a fixed multiple of ``halo_radius_m``,
+so the tallest point of the vehicle can never breach the design envelope.
+``check_design_envelope`` re-measures the whole vehicle in pure Python before
+Blender is touched, so an envelope regression fails fast and locally instead
+of surfacing later as a validate-stage failure.
 
 Usage
 -----
@@ -48,6 +51,63 @@ except ImportError:  # pragma: no cover
 EXIT_OK = 0
 EXIT_NO_BPY = 2
 EXIT_FAILED = 3
+
+
+# ---------------------------------------------------------------------------
+# Halo geometry (D-040)
+# ---------------------------------------------------------------------------
+#
+# The halo is the tallest structure on the vehicle, so its vertical extent is
+# derived from the design envelope instead of being an independent constant.
+# Previously the arc height was ``halo_radius_m * 0.55``, which placed the top
+# surface at 0.97415 m against an ``overall_height_m`` of 0.950 m - a 0.02415 m
+# breach, well outside TOLERANCE["length_m"] (0.010 m).
+
+HALO_SEGMENTS = 12
+HALO_APEX_CLEARANCE_M = 0.010
+
+
+def halo_segment_thetas():
+    """Return the fixed half-ring angles used to place the halo segments."""
+    return tuple(math.pi * i / (HALO_SEGMENTS - 1) for i in range(HALO_SEGMENTS))
+
+
+def halo_max_sin():
+    """Return the largest ``sin(theta)`` actually hit by the segment set.
+
+    With an even segment count no segment lands exactly on the apex, so the
+    real peak is slightly below 1.0. Using the sampled maximum keeps the
+    solved arc height exact rather than conservative.
+    """
+    return max(math.sin(theta) for theta in halo_segment_thetas())
+
+
+def halo_base_z_m():
+    """Return the Z the halo ring is built up from: the top of the chassis."""
+    return cfg.DESIGN["ride_height_m"] + cfg.DESIGN["chassis_top_m"]
+
+
+def halo_arc_height_m():
+    """Return the halo arc height solved from the design envelope.
+
+    Solved so the top surface of the highest halo segment lands exactly
+    ``HALO_APEX_CLEARANCE_M`` below ``overall_height_m``. Never taller than
+    ``halo_radius_m``, so a generous envelope cannot inflate the halo into a
+    shape the radius does not describe.
+    """
+    headroom = (cfg.DESIGN["overall_height_m"]
+                - HALO_APEX_CLEARANCE_M
+                - halo_base_z_m()
+                - cfg.DESIGN["halo_thickness_m"] / 2.0)
+    solved = headroom / (0.5 + halo_max_sin())
+    return min(solved, cfg.DESIGN["halo_radius_m"])
+
+
+def halo_apex_z_m():
+    """Return the Z of the topmost halo surface, including segment thickness."""
+    return (halo_base_z_m()
+            + halo_arc_height_m() * (0.5 + halo_max_sin())
+            + cfg.DESIGN["halo_thickness_m"] / 2.0)
 
 
 # ---------------------------------------------------------------------------
@@ -209,15 +269,16 @@ def body_parts():
             (d["rear_wing_chord_m"] / 2.0, 0.02, 0.16)))
 
     # Halo: a thin ring approximated by segments around the cockpit opening.
+    # The arc height is solved from the design envelope (D-040), so the apex
+    # cannot breach overall_height_m no matter how the envelope is retuned.
     halo_centre_x = cockpit_centre_x - 0.10
-    halo_z = d["ride_height_m"] + d["chassis_top_m"] + d["halo_radius_m"] * 0.55
-    halo_segments = 12
-    for i in range(halo_segments):
-        theta = math.pi * i / (halo_segments - 1)  # half ring, over the top
+    halo_base_z = halo_base_z_m()
+    halo_arc = halo_arc_height_m()
+    for theta in halo_segment_thetas():  # half ring, over the top
         y = d["halo_radius_m"] * math.cos(theta)
-        z = d["halo_radius_m"] * math.sin(theta) * 0.55
+        z = halo_arc * math.sin(theta)
         parts.append(box_mesh(
-            (halo_centre_x, y, halo_z + z - d["halo_radius_m"] * 0.55 * 0.5),
+            (halo_centre_x, y, halo_base_z + halo_arc * 0.5 + z),
             (d["halo_thickness_m"] / 2.0, d["halo_thickness_m"] / 2.0,
              d["halo_thickness_m"] / 2.0)))
 
@@ -235,6 +296,83 @@ def suspension_arm_parts(corner):
             max(span[1] / 2.0, 0.030),
             max(span[2] / 2.0, 0.030))
     return [box_mesh(centre, half)]
+
+
+# ---------------------------------------------------------------------------
+# Pre-flight design envelope check (D-040) - pure Python, no bpy
+# ---------------------------------------------------------------------------
+
+def measured_bounds_m():
+    """Return ``(min_xyz, max_xyz, size_xyz)`` over body, wheels and arms.
+
+    Mirrors exactly what af_validate.py check 17 measures in Blender: the
+    render meshes that ship, excluding LOD copies (which are duplicates of the
+    body) and excluding UCX collision hulls.
+    """
+    verts = []
+    for part_verts, _faces in body_parts():
+        verts.extend(part_verts)
+
+    for corner in cfg.CORNERS:
+        wheel_verts, _faces = cylinder_mesh(
+            cfg.wheel_centre_m(corner),
+            cfg.wheel_radius_m(corner),
+            cfg.wheel_width_m(corner),
+            cfg.DESIGN["wheel_segments"],
+            axis="Y")
+        verts.extend(wheel_verts)
+        for arm_verts, _arm_faces in suspension_arm_parts(corner):
+            verts.extend(arm_verts)
+
+    if not verts:
+        raise RuntimeError("no geometry produced - cannot measure bounds")
+
+    minimum = tuple(min(v[axis] for v in verts) for axis in range(3))
+    maximum = tuple(max(v[axis] for v in verts) for axis in range(3))
+    size = tuple(maximum[axis] - minimum[axis] for axis in range(3))
+    return minimum, maximum, size
+
+
+def check_design_envelope():
+    """Return ``(ok, problems)`` for the measured-vs-design bounding box.
+
+    Runs before Blender is touched so an envelope regression is caught at the
+    top of the pipeline rather than four stages later. Being smaller than the
+    envelope is fine; being larger than it by more than the length tolerance
+    is not - that is the exact rule af_validate.py check 17 applies.
+    """
+    problems = []
+    tol = cfg.TOLERANCE["length_m"]
+
+    try:
+        _minimum, _maximum, size = measured_bounds_m()
+    except Exception as exc:  # noqa: BLE001
+        return False, ["could not measure geometry: %s: %s"
+                       % (type(exc).__name__, exc)]
+
+    design = (cfg.DESIGN["overall_length_m"],
+              cfg.DESIGN["overall_width_m"],
+              cfg.DESIGN["overall_height_m"])
+    for axis, label in enumerate(("length (X)", "width (Y)", "height (Z)")):
+        delta = size[axis] - design[axis]
+        if delta > tol:
+            problems.append(
+                "%s: measured %.5f m exceeds design %.3f m by %.5f m "
+                "(tolerance %.3f m)" % (label, size[axis], design[axis],
+                                        delta, tol))
+
+    apex = halo_apex_z_m()
+    if apex > cfg.DESIGN["overall_height_m"]:
+        problems.append(
+            "halo apex: %.5f m exceeds overall height %.3f m"
+            % (apex, cfg.DESIGN["overall_height_m"]))
+
+    if halo_arc_height_m() <= 0.0:
+        problems.append(
+            "halo arc height solved to %.5f m - the design envelope leaves no "
+            "headroom above chassis_top_m" % halo_arc_height_m())
+
+    return (not problems), problems
 
 
 # ---------------------------------------------------------------------------
@@ -369,6 +507,7 @@ def generate_all():
 
 def print_summary(summary):
     d = cfg.DESIGN
+    _minimum, _maximum, size = measured_bounds_m()
     print("")
     print("af_vehicle_generate summary")
     print("  body            : %s (%d polys, %d verts)" % (
@@ -390,6 +529,16 @@ def print_summary(summary):
         d["track_front_m"], cfg.metres_to_cm(d["track_front_m"])))
     print("    track rear    : %.3f m  (%.1f cm)" % (
         d["track_rear_m"], cfg.metres_to_cm(d["track_rear_m"])))
+    print("")
+    print("  measured bounding box vs design envelope (D-040):")
+    print("    length (X)    : %.4f m  of %.3f m" % (
+        size[0], d["overall_length_m"]))
+    print("    width  (Y)    : %.4f m  of %.3f m" % (
+        size[1], d["overall_width_m"]))
+    print("    height (Z)    : %.4f m  of %.3f m" % (
+        size[2], d["overall_height_m"]))
+    print("    halo apex     : %.4f m  (arc %.4f m, clearance %.3f m)" % (
+        halo_apex_z_m(), halo_arc_height_m(), HALO_APEX_CLEARANCE_M))
     print("  config hash     : %s" % summary["config_hash"][:16])
 
 
@@ -400,6 +549,14 @@ def main():
     if not ok:
         print("")
         print("config self-check FAILED - refusing to generate geometry:")
+        for problem in problems:
+            print("  - %s" % problem)
+        return EXIT_FAILED
+
+    ok, problems = check_design_envelope()
+    if not ok:
+        print("")
+        print("design envelope check FAILED - refusing to generate geometry:")
         for problem in problems:
             print("  - %s" % problem)
         return EXIT_FAILED

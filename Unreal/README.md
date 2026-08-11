@@ -1,6 +1,7 @@
 # ApexFormula — Unreal Project
 
-Milestone 1 output: the Unreal Engine 5.8 project and its six C++ modules.
+The Unreal Engine 5.8 project and its six C++ modules. Milestone 1 created the structure;
+Milestone 2 added the vehicle implementation behind it.
 
 **Nothing in this directory has been compiled.** No Unreal Engine, Unreal Build Tool, MSVC or
 clang existed in the environment where this code was authored. Everything below that is stated
@@ -34,7 +35,7 @@ holds a Blender pipeline, a document set and standalone tooling, none of which b
 engine tree. Quarantining the engine tree makes every generated directory ignorable by prefix.
 Recorded as decision **D-027**.
 
-There is no `Content/` directory yet. Milestone 1 is C++ and configuration only — no art, no
+There is no `Content/` directory yet. The project is C++ and configuration only — no art, no
 Blueprints, no assets. It will appear at the milestone that first needs it.
 
 ---
@@ -72,10 +73,21 @@ Three boundary rules hold and are checked:
 in the entire project permitted to name an engine vehicle type. Every other file that needs
 vehicle behaviour goes through this layer.
 
-**No backend is currently bound.** `BackendId` is `none`, `bBackendAvailable` is `false`, and
-`ApplyInputFrame` stores the frame, calls `Sanitise()` on it, logs at Verbose and returns `false`.
-This is deliberate: Milestone 1 excludes vehicle physics. The layer exists so that when a backend
-is bound, exactly one file changes.
+**A Chaos Vehicles backend is now bound in code.** `BindBackend` resolves the movement component,
+sets `BackendId` and `bBackendAvailable`, and `ApplyInputFrame` forwards a sanitised frame to it.
+The layer no longer returns `false` unconditionally.
+
+Two things follow, and they are not the same thing:
+
+- The backend is **implemented**. `automatically validated` — the chokepoint still holds, and no
+  engine vehicle token appears outside these two files.
+- The backend is **not verified**. Every engine symbol the layer names is an assumption about the
+  UE 5.8 Chaos Vehicles API. `requires local compilation`, then `requires playtesting`.
+
+The layer also holds wheel setups supplied before binding, in `PendingWheels`, and applies them
+idempotently once a backend exists (**D-036**). Applying to a null backend would discard
+suspension geometry silently, and silent loss surfaces much later as a handling bug with no
+traceable cause.
 
 The validator enforces the chokepoint by scanning every source file for engine vehicle API tokens
 and failing if one appears outside the two permitted files.
@@ -87,6 +99,12 @@ and failing if one appears outside the two permitted files.
 `UAFBoneNameMap` and `UAFQualityProfile` are `UPrimaryDataAsset` types with a `ValidateSelf()`
 that returns a list of problems rather than a bare bool, so the editor validator can report *what*
 is wrong. `UAFVehicleDefinition`, `UAFTrackDefinition` and `UAFSessionRules` follow the same shape.
+
+`FAFVehicleBackendSetup` and `FAFWheelSetup` use the same convention. `ApplyVehicleDefinition`
+transfers only the fields `UAFVehicleDefinition` actually carries — mass, wheelbase, track widths,
+overall length, centre-of-mass bias and height. Powertrain and aerodynamic values keep their
+struct defaults rather than being invented here, because a definition asset is chassis geometry
+and duplicating tuning data across two assets is what D-007 exists to prevent (**D-038**).
 
 All default numeric values are **ApexFormula design values**. They are not measurements of any
 real vehicle or circuit and are not claimed to be realistic.
@@ -116,32 +134,48 @@ Recorded as decision **D-029**.
 Consequence: changing the *style* of `AFBoneNameMap.cpp` can break the validator's parser even if
 behaviour is unchanged, and requires an emulator update.
 
+Note that agreement between the two *conventions* is not the same as agreement between a
+convention and an *imported asset*. Milestone 2 acceptance criterion 4 concerns the latter, and
+it `requires Unreal Editor verification`.
+
 ---
 
 ## 6. Validation
 
-```
-python3 Tools/af_static_validate.py --root .
-```
-
-Standard library only. No Unreal, no Blender, no third-party packages. Exit code 0 = pass,
-1 = violations found, 2 = could not run. Current result on this tree:
+Two validators run, both standard-library-only. No Unreal, no Blender, no third-party packages.
+Exit code 0 = pass, 1 = violations found, 2 = could not run.
 
 ```
-checks passed : 2300
-failures      : 0
-warnings      : 0
-RESULT: PASS  (static validation only - nothing was compiled)
+python3 Tools/af_static_validate.py     --root .
+python3 Tools/af_validate_interfaces.py --self-test
+python3 Tools/af_validate_interfaces.py --root .
 ```
 
-Fifteen checks run: build graph, module boundaries, acyclicity, module implementations,
-`.uproject` consistency, targets, header hygiene, include resolution, originality, path
-portability, vehicle backend isolation, telemetry literal containment, bone convention,
-configuration keys, and test declarations.
+**`af_static_validate.py`** runs fifteen checks: build graph, module boundaries, acyclicity,
+module implementations, `.uproject` consistency, targets, header hygiene, include resolution,
+originality, path portability, vehicle backend isolation, telemetry literal containment, bone
+convention, configuration keys, and test declarations.
 
-The validator has itself been mutation-tested — **11 of 11 injected defects detected**, with a
-negative control (a prohibited word inside a comment) correctly ignored. A checker that cannot
-fail proves nothing. Recorded as decision **D-030**; details in `VERSION_MATRIX.md` §5.30.
+Its Milestone 1 measurement was `checks passed: 2300, failures: 0, warnings: 0`. That count is
+**not** quoted as the current figure — the tree has grown since and the number has not been
+re-measured into this document. The live result is the CI run on this branch, which passes.
+
+It has been mutation-tested — **11 of 11 injected defects detected**, with a negative control (a
+prohibited word inside a comment) correctly ignored. Recorded as decision **D-030**; details in
+`VERSION_MATRIX.md` §5.30.
+
+**`af_validate_interfaces.py`** compares every `override` against the pure-virtual it claims to
+implement and fails on a return-type mismatch. It exists because `af_static_validate.py` was
+structurally incapable of finding D-035 — a pawn returning `FText` where the interface declared
+`FString`, which had been sitting in `main` undetected because nothing here compiles.
+
+It carries a **nine-case mutation suite** in `--self-test`, and CI runs the self-test *before* the
+real check, so a checker that has stopped detecting its own mutations fails the build instead of
+reporting a green tree. Both run on Python 3.9 and 3.12. Recorded as decision **D-037**.
+
+Its documented blind spot: an out-of-line definition written `FVector *Class::Method()` is not
+matched. The header declaration is still checked, and no interface in this project returns a
+pointer.
 
 ---
 
@@ -153,15 +187,20 @@ fail proves nothing. Recorded as decision **D-030**; details in `VERSION_MATRIX.
 | The module table in §2 matches `TECHNICAL_ARCHITECTURE.md` §2 | automatically validated |
 | Core depends on no ApexFormula module; Race does not depend on Vehicle; the graph is acyclic | automatically validated |
 | No engine vehicle API appears outside the two D-008 files (§3) | automatically validated |
+| A Chaos backend is bound *in code* by `AFVehicleCompatibilityLayer.cpp` (§3) | statically inspected |
+| That backend binding does anything at run time (§3) | not claimed — `requires local compilation`, then `requires playtesting` |
 | Every key in `DefaultApexFormula.ini` maps to a real `UPROPERTY(Config)` (§4) | automatically validated |
-| The Blender and Unreal bone conventions agree (§5) | automatically validated |
-| The validator result quoted in §6 is a measured value | automatically validated |
-| The mutation score quoted in §6 is a measured value | automatically validated |
+| The Blender and Unreal bone conventions agree with each other (§5) | automatically validated |
+| An imported skeleton's bone names match `UAFBoneNameMap` (§5) | not claimed — `requires Unreal Editor verification` |
+| Every `override` agrees in return type with the interface it implements (§6) | automatically validated |
+| The mutation scores quoted in §6 are measured values | automatically validated |
+| The 2300 figure in §6 is the Milestone 1 measurement, not the current tree | statically inspected |
 | Design intent, rationale and the reasons behind each decision | statically inspected |
 | Default numeric values are ApexFormula design values, not measurements | statically inspected |
 | Any file in this directory compiles | not claimed — `requires local compilation` |
 | The Unreal Editor loads these six modules without error | not claimed — `requires Unreal Editor verification` |
-| The 27 declared automation tests are discovered, or pass | not claimed — `requires local compilation`, then `requires Unreal Editor verification` |
+| The 37 declared automation tests are discovered, or pass | not claimed — `requires local compilation`, then `requires Unreal Editor verification` |
+| The vehicle accelerates, brakes, steers, or stays on the ground | not claimed — `requires playtesting` |
 | `ChaosVehicles` and `ChaosVehiclesPlugin` are the correct 5.8 names | not claimed — see `VERSION_MATRIX.md` §5.21 |
 | The APIs assumed throughout the C++ exist with the assumed signatures | not claimed — see `VERSION_MATRIX.md` §5.21–§5.26 |
 | Anything here has been run, opened, packaged or played | not claimed — no engine exists in the authoring environment |

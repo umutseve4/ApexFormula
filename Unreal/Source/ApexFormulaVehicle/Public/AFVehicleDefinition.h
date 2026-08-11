@@ -52,6 +52,21 @@ public:
 	//
 	// Geometry. ApexFormula design values, metres and kilograms.
 	//
+	// D-041. The defaults below are kept numerically identical to
+	// BlenderPipeline/scripts/af_pipeline_config.py, section DESIGN. That file
+	// is the single source of truth for vehicle geometry, because it is the
+	// file that actually builds the mesh; this data asset only describes the
+	// mesh that Blender produced. Where the two disagreed, Blender won.
+	//
+	//   DESIGN["wheelbase_m"]      3.600  ->  WheelbaseM
+	//   DESIGN["track_front_m"]    1.600  ->  FrontTrackM
+	//   DESIGN["track_rear_m"]     1.540  ->  RearTrackM
+	//   DESIGN["overall_length_m"] 5.600  ->  OverallLengthM
+	//
+	// If a value here is edited, edit af_pipeline_config.py in the same commit
+	// and re-run the Blender smoke test, or the exported mesh and the physics
+	// body will describe two different cars.
+	//
 
 	/** Dry mass without driver or fuel, kilograms. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ApexFormula|Mass", meta = (ClampMin = "1.0"))
@@ -67,11 +82,11 @@ public:
 
 	/** Rear track width, metres. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ApexFormula|Geometry", meta = (ClampMin = "0.1"))
-	double RearTrackM = 1.55;
+	double RearTrackM = 1.54;
 
 	/** Overall length, metres. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ApexFormula|Geometry", meta = (ClampMin = "0.1"))
-	double OverallLengthM = 5.30;
+	double OverallLengthM = 5.60;
 
 	/**
 	 * Longitudinal centre of mass position as a fraction from the front axle.

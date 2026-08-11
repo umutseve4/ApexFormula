@@ -332,6 +332,80 @@ It also disciplined the investigation. Three apparent gaps in the first run turn
 
 ---
 
+## Numbering note — D-031 to D-034
+
+**Date:** 2025-06-08
+
+D-031 to D-034 are cited by Milestone 2 header comments but were never transcribed into this log. The entries below therefore resume at D-035, leaving a visible gap rather than closing it with invented text.
+
+This is recorded rather than quietly fixed because the alternative — writing four plausible entries reconstructed from the code that cites them — would produce a log that reads complete while containing rationale nobody ever decided. A gap that is labelled is auditable. A fabricated entry is not.
+
+Whoever holds the Milestone 2 header authoring context should transcribe the real four. Until then, the citations are dangling and this note is the reason why.
+
+---
+
+## D-035 — The participant contract wins over the pawn's convenience
+
+**Date:** 2025-06-08
+**Decision.** `AAFVehiclePawn::GetParticipantDisplayName()` returns `FString`, matching `IAFRaceParticipant`. The stored member `DriverDisplayName` stays `FText`, and the accessor returns `DriverDisplayName.ToString()`.
+**Rationale.** The pawn declared the override returning `FText` while the interface declared `FString`. That is not a style disagreement; it is a guaranteed compile failure the moment both translation units are seen together, and it sat in `main` undetected because nothing in this repository compiles.
+
+Both types were defensible in isolation. `FText` is right for the member: the driver's name is user-facing and localisable, and `FText` is the type that carries localisation. `FString` is right for the interface: race logic compares, sorts, logs and keys on participant names, and none of those operations want a localised display type.
+
+The conflict is resolved in favour of the interface because an interface is a contract with unknown callers, whereas the member is private to the pawn. Changing the interface to `FText` would have pushed a presentation concern into every future implementer — the AI driver, the replay ghost, the network proxy — none of which have anything to display. The conversion is explicit and happens in exactly one place.
+**Rejected.** Changing `IAFRaceParticipant` to return `FText` (spreads a presentation type across implementers that do not present); storing the member as `FString` (loses localisation for the one thing that genuinely is user-facing); an overload pair (two names for one concept, and the interface still has to pick one).
+**Consequence.** Any implementer of `IAFRaceParticipant` that holds a localisable name pays a `ToString()` at the boundary. This is the correct place for that cost to appear.
+**Verification.** The corrected return type is checked by `Tools/af_validate_interfaces.py`, which passes in CI. That the file *compiles* is not claimed — `requires local compilation`.
+**Reversibility:** High. Both types are one-line changes; the surrounding design does not depend on which was chosen.
+
+---
+
+## D-036 — Wheel parameters are deferred and applied idempotently
+
+**Date:** 2025-06-08
+**Decision.** `UAFVehicleCompatibilityLayer` holds `TArray<FAFWheelSetup> PendingWheels` and `bool bWheelParametersApplied`. Wheel setups supplied before a backend is bound are retained, not discarded. `TryApplyWheelParameters()` applies them if a backend exists and is safe to call any number of times; `AreWheelParametersApplied()` exposes the state.
+**Rationale.** Configuration and backend availability arrive in an order the layer does not control. A designer sets wheel data on the pawn; the movement component may not yet be constructed and registered. Applying to a null backend would discard the data silently, and silent loss of suspension geometry surfaces later as a handling bug with no obvious cause — the worst available failure mode.
+
+Idempotency is a correctness requirement rather than a convenience. Possession can occur more than once for a single pawn, and reapplying suspension parameters to a running simulation would be visible as a physics discontinuity. Making the second call a no-op means neither call site needs to know whether the other ran, which is what allows the layer to be called from both binding and possession without coordination.
+
+Exposing `AreWheelParametersApplied()` follows the same reasoning as D-017: state that matters should be observable, not inferred. Tests assert on it directly instead of guessing from side effects.
+**Rejected.** Requiring callers to order binding before configuration (a documented ordering constraint is a bug waiting for the one call site that forgets); applying to a null backend and logging a warning (the data is still lost, and warnings are ignored); an assertion on unbound application (turns a recoverable ordering difference into a crash).
+**Verification.** `requires local compilation`. The unbound-layer inert case has a written test that has never been executed.
+**Reversibility:** High. The pending buffer is internal; removing it would change only the layer.
+
+---
+
+## D-037 — The interface override check ships as a separate script
+
+**Date:** 2025-06-08
+**Decision.** The return-type agreement check lives in a new file, `Tools/af_validate_interfaces.py`, rather than as an additional check inside `Tools/af_static_validate.py`. CI runs both.
+**Rationale.** D-035 was a defect that `af_static_validate.py` was structurally incapable of finding. It checks module boundaries, include resolution, originality, backend isolation, header hygiene and test shape — but it had never compared an override against the contract it claims to implement. The gap needed closing, and D-028 says gaps are closed with programs.
+
+The check was first written *inside* the existing validator and worked. It was then moved out, for a reason specific to this environment: every write to the repository goes through an API that requires the **complete file contents**, because no patch mechanism is available. Committing the modified validator would have meant re-transmitting roughly sixty kilobytes verbatim. A single silent transcription error in that payload would have corrupted the project's primary validator — the one artefact every other verification claim in this project rests on — and it would have corrupted it in a way that still exits 0 and still looks reassuring.
+
+A new file cannot damage an existing one. The cost is a second entry point and a second CI step; the benefit is that the tool the whole project trusts is never rewritten in order to extend it.
+**Rejected.** Extending `af_static_validate.py` in place (unacceptable transcription risk against this project's most load-bearing file, under this environment's write constraints); deferring the check until a compiler is available (a compiler catches this specific bug but says nothing until someone has an engine, which is exactly the situation that let D-035 survive).
+**Consequence.** Two validators must both stay green, and a future reader may reasonably ask why the check is not in the obvious place. This entry is that answer. If the write constraint ever lifts, merging the two is a mechanical change and the mutation suite makes it safe.
+**Verification.** `automatically validated` — the checker and its nine-case mutation suite both execute in CI on Python 3.9 and 3.12, and both pass against the real tree.
+**Reversibility:** High.
+
+---
+
+## D-038 — `ApplyVehicleDefinition` leaves powertrain and aero at defaults
+
+**Date:** 2025-06-08
+**Decision.** `ApplyVehicleDefinition` transfers only the fields `UAFVehicleDefinition` actually carries — mass, wheelbase, track widths, overall length, centre-of-mass bias and height. Powertrain and aerodynamic fields on `FAFVehicleBackendSetup` (`PeakDriveTorqueNm`, `PeakTorqueRpm`, `MaxRpm`, `ForwardGearCount`, `bUseAutomaticGears`, `DragCoefficient`, `FrontalAreaM2`) keep their struct defaults.
+**Rationale.** `UAFVehicleDefinition` is a Milestone 1 chassis-geometry asset. It has no powertrain or aero fields, and inventing them here would put the same tuning data in two places before anything has driven — the exact duplication D-007 exists to prevent.
+
+The struct defaults are deliberately conservative and centralised, so a car built from a definition alone is coherent rather than undefined. When powertrain tuning arrives it belongs in its own Data Asset with its own version field, not bolted onto the geometry asset.
+**Rejected.** Extending `UAFVehicleDefinition` with powertrain and aero fields now (guesses at a schema before any tuning has happened, and bumps `DataVersion` for data nobody has authored); leaving the fields uninitialised (produces a car whose behaviour depends on what the struct happened to contain).
+**Consequence.** Two cars built from different definitions share identical powertrain behaviour until a powertrain asset exists. This is visible and expected, not a bug.
+**Numbering.** Earlier working notes used D-037 for this decision. That number was published in the commit message that added `Tools/af_validate_interfaces.py` before this entry was written, and commit history cannot be edited, so the log yields: D-037 is the separate-script decision and this is D-038.
+**Verification.** `requires local compilation`.
+**Reversibility:** High.
+
+---
+
 ## Superseded Decisions
 
 None. No decision recorded here has yet been superseded.
@@ -354,4 +428,9 @@ None. No decision recorded here has yet been superseded.
 | D-029 describes how the bone check actually works | automatically validated |
 | The mutation score and the assertion arithmetic quoted in D-030 are measured values | automatically validated |
 | The `\bF1\b` gap described in D-030 was real, and is now closed | automatically validated |
-| Any Milestone 1 C++ affected by these decisions has been compiled | not claimed — `requires local compilation` |
+| D-031 to D-034 are absent from this log and their citing comments are dangling | statically inspected |
+| The D-035 return type in the pawn now agrees with `IAFRaceParticipant` | automatically validated |
+| The D-037 checker and its nine-case mutation suite pass on Python 3.9 and 3.12 | automatically validated |
+| The D-036 deferred-application behaviour occurs as described at run time | requires local compilation |
+| The D-038 defaults produce a coherent vehicle | requires playtesting |
+| Any Milestone 1 or Milestone 2 C++ affected by these decisions has been compiled | not claimed — `requires local compilation` |
