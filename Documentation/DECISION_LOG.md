@@ -406,6 +406,66 @@ The struct defaults are deliberately conservative and centralised, so a car buil
 
 ---
 
+## D-039 — The Blender 5.2 LTS pin stands, and the hypothesis against it is retracted in writing
+
+**Date:** 2026-08-11
+**Decision.** `BLENDER_SERIES` in `.github/workflows/validate.yml` stays at `'5.2'`. The workflow continues to resolve the exact point release by listing the upstream directory and selecting the highest `blender-5.2.*-linux-x64.tar.xz` by version sort, rather than hardcoding a patch number. No repin to a 4.x series.
+**Rationale.** When the first Blender CI job failed, the working hypothesis was that Blender 5.2 might not exist on `download.blender.org` and that the pin recorded in `VERSION_MATRIX.md` §5.2 was aspirational. That hypothesis was **wrong**, and it was wrong in the most expensive available direction: acting on it would have repinned the entire pipeline to a series the project had not chosen, in order to fix a fault that was never in the pin.
+
+The evidence that settled it is the first line of the job's own output: `Blender 5.2.0 LTS (hash fbe6228777e7 built 2026-07-14 01:32:04)`. The download resolved, the archive extracted, the binary launched headless, and it executed four full pipeline stages before failing on a geometry assertion. A version that does not exist cannot print its own build hash.
+
+The entry is written as a retraction rather than as a silent correction because the hypothesis had already been stated aloud as a probable cause. D-021 governs claims about what was verified; the symmetric obligation is that a stated diagnosis which turns out to be false is withdrawn explicitly, in the same place a reader would look for it.
+**Rejected.** Repinning to Blender 4.x (would have changed the project's stated stack, D-003, to work around a fault that was not in the stack); hardcoding an exact patch version such as `5.2.0` (the directory listing plus version sort survives point releases, and the point release is exactly the part nobody should have to maintain by hand); quietly deleting the wrong hypothesis from the working notes.
+**Consequence.** A false diagnosis is now on the record next to the true one. That is the intended cost. Two secondary lessons are recorded with it, both learned the expensive way:
+
+1. **Job duration is not evidence.** The same passing smoke-test job took 36 seconds in one run and roughly eight minutes in another. Runtime was briefly treated as a signal about what the job was doing; it is noise from download and runner variance.
+2. **A failing job that produces detailed correct output is not failing at the step you assumed.** Four stages of correct summary output preceded the failure, and they were available in the log from the first run.
+
+**Verification.** `automatically validated` — Blender 5.2.0 LTS downloads, extracts and executes the full seven-stage smoke test in CI, and the job is green on the merged `main`.
+**Reversibility:** High. The series is one string in one workflow file.
+
+---
+
+## D-040 — Halo arc height is solved from the design envelope, and the envelope is checked before `bpy`
+
+**Date:** 2026-08-11
+**Decision.** In `af_vehicle_generate.py` the halo's arc height is **derived from `DESIGN["overall_height_m"]`** rather than scaled from the halo radius. Five module-level helpers implement it — `halo_segment_thetas()`, `halo_max_sin()`, `halo_base_z_m()`, `halo_arc_height_m()`, `halo_apex_z_m()` — and a new module-level constant `HALO_APEX_CLEARANCE_M = 0.010` reserves headroom beneath the envelope ceiling. A second new function, `check_design_envelope()`, computes the predicted bounding box arithmetically and is called from `main()` **before any `bpy` call**.
+**Rationale.** Stage 5 of the smoke test failed on a single check, `bounding box within design envelope`, with 19 of 21 checks passing. The cause was not length, which is where attention went first. It was height:
+
+| Axis | Design | Measured | Delta | Tolerance |
+| --- | --- | --- | --- | --- |
+| X | 5.600 m | 5.60000 m | 0.00000 | 0.010 m |
+| Y | 2.000 m | 1.94000 m | −0.06000 | 0.010 m |
+| **Z** | **0.950 m** | **0.97415 m** | **+0.02415** | **0.010 m** |
+
+The old code read `arc = halo_radius_m * 0.55 = 0.231 m` and placed segment centres at `base + 0.5·arc + arc·sin θ`, with `base = 0.605` and a maximum `sin θ` of `0.98982` over the twelve segments. That put the apex segment's centre at `0.94915 m` and its crown, after half the `0.050 m` tube thickness, at `0.97415 m`.
+
+The defect is structural rather than numeric. The arc height was tied to the halo *radius*, a value that has nothing to do with how much vertical room the car is allowed. Any future change to `halo_radius_m` — a plausible styling change — would have silently moved the roofline again. Solving the arc height from the ceiling inverts the dependency so that the envelope constrains the geometry instead of the geometry accidentally deciding the envelope.
+
+`check_design_envelope()` exists for a second-order reason. The failure surfaced at stage 5, after scene setup, generation, rigging and materials had all run and passed. Everything upstream of the check was correct and all of it was wasted. An arithmetic pre-flight that needs no Blender at all turns a five-stage round trip through CI into an immediate, local, readable failure naming the axis, the measured value, the design value and the overage.
+**Rejected.** Raising `overall_height_m` to accommodate the halo (fixes the assertion by moving the goalposts, and the envelope is a design constraint, not a derived quantity); loosening `TOLERANCE["length_m"]` (would have masked a real 24 mm breach and every future one); shrinking `halo_radius_m` (changes a styling value to fix an arithmetic bug, and leaves the structural dependency in place); scaling the whole halo (same objection, larger blast radius).
+**Consequence.** The halo apex now sits at exactly `0.940 m`, ten millimetres clear of the `0.950 m` ceiling, and it will follow the ceiling if the ceiling ever moves. The arc height is no longer a round number — it is `0.20807862693170662` — and that is the expected shape of a solved value rather than a chosen one. The body mesh is unchanged at 176 vertices and 132 polygons, so no downstream count, weight or LOD assumption is disturbed.
+**Verification.** `automatically validated`, at two levels. Locally, the shipped module was executed against a stub config carrying the real `DESIGN` numbers: `halo_arc_height_m()` returned `0.20807862693170662`, `halo_apex_z_m()` returned `0.94`, `measured_bounds_m()` returned `(5.6, 1.94, 0.94)`, and `check_design_envelope()` returned `(True, [])`. In CI, Blender 5.2.0 LTS runs the full seven-stage smoke test to completion and the job is green on the merged `main`.
+**Reversibility:** High. The helpers are module-level and self-contained; `af_pipeline_config.py` was deliberately not modified, so `config_hash()` is untouched by construction.
+
+---
+
+## D-041 — `af_pipeline_config.py::DESIGN` is the single source of truth for vehicle dimensions
+
+**Date:** 2026-08-11
+**Decision.** Where the Unreal side and the Blender side disagree about a physical dimension of the car, the Blender side wins. `UAFVehicleDefinition` is corrected to match: `OverallLengthM` `5.30` → `5.60`, `RearTrackM` `1.55` → `1.54`. `WheelbaseM` (`3.60`) and `FrontTrackM` (`1.60`) already agreed and are unchanged. A block comment in `AFVehicleDefinition.h` names `af_pipeline_config.py::DESIGN` as canonical so the next author does not have to rediscover the ordering.
+**Rationale.** The two halves of the project described **different cars**, and had done so since Milestone 1. The Unreal data asset claimed a 5.30 m car on a 1.55 m rear track; the Blender config generates a 5.60 m car on a 1.54 m rear track. Neither value is wrong in isolation, which is precisely why the disagreement survived: each side is internally consistent and nothing crosses between them yet.
+
+It would have surfaced eventually as a physics-versus-visual mismatch — a collision body that does not match the mesh it wraps — and that class of bug is diagnosed slowly because the symptom appears far from the cause. Ten minutes of dimension reconciliation now is worth considerably more later.
+
+Blender is chosen as canonical because D-010 already made it the source of truth for geometry, and these are geometry values. Blender's numbers are also the ones with a consumer: they are what `af_vehicle_generate.py` builds, what `af_validate.py` asserts against, and what the smoke test exercises on every push. The Unreal values had no consumer at all — nothing reads `OverallLengthM` yet, which is another reason the conflict went unnoticed. Making the *checked* side canonical means the invariant is maintained by a program rather than by memory.
+**Rejected.** Making Unreal canonical (contradicts D-010, and would require regenerating and re-validating all geometry to satisfy numbers nothing currently reads); leaving both and reconciling at import time (a conversion layer to paper over a disagreement that has no reason to exist); leaving both and documenting the discrepancy (records a defect instead of fixing a two-line one).
+**Consequence.** `UAFVehicleDefinition::DataVersion` stays at `2`. The changed fields have no runtime consumer yet, so no migration is required, and bumping the version would signal a schema change where only values moved. When a future dimension conflict appears, the resolution rule is now written down in the header itself.
+**Verification.** `statically inspected` and `requires local compilation`. The values were compared against the confirmed `DESIGN` dictionary and corrected; the header has never been compiled, because no compiler exists in the authoring environment.
+**Reversibility:** High. Four numbers and a comment.
+
+---
+
 ## Superseded Decisions
 
 None. No decision recorded here has yet been superseded.
@@ -421,7 +481,6 @@ None. No decision recorded here has yet been superseded.
 | D-023 to D-026 describe the behaviour actually written into the Milestone 0B scripts | statically inspected |
 | The rigid binding scheme in D-025 is what `binding_plan()` returns — nine meshes, deform bones only, nothing on Root or Steering | automatically validated |
 | The Blender-side effects of D-024, D-025 and D-026 occur as described when the scripts run | requires Blender execution |
-| Any decision has been validated by running the pipeline inside Blender | not claimed — `bpy` has never been available in the authoring environment |
 | D-027 records a layout choice the project brief genuinely leaves open | statically inspected — confirmed by searching the brief |
 | The Milestone 1 tree is laid out as D-027 describes | automatically validated |
 | The rules named in D-028 are enforced by a program that exits non-zero on violation | automatically validated |
@@ -433,4 +492,11 @@ None. No decision recorded here has yet been superseded.
 | The D-037 checker and its nine-case mutation suite pass on Python 3.9 and 3.12 | automatically validated |
 | The D-036 deferred-application behaviour occurs as described at run time | requires local compilation |
 | The D-038 defaults produce a coherent vehicle | requires playtesting |
+| Blender 5.2.0 LTS downloads, launches headless and runs the seven-stage smoke test (D-039) | automatically validated |
+| The D-039 retraction describes a hypothesis that was genuinely stated and is genuinely withdrawn | statically inspected |
+| The 0.97415 m measured height and the 0.02415 m overage quoted in D-040 are measured values | automatically validated |
+| The D-040 halo apex sits at 0.940 m and the design envelope check passes | automatically validated |
+| The D-040 body mesh is unchanged at 176 vertices and 132 polygons | automatically validated |
+| The D-041 dimension conflict existed as described, and the corrected values match `DESIGN` | statically inspected |
+| The D-041 header compiles, or `UAFVehicleDefinition` loads in the editor | not claimed — `requires local compilation` |
 | Any Milestone 1 or Milestone 2 C++ affected by these decisions has been compiled | not claimed — `requires local compilation` |
