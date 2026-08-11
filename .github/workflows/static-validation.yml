@@ -1,0 +1,71 @@
+name: Static Validation
+
+# Tier 1 verification only. Nothing is compiled here and no engine is
+# installed. See Documentation/TECHNICAL_ARCHITECTURE.md section 9.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: static-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: af_static_validate (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.9 is the documented floor in Tools/af_static_validate.py.
+        # 3.12 catches anything that only works on older interpreters.
+        python-version: ["3.9", "3.12"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Report interpreter
+        run: python --version
+
+      - name: Run static validation
+        run: python Tools/af_static_validate.py --root .
+
+  syntax:
+    name: Python syntax check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Byte-compile Tools
+        run: python -m compileall -q Tools
+
+      - name: Byte-compile Blender pipeline scripts
+        # These import bpy and cannot be executed without Blender, but they
+        # can still be parsed. A syntax error must never reach main.
+        run: |
+          if [ -d BlenderPipeline/scripts ]; then
+            python -m compileall -q BlenderPipeline/scripts
+          else
+            echo "BlenderPipeline/scripts not present; nothing to compile."
+          fi
