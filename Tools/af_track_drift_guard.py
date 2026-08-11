@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ApexFormula - track definition drift guard (D-045).
+"""UludagFormula - track definition drift guard (D-045).
 
 Mechanically compares the C++ validator ``UAFTrackDefinition::ValidateSelf()``
 against its hand-maintained Python mirror ``validate_track_definition()`` in
@@ -468,7 +468,7 @@ def run_against_root(root, verbose):
     )
 
     print(BAR)
-    print("ApexFormula track definition drift guard (D-045)")
+    print("UludagFormula track definition drift guard (D-045)")
     print(BAR)
     print("C++    : %s" % cpp_path)
     print("Python : %s" % py_path)
@@ -779,7 +779,7 @@ def run_self_test(verbose):
     failed = [c for c in cases if not c[1]]
 
     print(BAR)
-    print("ApexFormula track drift guard - self-test (D-045)")
+    print("UludagFormula track drift guard - self-test (D-045)")
     print(BAR)
     if verbose:
         for name, passed, detail in cases:
@@ -802,7 +802,7 @@ def run_self_test(verbose):
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     parser = argparse.ArgumentParser(
-        description="ApexFormula track definition drift guard (D-045).",
+        description="UludagFormula track definition drift guard (D-045).",
         add_help=True,
     )
     parser.add_argument("--root", help="repository root to check")
