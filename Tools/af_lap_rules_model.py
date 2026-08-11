@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
+# Copyright UludagFormula. Original work. Not affiliated with any real motorsport series.
 """
-af_lap_rules_model.py - executable reference model of the ApexFormula lap
+af_lap_rules_model.py - executable reference model of the UludagFormula lap
 timing and lap validity rules (Milestone 3).
 
 WHAT THIS IS
@@ -782,7 +782,7 @@ class SelfTest(object):
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description=(
-            "Executable reference model of the ApexFormula lap timing and lap "
+            "Executable reference model of the UludagFormula lap timing and lap "
             "validity rules. Transcribes AFSectorTimer.cpp and "
             "AFLapValidator.cpp; does not compile or replace them."
         )
@@ -803,7 +803,7 @@ def main(argv=None):
         parser.print_help()
         return 2
 
-    print("ApexFormula lap rules reference model - self-test")
+    print("UludagFormula lap rules reference model - self-test")
     print("  mirrors : AFSectorTimer.cpp, AFLapValidator.cpp")
     print("  python  : %d.%d.%d" % sys.version_info[:3])
     print("")
