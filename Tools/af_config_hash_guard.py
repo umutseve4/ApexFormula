@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""ApexFormula -- configuration hash drift guard (decision D-046).
+"""UludagFormula -- configuration hash drift guard (decision D-046).
 
 Purpose
 -------
