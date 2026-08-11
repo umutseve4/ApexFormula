@@ -50,6 +50,17 @@ jobs:
       - name: Blender pipeline config self-check
         run: python3 BlenderPipeline/scripts/af_pipeline_config.py
 
+      # Milestone 3. This EXECUTES the lap timing and lap validity rules.
+      # It has to be its own step: the compileall step below byte-compiles
+      # every script but runs none of them, so without this line the
+      # self-test would compile cleanly and prove nothing.
+      #
+      # A pass here means the rules are self-consistent and satisfy M3
+      # acceptance criteria 1-4 arithmetically. It does not mean the C++
+      # compiles - nothing in this repository has ever been compiled.
+      - name: Lap rules reference model self-test
+        run: python3 Tools/af_lap_rules_model.py --self-test
+
       - name: Byte-compile every script
         run: python3 -m compileall -q BlenderPipeline/scripts Tools
 
