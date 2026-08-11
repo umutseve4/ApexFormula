@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
+# Copyright UludagFormula. Original work. Not affiliated with any real motorsport series.
 
-"""ApexFormula interface override agreement checker.
+"""UludagFormula interface override agreement checker.
 
 Why this exists
 ---------------
@@ -31,7 +31,7 @@ Known blind spot, measured by the self-test: an out-of-line definition whose
 return type is a pointer written as `FVector *Class::Method()` is not matched,
 because the `*` binds to the name. The declaration in the header is still
 checked, so the contract is not unguarded, only checked once instead of twice.
-No ApexFormula interface currently returns a pointer.
+No UludagFormula interface currently returns a pointer.
 
 Verification status
 -------------------
@@ -272,11 +272,11 @@ def check_interface_overrides(root: str, report: Report) -> int:
 # mutations and nothing else. CI runs this, so the evidence is executed.
 # ---------------------------------------------------------------------------
 
-_IFACE = '''// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
+_IFACE = '''// Copyright UludagFormula. Original work. Not affiliated with any real motorsport series.
 
 #pragma once
 
-class APEXFORMULACORE_API IAFRaceParticipant
+class ULUDAGFORMULACORE_API IAFRaceParticipant
 {
 public:
 \tvirtual int32 GetParticipantId() const = 0;
@@ -285,7 +285,7 @@ public:
 };
 '''
 
-_HEADER = '''// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
+_HEADER = '''// Copyright UludagFormula. Original work. Not affiliated with any real motorsport series.
 
 #pragma once
 
@@ -298,7 +298,7 @@ public:
 };
 '''
 
-_CPP = '''// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
+_CPP = '''// Copyright UludagFormula. Original work. Not affiliated with any real motorsport series.
 
 int32 AAFVehiclePawn::GetParticipantId() const
 {
@@ -318,8 +318,8 @@ FVector AAFVehiclePawn::GetParticipantLocation() const
 
 
 def _build_tree(root: str, iface: str, header: str, cpp: str) -> None:
-    public = os.path.join(root, SOURCE_DIR, "ApexFormulaCore", "Public")
-    private = os.path.join(root, SOURCE_DIR, "ApexFormulaVehicle", "Private")
+    public = os.path.join(root, SOURCE_DIR, "UludagFormulaCore", "Public")
+    private = os.path.join(root, SOURCE_DIR, "UludagFormulaVehicle", "Private")
     os.makedirs(public)
     os.makedirs(private)
     with open(os.path.join(public, "AFRaceParticipantInterface.h"), "w") as handle:
@@ -457,7 +457,7 @@ def self_test() -> int:
 
 def main(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(
-        description="Check that ApexFormula interface overrides agree with their contracts."
+        description="Check that UludagFormula interface overrides agree with their contracts."
     )
     parser.add_argument(
         "--root",
@@ -479,7 +479,7 @@ def main(argv: Sequence[str]) -> int:
     root = args.root or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     root = os.path.abspath(root)
 
-    print("ApexFormula interface override agreement")
+    print("UludagFormula interface override agreement")
     print("repository root: %s" % root)
     print("")
     print("This script does NOT compile anything. A pass means every override")
