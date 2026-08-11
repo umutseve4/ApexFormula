@@ -1,14 +1,16 @@
-# ApexFormula — Vehicle System Architecture Decision Record
+# Uludağ Formula — Vehicle System Architecture Decision Record
 
 **Document status:** statically authored decision record (Milestone 0A). No vehicle code exists. No engine benchmark was run. No profiling data is presented, because none was collected.
 
 **Rule this document satisfies:** advanced vehicle implementation must not begin before a written architecture decision record exists. This is that record. It is the gate for Milestone 2 and Milestone 10.
 
+> **Naming note (D-048).** This project was previously called *Apex Formula*. The product name is now **Uludağ Formula**. The `AF_` asset prefix and the `UAF*` C++ symbol prefix used throughout this document are **retained deliberately** as the project's internal code name and are not part of the rename.
+
 ---
 
 ## 1. Decision Question
 
-Which vehicle physics foundation should ApexFormula use in Unreal Engine 5.8 for (a) the **first playable prototype** and (b) the **long-term simulation direction**?
+Which vehicle physics foundation should Uludağ Formula use in Unreal Engine 5.8 for (a) the **first playable prototype** and (b) the **long-term simulation direction**?
 
 ## 2. Candidates
 
@@ -16,9 +18,9 @@ Which vehicle physics foundation should ApexFormula use in Unreal Engine 5.8 for
 
 **B. Chaos Modular Vehicles** — the newer modular decomposition of vehicle behaviour into composable simulation modules rather than one monolithic movement component.
 
-**C. Custom simulation on top of Unreal physics** — ApexFormula authors its own tyre, suspension, aero and drivetrain models, applying forces to a rigid body each sub-step; the engine supplies rigid-body integration and collision only.
+**C. Custom simulation on top of Unreal physics** — Uludağ Formula authors its own tyre, suspension, aero and drivetrain models, applying forces to a rigid body each sub-step; the engine supplies rigid-body integration and collision only.
 
-**D. Hybrid** — a built-in system carries chassis, suspension and collision; ApexFormula overrides or layers the physically expressive parts (tyre force generation, aero, energy, fuel mass, brake thermals) on top.
+**D. Hybrid** — a built-in system carries chassis, suspension and collision; Uludağ Formula overrides or layers the physically expressive parts (tyre force generation, aero, energy, fuel mass, brake thermals) on top.
 
 ## 3. Evaluation Criteria
 
@@ -74,7 +76,7 @@ These are **assumptions requiring verification** and are listed in `Documentatio
 
 ## 4. Decision — First Playable Prototype
 
-**Chosen: A. Chaos Vehicles (built-in), wrapped behind an ApexFormula abstraction layer.**
+**Chosen: A. Chaos Vehicles (built-in), wrapped behind a Uludağ Formula abstraction layer.**
 
 Rationale:
 
@@ -88,25 +90,25 @@ Rationale:
 This choice is only acceptable with all of the following in place:
 
 - **`UAFVehicleCompatibilityLayer`** isolates every direct call into the engine vehicle API. Gameplay code never calls the engine vehicle component directly.
-- **ApexFormula-owned state stays ApexFormula-owned.** Tyre temperature/wear, aero, energy, fuel mass and brake thermals live in ApexFormula components from the start (see `Documentation/TECHNICAL_ARCHITECTURE.md` §4), even while the underlying force generation is still the built-in one. Only the *force source* is borrowed, never the *state model*.
-- **`StepSimulation(DeltaTime, InputFrame)`** is the entry point for ApexFormula subsystems, so the force source can later be swapped without touching call sites.
+- **Project-owned state stays project-owned.** Tyre temperature/wear, aero, energy, fuel mass and brake thermals live in Uludağ Formula components from the start (see `Documentation/TECHNICAL_ARCHITECTURE.md` §4), even while the underlying force generation is still the built-in one. Only the *force source* is borrowed, never the *state model*.
+- **`StepSimulation(DeltaTime, InputFrame)`** is the entry point for the project's own subsystems, so the force source can later be swapped without touching call sites.
 - **Bone names come from `UAFBoneNameMap`**, never from hardcoded strings, so a later change of vehicle system does not become a rig rewrite.
 - **Telemetry is captured through `UAFTelemetryBus`** from day one, so behaviour before and after any future migration is comparable.
 
 ## 5. Decision — Long-Term Direction
 
-**Chosen: D. Hybrid — engine-provided rigid body, collision and suspension solving; ApexFormula-authored tyre force generation, aerodynamics, energy, fuel-mass and brake-thermal models.**
+**Chosen: D. Hybrid — engine-provided rigid body, collision and suspension solving; project-authored tyre force generation, aerodynamics, energy, fuel-mass and brake-thermal models.**
 
 Rationale:
 
-1. Criteria 1, 2, 4, 5 and 11 — the criteria that decide whether the game feels like a formula car — all favour ApexFormula owning the force model.
+1. Criteria 1, 2, 4, 5 and 11 — the criteria that decide whether the game feels like a formula car — all favour Uludağ Formula owning the force model.
 2. Criteria 8, 13 and 14 — the criteria that decide whether the project survives — all favour not rewriting rigid-body dynamics, collision, or broadphase.
 3. Full custom (C) is rejected primarily on criteria 7, 13 and 14: bespoke network prediction plus bespoke solver maintenance is not a realistic burden for this project, and the realism gain over a hybrid is marginal.
 4. Pure built-in (A or B) is rejected as a *long-term* answer on criterion 2: the tyre model is the game, and it must be owned.
 
 **Migration path (A → D):** the abstraction layer means the migration is incremental, not a rewrite. Order: (1) aero forces move first — additive and low risk; (2) brake thermals and fuel mass — state-only, then force-affecting; (3) energy deployment; (4) tyre force generation last, because it is the largest behavioural change and requires the most re-tuning.
 
-**Gate:** migration steps 1–3 may begin during Milestone 10. Step 4 requires a re-review of this document and a new dated entry in `Documentation/DECISION_LOG.md`.
+**Gate:** migration steps 1–3 may begin during Milestone 10. Step 4 requires a re-review of this document and a new dated entry in `Documentation/DECISION_LOG_VOL2.md`.
 
 ## 6. Explicitly Rejected
 
@@ -127,4 +129,4 @@ Rationale:
 
 ## 8. Reversibility
 
-This record is reversible. Superseding it requires: a new dated entry in `Documentation/DECISION_LOG.md`, an amendment section appended to this document (originals are not deleted), and an explicit statement of which milestone the change affects.
+This record is reversible. Superseding it requires: a new dated entry in `Documentation/DECISION_LOG_VOL2.md` (volume 1, `DECISION_LOG.md`, is frozen at D-044), an amendment section appended to this document (originals are not deleted), and an explicit statement of which milestone the change affects.
