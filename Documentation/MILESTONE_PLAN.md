@@ -1,8 +1,14 @@
-# ApexFormula — Milestone Plan
+# Uludağ Formula — Milestone Plan
 
-**Document status:** statically authored plan, first written at Milestone 0A and kept current as later milestones are authored. Milestone numbering in this document is authoritative and is used identically in every other ApexFormula document. Milestone *bodies* below (objective, inputs, outputs, acceptance criteria) are the plan as authored and are not rewritten as work proceeds; current status is recorded separately in the Milestone Status table at the end of this document.
+**Document status:** statically authored plan, first written at Milestone 0A and kept current as later milestones are authored. Milestone numbering in this document is authoritative and is used identically in every other document of this project. Milestone *bodies* below (objective, inputs, outputs, acceptance criteria) are the plan as authored and are not rewritten as work proceeds; current status is recorded separately in the Milestone Status table at the end of this document.
 
 **Verification labels used throughout:** `statically inspected`, `automatically validated`, `requires Blender execution`, `requires Unreal Editor verification`, `requires local compilation`, `requires visual inspection`, `requires playtesting`.
+
+> **Naming note (D-048).** The product is **Uludağ Formula** (previously *Apex Formula*). Two categories of old-name strings appear below and are treated differently:
+> - **Queued for wave 2 — will change:** the six module identifiers `ApexFormulaCore`, `ApexFormulaVehicle`, `ApexFormulaRace`, `ApexFormulaUI`, `ApexFormulaEditor`, `ApexFormulaTests` in the Milestone 1 outputs. These are asserted by `Tools/af_static_validate.py` in at least eight places, so each rename must patch the guard in the same commit or CI turns red.
+> - **Permanent — will not change:** `AF_`, `af_`, `UAF*`, `FAF*`, `AAF*`, `IAF*`, `LogAF*` and the `af.` cvar prefix. D-048 reclassified these from "old product name" to this project's **internal code name**.
+>
+> Only product prose has been renamed in this document. No milestone status, acceptance criterion or verification label was altered.
 
 ---
 
@@ -84,6 +90,8 @@
 **Inputs.** `TECHNICAL_ARCHITECTURE.md`; UE 5.8 installed with a working Windows toolchain.
 
 **Outputs.** Unreal project; modules `ApexFormulaCore`, `ApexFormulaVehicle`, `ApexFormulaRace`, `ApexFormulaUI`, `ApexFormulaEditor`, `ApexFormulaTests`; base classes and empty Data Asset types including `UAFBoneNameMap` and `UAFQualityProfile`; logging category and `UAFTelemetryBus` skeleton; first automation tests.
+
+These six module identifiers still carry the previous product name. They are **wave-2 rename items** under D-048 and are quoted here exactly as they exist in the tree, so this plan keeps matching the source. Renaming them requires patching `af_static_validate.py`'s module list, dependency dictionary, engine-dependency table, `startswith` filters, `.uproject` checks, target-file checks and the C++ copyright literal — all in the same commit.
 
 **Dependencies.** 0A.
 
@@ -299,7 +307,7 @@
 
 ## Milestone 10 — Advanced Vehicle Simulation
 
-**Objective.** Replace simplified behaviour with the ApexFormula-owned tyre, aerodynamic, energy, fuel, brake and setup models, per the long-term hybrid decision.
+**Objective.** Replace simplified behaviour with the project's own tyre, aerodynamic, energy, fuel, brake and setup models, per the long-term hybrid decision.
 
 **Inputs.** `VEHICLE_SYSTEM_DECISION.md` §5 migration order; Milestone 5 vehicle.
 
@@ -378,6 +386,7 @@
 5. **Bone names live in `af_pipeline_config.py` and `UAFBoneNameMap`** and change together, never independently.
 6. **Nothing under `LocalReference/` is ever committed or packaged**, at any milestone.
 7. **Vehicle dimensions live in `af_pipeline_config.py::DESIGN`** and every other copy follows it (D-041).
+8. **The product rename is staged, not opportunistic.** Wave 1 changes display identity and prose only. Wave 2 changes module identifiers, the `.uproject`, the target files and the project ini, and every such commit must patch `Tools/af_static_validate.py` in the same commit (D-048).
 
 ---
 
@@ -406,11 +415,13 @@ The 0B row previously read "Not confirmed — no script has been run". That was 
 
 Criterion 4 now has partial evidence, which is not the same as being met. The naming *convention* is agreed between `af_pipeline_config.py` and `UAFBoneNameMap`, and that agreement is `automatically validated` by emulation (D-029). The Blender rig stage is *executed* in CI and prints all eleven bones with parent and head position in metres and centimetres, asserting `bone_count == 11`, `bone_order_matches_config == True` and nine bound meshes — so the producing side of the contract is continuously verified. What is unverified is the consuming side: no FBX has been imported into an Unreal editor, because no Unreal editor exists in this environment. The criterion closes when someone imports the exported asset and reads the resulting skeleton.
 
+**Rename status.** The product rename is a documentation-and-identity change, not a milestone. It does not appear as a row above and does not alter any status in the table. Wave 1 (display identity and prose) is in progress; wave 2 (module identifiers, `.uproject`, target files, project ini and the matching guard edits) has not started. Nothing in the rename has been compiled or executed in an engine.
+
 ## Verification Ledger for This Document
 
 | Claim | Label |
 | --- | --- |
-| Milestone numbering matches every other ApexFormula document | statically inspected |
+| Milestone numbering matches every other document of this project | statically inspected |
 | Dependencies form an acyclic order (0A → 0B → 1 → 2 → …) | statically inspected |
 | Every referenced document and section exists | statically inspected |
 | Acceptance criteria are checkable rather than aspirational | statically inspected |
@@ -422,4 +433,6 @@ Criterion 4 now has partial evidence, which is not the same as being met. The na
 | Milestone 2 criterion 3 is met | automatically validated |
 | Milestone 2 criterion 4 has partial (producing-side) evidence in CI | automatically validated |
 | Milestone 2 criterion 4 is met | not claimed — `requires Unreal Editor verification` |
+| The product name "Uludağ Formula" matches none of the prohibited identifier patterns in `af_static_validate.py` | automatically validated |
+| The six module identifiers still carry the previous product name and are queued for wave 2 | statically inspected |
 | Any milestone beyond 0A and 0B is complete | not claimed |
