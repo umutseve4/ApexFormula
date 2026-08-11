@@ -161,8 +161,9 @@ retrievable by the tooling used in this project. See `CI_EVIDENCE.md` §6.
 ## 4. D-043 — circuit layout values live in the generator, and the validator
 mirror is hand-maintained
 
-**Status:** accepted, with a named risk. Partially superseded by **D-044** —
-see the amendment at the end of decision B.
+**Status:** accepted, with a named risk. Decision B superseded in part by
+**D-044** and then closed by **D-045** — see the two amendments at the end of
+decision B.
 
 ### Decision A — layout values are not in `DESIGN`
 
@@ -210,23 +211,50 @@ automation across the language boundary and which runs in CI on every push
 and pull request. It closes that gap **for the D-042 lap-rules mirror only** —
 `UAFSectorTimer` / `SectorTimer` and `UAFLapValidator` / `LapValidator`.
 
-What did **not** change: the guard's `CLASS_PAIRS` table does not include
+~~What did **not** change: the guard's `CLASS_PAIRS` table does not include
 `UAFTrackDefinition`, and none of its 16 behavioural rules reference
 `ValidateSelf()` or `validate_track_definition()`. **Decision B's mirror is
 still hand-maintained and still unguarded.** After D-044 it is the *remaining*
-instance of this drift class in the repository, not one of two.
+instance of this drift class in the repository, not one of two.~~
+
+**Amended again by D-045.** The second struck-through paragraph was accurate
+between PR #10 and PR #12 and is likewise kept visible.
+
+D-045 added `Tools/af_track_drift_guard.py` (PR #12, merge commit
+`a77dcd50cad331242d8c3fca0739010f0f832006`). It is a **separate** program, not
+an extension of `CLASS_PAIRS` — see `MILESTONE_3_IMPLEMENTATION.md` §6B for why
+that structural choice was made. It runs in the same `static-validation` job,
+on every push and pull request, and it fails the build when the two validators
+disagree.
+
+The mirror is still **written** by hand. What changed is that it can no longer
+drift *silently*: an unmatched edit on either side now fails CI.
 
 | Mirror | Decision | Automated parity check |
 |---|---|---|
 | `UAFSectorTimer` ↔ `SectorTimer` | D-042 | yes — D-044, checks A/B/C |
 | `UAFLapValidator` ↔ `LapValidator` | D-042 | yes — D-044, checks A/B/C |
-| `UAFTrackDefinition::ValidateSelf()` ↔ `validate_track_definition()` | D-043 B | **no — open gap** |
+| `UAFTrackDefinition::ValidateSelf()` ↔ `validate_track_definition()` | D-043 B | **yes — D-045, checks A/B/C** |
 
-The 16 mutation cases and the 5 agreement cases remain the only mitigations
-here, and both test the Python side against itself. Neither can observe the
-C++ file. Closing this properly means extending `CLASS_PAIRS` and the `RULES`
-table in `Tools/af_drift_guard.py` to cover the track definition pair; that
-work is **not** scheduled and is **not** claimed.
+As of PR #12 there is **no known unguarded C++/Python mirror in the
+repository.** That statement is scoped to mirrors that are known and recorded;
+it is not a proof that none exists.
+
+The 16 mutation cases and the 5 agreement cases remain in place and remain
+Python-side-only. They are complementary to the guard, not replaced by it: the
+guard proves the two files *say* the same thing, the mutation cases prove the
+Python one *behaves* correctly. Neither proves the C++ behaves correctly,
+because the C++ has still never been compiled.
+
+### Known stale text, not yet corrected
+
+The module docstring of `BlenderPipeline/scripts/af_circuit_generate.py` still
+reads that the mirror is "maintained BY HAND. Nothing mechanically ties it to
+the C++." The first sentence is still true; the second is now false. The fix is
+deferred purely for mechanical reasons — the file is 42,975 bytes and the
+tooling available here rewrites whole files, so a one-line correction carries a
+real truncation risk. Recorded here so the staleness is disclosed rather than
+discovered.
 
 ---
 
@@ -241,6 +269,8 @@ All merged with every distinct check name green. Label:
 | #6 | `Documentation/MILESTONE_3_IMPLEMENTATION.md` | `6b8038fa05fd5a6a40e2fc1dbf7ef6febbfa5e1a` |
 | #7 | `BlenderPipeline/scripts/af_circuit_generate.py` (84 self-test cases), workflow step, workflow restore | `7617a530392d155039a4ea81e5ed032f0b0f3d3f` |
 | #10 | `Tools/af_drift_guard.py` (31 self-test cases, 11 mutation tests) plus two workflow steps — **D-044** | `bf602b2c053fb886a0d83741d4e6f8c51b6003dd` |
+| #11 | D-044 documentation | `dfc696cff6efeeed523a7ac468c2a66268771303` |
+| #12 | `Tools/af_track_drift_guard.py` (27 self-test cases) plus two workflow steps — **D-045** | `a77dcd50cad331242d8c3fca0739010f0f832006` |
 
 ### PR #7 check runs
 
@@ -274,6 +304,21 @@ a new file and `.github/workflows/validate.yml` +19 as a modification. Zero
 deletions on the workflow file is direct evidence that the PR #7 truncation
 class of bug did not recur. Full detail in `CI_EVIDENCE.md` §6A.
 
+### PR #12 check runs
+
+**10 runs, 5 distinct names, every one `conclusion: success`.** Workflow runs
+observed: `31517348832`, `31517348846`, `31517409235`, `31517409242`.
+
+The merge diff is **2 files, +854 / −0**: `Tools/af_track_drift_guard.py` +829
+as a new file and `.github/workflows/validate.yml` +25 as a modification. Zero
+deletions again.
+
+This run is the **authoritative** evidence for D-045, and it is stronger than
+the local runs it corroborates. Locally the guard was exercised against a
+reduced 3,290-byte reconstruction of the generator; in CI it ran with
+`--root .` against the real 42,975-byte file and the real
+`AFTrackDefinition.cpp`, and exited 0. Full detail in `CI_EVIDENCE.md` §7A.
+
 ### Blender version note
 
 The `Blender smoke test (headless)` job resolves and runs **Blender 5.2 LTS**
@@ -295,13 +340,19 @@ completion claim without labelled evidence, and two criteria have none.
 | 2 | Lap invalidation rules | Implemented and mirrored, first-cause-wins semantics tested, mirror parity enforced in CI | `automatically validated` (model + parity) / `requires local compilation` (C++) |
 | 3 | Checkpoint ordering and direction | Implemented and mirrored | `automatically validated` (model only) / `requires local compilation` (C++) |
 | 4 | Session phases and types | Enums and structs authored | `requires local compilation` |
-| 5 | Race test environment geometry | Generator authored, 84 cases pass, layout produced; validator mirror **unguarded** | `automatically validated` (maths) / `requires Blender execution` (mesh) |
+| 5 | Race test environment geometry | Generator authored, 84 cases pass, layout produced; validator mirror **parity enforced in CI since D-045** | `automatically validated` (maths + parity) / `requires Blender execution` (mesh) |
 
 The honest summary: the *rules* of a valid lap are specified, mirrored, tested,
 and — since D-044 — mechanically proven to be the same rules on both sides of
 the language boundary; the *circuit* is specified and tested arithmetically,
-with its C++/Python mirror still hand-maintained; and **none of it has been
-compiled, imported, or driven.** Milestone 3 becomes complete when a human
-with Unreal 5.8 and Blender 5.2 compiles the module, runs the generator inside
-Blender, imports the result, and drives a lap that the validator accepts and a
-second lap that it correctly rejects.
+and since D-045 its validator mirror is under the same mechanical guard; and
+**none of it has been compiled, imported, or driven.** Milestone 3 becomes
+complete when a human with Unreal 5.8 and Blender 5.2 compiles the module, runs
+the generator inside Blender, imports the result, and drives a lap that the
+validator accepts and a second lap that it correctly rejects.
+
+Note the exact scope of what the two guards buy. They prove that the C++ and
+the Python **state the same rules**. They do not prove that either side
+executes correctly, because the C++ is never compiled in CI and the guard reads
+text rather than behaviour. Drift is now caught; correctness of the C++ is
+still entirely unevidenced.
