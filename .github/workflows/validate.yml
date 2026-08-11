@@ -116,6 +116,33 @@ jobs:
       - name: Track definition drift guard
         run: python3 Tools/af_track_drift_guard.py --root . --verbose
 
+      # Milestone 4, decision D-046. af_pipeline_config.py has always
+      # computed a SHA-256 over effective_config(), and describe() has
+      # always printed its first sixteen characters, but nothing failed
+      # when that value changed. DESIGN is the single source of truth for
+      # every generated dimension (D-041): one edited number changes every
+      # downstream artefact and silently falsifies every hash quoted in
+      # prose.
+      #
+      # Same two-step shape as the two guards above, same reason for the
+      # ordering.
+      - name: Configuration hash guard self-test
+        run: python3 Tools/af_config_hash_guard.py --self-test
+
+      # Then against the genuine checked-out sources. A failure here means
+      # one of three things: the effective configuration changed and the
+      # pin was not updated, a document quotes a hash that is no longer
+      # current, or describe() stopped reporting the computed value. All
+      # three are real. Fix the cause, never the check, and never add
+      # continue-on-error to this step.
+      #
+      # This IMPORTS af_pipeline_config.py as plain CPython and reads
+      # text. It does not start Blender, does not generate a mesh and does
+      # not prove the configuration is correct - only that the module, the
+      # pin and the prose agree.
+      - name: Configuration hash guard
+        run: python3 Tools/af_config_hash_guard.py --root . --verbose
+
       - name: Byte-compile every script
         run: python3 -m compileall -q BlenderPipeline/scripts Tools
 
