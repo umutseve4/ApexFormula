@@ -13,6 +13,11 @@ using UnrealBuildTool;
 /// See Documentation/VERSION_MATRIX.md section 5.21 and
 /// Documentation/VEHICLE_SYSTEM_DECISION.md section 7.
 /// All engine vehicle API usage is isolated behind UAFVehicleCompatibilityLayer.
+///
+/// Milestone 2 additions:
+///   InputCore  - key and axis identifiers referenced by input mapping assets.
+/// EnhancedInput was already listed before any input code existed; Milestone 2
+/// is the first milestone that actually consumes it, in AFPlayerController.cpp.
 /// </summary>
 public class ApexFormulaVehicle : ModuleRules
 {
@@ -32,7 +37,8 @@ public class ApexFormulaVehicle : ModuleRules
 		{
 			"PhysicsCore",
 			"ChaosVehicles",
-			"EnhancedInput"
+			"EnhancedInput",
+			"InputCore"
 		});
 	}
 }
