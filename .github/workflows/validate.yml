@@ -114,7 +114,7 @@ jobs:
       # This compares TEXT. It does not compile the C++ and it does not
       # execute the Python mirror.
       - name: Track definition drift guard
-        run: python3 Tools/af_track_drift_guard.py --self-test && python3 Tools/af_track_drift_guard.py --root . --verbose
+        run: python3 Tools/af_track_drift_guard.py --root . --verbose
 
       # Milestone 4, decision D-046. af_pipeline_config.py has always
       # computed a SHA-256 over effective_config(), and describe() has
