@@ -8,9 +8,10 @@ An original 3D formula racing game built with Unreal Engine 5.8 and Blender 5.2 
 
 > **Rename in progress (D-048):** the project was previously called *Apex Formula*. The product
 > name is now **Uludağ Formula**. The rename is being applied in waves and is **not finished**.
-> The Unreal module names, the C++ file names, the `AF_`/`af_` prefixes and the validator
-> scripts still carry the old identity. See [Naming](#naming) for exactly what has and has not
-> moved.
+> The Unreal module names, the C++ file names and the validator scripts still carry the old
+> identity. The `AF_`/`af_` symbol prefixes are a separate matter: they are **deliberately
+> retained** and are no longer part of the rename. See [Naming](#naming) for exactly what has
+> moved, what is still queued, and what will never move.
 
 ---
 
@@ -22,8 +23,8 @@ Three distinct names exist in this repository and they are not interchangeable.
 | --- | --- | --- | --- |
 | Product name | `Uludağ Formula` | Displayed title, project description, documentation prose | **Applied** |
 | Identifier form | `UludagFormula` | Repository name, `ProjectName`, `CompanyName` | **Partially applied** |
-| Internal code name | `ApexFormula*` | Unreal module names, directories, `.uproject`, `.Build.cs`, `.Target.cs` | **Not yet migrated** |
-| Symbol prefix | `AF_`, `af_`, `UAF`, `AAF`, `FAF`, `IAF` | C++ types, asset prefix, bone names, Python scripts | **Not yet migrated** |
+| Internal code name | `ApexFormula*` | Unreal module names, directories, `.uproject`, `.Build.cs`, `.Target.cs` | **Queued — wave 2** |
+| Symbol prefix | `AF_`, `af_`, `UAF`, `AAF`, `FAF`, `IAF` | C++ types, asset prefix, bone names, Python scripts | **Retained by decision — will not move** |
 
 The identifier form drops the breve because Unreal Build Tool requires the module name, the
 directory name and the `ModuleRules` C# class name to be the same ASCII token. The same
@@ -31,24 +32,55 @@ constraint applies to FBX bone names crossing the Blender→Unreal boundary and 
 CI. The accented form is therefore confined to display strings and prose, which is where it is
 actually seen.
 
+### Scope of the rename (D-048, option 2)
+
+Three options were costed. Option 2 was chosen and the choice is final.
+
+| Option | Scope | Files touched | CI risk |
+| --- | --- | --- | --- |
+| 1 | Display identity only | ~19 | near zero |
+| **2 — chosen** | Option 1 plus the six Unreal modules, `.uproject`, both `.Target.cs`, `Config/DefaultApexFormula.ini`, the `APEXFORMULA*_API` macros, the module class names, the copyright header in 65 C++ files, and the validator's module tables | ~35 edited, 65 moved | medium |
+| 3 | Option 2 plus `AF_` → `UF_` everywhere | ~114 | high |
+
+Option 3 was rejected for four measured reasons:
+
+1. Eleven bone names begin with `AF_` and the static validator asserts on that prefix in four
+   separate places. The bone names are a contract that crosses the Blender→Unreal boundary; the
+   FBX and the C++ `UAFBoneNameMap` must agree exactly.
+2. The `AF_CP_` checkpoint prefix is embedded in `af_circuit_generate.py` and
+   `af_lap_rules_model.py`, whose self-test suites carry 84 and 68 cases respectively — 152
+   assertions would have to be re-derived.
+3. Renaming `af_pipeline_config.py` breaks a hard-coded path inside the configuration digest
+   guard and forces its pinned digest to be re-derived (D-046).
+4. It is invisible to a player. Roughly 80 % of the total rename cost buys 0 % of the
+   user-visible benefit.
+
+`AF_`/`af_` is therefore reclassified from "old product name" to **internal code name**, which is
+an ordinary and defensible thing for a codebase to have. It is documented, not accidental.
+
 Applied so far:
 
 - `Unreal/Config/DefaultGame.ini` — `ProjectName`, `CompanyName`, `ProjectDisplayedTitle`,
-  `Description`
+  `Description`, `Homepage`
 - This README
+- `Documentation/MILESTONE_4_IMPLEMENTATION.md` and `Documentation/DECISION_LOG_VOL2.md`
 - The GitHub repository itself, renamed to `UludagFormula`
 
 Not applied yet, and each one is tracked as a separate wave:
 
+- Product-name prose in ten remaining `Documentation/` files, `Unreal/README.md` and
+  `BlenderPipeline/README.md`
 - Six Unreal module names and their directories (`ApexFormulaCore`, `ApexFormulaVehicle`,
   `ApexFormulaRace`, `ApexFormulaUI`, `ApexFormulaEditor`, `ApexFormulaTests`)
 - `ApexFormula.uproject`, `ApexFormula.Target.cs`, `ApexFormulaEditor.Target.cs`,
   `Config/DefaultApexFormula.ini`
-- 65 C++ files, their `#include` graph, their `APEXFORMULA*_API` macros and the
+- 65 C++ files: their `APEXFORMULA*_API` macros, their `FApexFormula*Module` class names and the
   `// Copyright ApexFormula.` header line that `af_static_validate.py` enforces on every one
-- The `AF_`/`af_` prefixes, the eleven bone names and the `AF_CP_` checkpoint prefix
-- The seven `Tools/af_*.py` validators and the nine `BlenderPipeline/scripts/af_*.py` scripts
-- Both workflow files, whose script paths follow the script names
+- The module tables inside `Tools/af_static_validate.py`, then both workflow files
+
+Explicitly **out of scope and staying as they are**: the `AF_`/`af_` prefixes, the eleven bone
+names, the `AF_CP_` checkpoint prefix, the `UAF`/`AAF`/`FAF`/`IAF` C++ type prefixes, the seven
+`Tools/af_*.py` filenames and the nine `BlenderPipeline/scripts/af_*.py` filenames.
 
 `Tools/af_static_validate.py` hard-codes the module dependency graph, the `.uproject` filename,
 both `.Target.cs` filenames, the settings section name and the copyright header line — 87
@@ -85,12 +117,22 @@ UludagFormula/
 | `DRIVER_PIPELINE_DESIGN.md` | Driver/MetaHuman workflow and its privacy constraints |
 | `MILESTONE_PLAN.md` | Milestones 0A–12 with acceptance criteria and exclusions |
 | `MILESTONE_2_IMPLEMENTATION.md` | What Milestone 2 added, and what it does not prove |
+| `MILESTONE_3_CIRCUIT.md` | The Crescent Vale test circuit specification |
+| `MILESTONE_3_IMPLEMENTATION.md` | What Milestone 3 added, and what it does not prove |
+| `MILESTONE_4_IMPLEMENTATION.md` | Mesh quality gate, the configuration digest guard, the rename |
 | `VERSION_MATRIX.md` | Pinned environment and version-sensitive assumptions |
-| `DECISION_LOG.md` | Numbered decision records D-001 onward |
+| `CI_EVIDENCE.md` | Recorded CI run identifiers and what each one proves |
+| `DECISION_LOG.md` | Numbered decision records D-001 to D-044 — **frozen** |
+| `DECISION_LOG_VOL2.md` | Numbered decision records D-045 onward — **live** |
+
+The decision log is split into volumes. Volume 1 reached 50 KB, at which point appending a
+single row meant retranscribing the whole file, and in practice the ledger stopped being
+updated. Volume 1 is now frozen and authoritative for D-001 to D-044; new decisions go into
+volume 2. A new volume is opened whenever the current one passes roughly 20 KB.
 
 Suggested reading order: `PROJECT_VISION` → `TECHNICAL_ARCHITECTURE` →
 `VEHICLE_SYSTEM_DECISION` → `BLENDER_PIPELINE_DESIGN` → `DRIVER_PIPELINE_DESIGN` →
-`MILESTONE_PLAN` → `VERSION_MATRIX` → `DECISION_LOG`.
+`MILESTONE_PLAN` → `VERSION_MATRIX` → `DECISION_LOG` → `DECISION_LOG_VOL2`.
 
 ## Technology
 
@@ -111,10 +153,8 @@ Full detail and the list of assumptions that still require local verification ar
 
 ## Conventions
 
-These are the conventions **as they exist in the tree today**. They are pre-rename and are
-scheduled to migrate; see [Naming](#naming).
-
 - Asset prefix `AF_`; C++ prefixes `UAF`, `AAF`, `FAF`, `IAF`; Blender script prefix `af_`.
+  These are the **internal code name** and are permanent; see [Naming](#naming).
 - Metres inside Blender, centimetres at the Unreal boundary (`CM_PER_UNIT = 100.0`).
 - Bone names are defined once (`af_pipeline_config.py` / `UAFBoneNameMap`) and never hardcoded.
 - Vehicle dimensions are defined once, in `af_pipeline_config.py::DESIGN`. `UAFVehicleDefinition`
@@ -151,7 +191,8 @@ committed, packaged or transmitted. See `Documentation/DRIVER_PIPELINE_DESIGN.md
 | **0B — Blender pipeline foundation** | Complete, **executed and green in CI** | `BlenderPipeline/` — nine `af_*.py` scripts |
 | **1 — Unreal project foundation** | Complete, never compiled | `Unreal/` — six C++ modules; `Tools/af_static_validate.py` |
 | **2 — Vehicle implementation** | Authored and merged; 1 of 4 acceptance criteria met | Vehicle/pawn/controller implementations, 37 automation tests, `Tools/af_validate_interfaces.py` |
-| **3 onwards** | Partial | See `Documentation/MILESTONE_PLAN.md` |
+| **3 — Circuit and lap rules** | Partial | `Tools/af_circuit_generate.py`, `Tools/af_lap_rules_model.py` |
+| **4 — Quality gates and rename** | In progress | `Tools/af_mesh_quality.py`, `Tools/af_config_hash_guard.py`, wave 1 of D-048 |
 
 "Complete, never compiled" for Milestone 1 means every file is authored and the static validator
 passes with zero failures, but **nothing has been compiled**, no editor has been opened and no
@@ -200,10 +241,12 @@ Tools/             Standalone tooling that needs neither Blender nor Unreal
 python3 Tools/af_static_validate.py     --root .
 python3 Tools/af_validate_interfaces.py --self-test
 python3 Tools/af_validate_interfaces.py --root .
+python3 Tools/af_mesh_quality.py        --self-test
+python3 Tools/af_config_hash_guard.py   --self-test
 ```
 
-Standard library only; neither needs an engine. Both run in CI on Python 3.9 and 3.12 on every
-push.
+Standard library only; none of them needs an engine. All run in CI on Python 3.9 and 3.12 on
+every push.
 
 `af_static_validate.py` enforces the module dependency graph, the module boundaries, the
 vehicle-backend chokepoint, telemetry literal containment, path portability, header hygiene, the
@@ -221,6 +264,10 @@ normals, bounds and budgets — across 13 check families. Its `--self-test` carr
 cases and runs before the real audit, same house rule. It was written in Milestone 4 and
 immediately found a real defect: every face produced by the box generator was wound inward,
 giving a signed volume of −1.0. The generator was fixed, not the test (D-047).
+
+`Tools/af_config_hash_guard.py` pins the pipeline configuration against a recorded digest and
+fails the build if a document quotes a digest that no longer matches. Its `--self-test` carries
+44 cases (D-046).
 
 A third job runs the Blender pipeline itself:
 
@@ -242,4 +289,5 @@ downward from the envelope instead of being scaled from the halo tube radius, an
 
 ## Next milestone
 
-**3.** See `Documentation/MILESTONE_PLAN.md`.
+**4** — finish the D-048 rename waves, then close the open Milestone 3 items. See
+`Documentation/MILESTONE_PLAN.md` and `Documentation/MILESTONE_4_IMPLEMENTATION.md`.
