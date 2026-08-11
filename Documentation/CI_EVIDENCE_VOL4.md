@@ -50,6 +50,11 @@ two workflow files both trigger on pull request:
 | `af_static_validate (py3.12)` | 2 |
 | `Python syntax check` | 2 |
 
+Note that this count is a count of check **runs**, not of steps. Adding a step
+to an existing job, as batch 7 did, leaves the expected total at ten. A batch
+that adds a step and still returns ten runs has not thereby proved the step
+exists; that requires reading the workflow file, which section 2A.4 does.
+
 ---
 
 ## 2. Batch 6
@@ -139,6 +144,128 @@ pristine guard from a modified one that still passes.
 
 ---
 
+## 2A. Batch 7
+
+### 2A.1 Setup
+
+| Field | Value |
+|---|---|
+| Branch | `ci/wave2-verify-7`, created from `main` |
+| Branch head at creation | `c6b1013ead167e0eced964e881003682551a61ac`, verified equal to the `main` tip |
+| Marker file | `Documentation/CI_MARKER_WAVE2_7.md`, present on the branch only |
+| Marker commit | `5dd77051ab198d172a39adbc1bb37b455d170f2e` |
+| Marker blob | `f03f84a3ed50c1db8cb67067637ccfd4675b800e` |
+| Marker size | 1,174 bytes |
+| Marker author date | `2026-08-11T23:54:15Z` |
+| Pull request | #25, draft, head `ci/wave2-verify-7`, base `main`, identifier `4257865682` |
+| Disposition | closed without merging |
+
+### 2A.2 Commits covered
+
+| # | Commit | Change |
+|---|---|---|
+| 1 | `a09728e8` | added `BlenderPipeline/scripts/af_bodywork_profile.py`, 26,877 bytes, blob `57a3d74e5ca06169982597be2744403cd8351183` |
+| 2 | `c6b1013e` | added an executing step to `.github/workflows/validate.yml`, new blob `11ba317f3f9179a1827f8e2dab007ddd97a82c03`, 12,999 bytes |
+
+Both are gated file types under section 3, so the batch is owed rather than
+discretionary.
+
+### 2A.3 Result
+
+Ten check runs, all `completed`, all `success`. Earliest `started_at` was
+`23:54:21Z`, six seconds after the marker author date; latest completion was
+`23:55:22Z`. The acceptance rule is satisfied on all four clauses.
+
+| Job | Identifier | Started | Completed |
+|---|---|---|---|
+| `Blender smoke test (headless)` | 93965245746 | 23:54:43Z | 23:55:22Z |
+| `Blender smoke test (headless)` | 93965218758 | 23:54:34Z | 23:55:09Z |
+| `Static validation (no engine, no DCC)` | 93965203993 | 23:54:29Z | 23:54:40Z |
+| `Static validation (no engine, no DCC)` | 93965181064 | 23:54:21Z | 23:54:32Z |
+| `af_static_validate (py3.9)` | 93965203937 | 23:54:29Z | 23:54:42Z |
+| `af_static_validate (py3.9)` | 93965182808 | 23:54:22Z | 23:54:36Z |
+| `af_static_validate (py3.12)` | 93965203958 | 23:54:29Z | 23:54:37Z |
+| `af_static_validate (py3.12)` | 93965182840 | 23:54:21Z | 23:54:27Z |
+| `Python syntax check` | 93965203868 | 23:54:29Z | 23:54:36Z |
+| `Python syntax check` | 93965182913 | 23:54:22Z | 23:54:29Z |
+
+All timestamps are on `2026-08-11`. The four workflow runs were `31548239146`,
+`31548239148`, `31548249184` and `31548249205`. One poll was sufficient.
+
+### 2A.4 What is new about this batch
+
+Every batch from 1 to 6 was structural in the sense of section 5: it proved
+files parse and the declared graph is self-consistent. Batch 7 is the first
+whose green result also proves that a module's own cases **ran to completion on
+hardware the author does not control**.
+
+The distinction is not academic. The withdrawn `af_bodywork_profile.py` had a
+505-line self-test that its author reported as passing, and that suite has never
+been observed to run anywhere. Nothing in this workflow would have caught that,
+because `compileall` byte-compiles without importing: a module whose maths was
+entirely wrong would still have produced ten green runs. D-056 refused to accept
+the module for exactly this reason.
+
+The step added in `c6b1013e` is what removes that hole for the re-authored
+module:
+
+```
+      - name: Bodywork geometry core self-test
+        run: python3 BlenderPipeline/scripts/af_bodywork_profile.py --self-test
+```
+
+The step's presence was verified by reading the committed workflow blob, not
+inferred from the run count, since the run count is insensitive to step
+additions.
+
+### 2A.5 Byte-identity of the module under test
+
+The module was authored and executed locally before being committed. The local
+git blob hash was computed as `sha1("blob " + length + NUL + bytes)` and
+compared against the blob hash GitHub returned for the commit:
+
+| Source | Blob hash | Size |
+|---|---|---|
+| local file, the one actually executed | `57a3d74e5ca06169982597be2744403cd8351183` | 26,877 B |
+| committed on `main` at `a09728e8` | `57a3d74e5ca06169982597be2744403cd8351183` | 26,877 B |
+
+They match, so the file that CI ran is the file that was tested locally, with no
+transcription drift in between. In an environment with no git binary and no
+patch mode, where every write is a full-file retranscription, this check is the
+only defence against a silently truncated rewrite, and it is now required for
+every code commit.
+
+### 2A.6 Local measurements this batch corroborates
+
+The self-test reported, both locally and on the runner:
+
+```
+af_bodywork_profile slice 1: 22 cases, 72 assertions, 0 failures
+```
+
+Supporting figures measured locally by a separate harness, for
+`chord = 1.0`, `thickness = 0.10`, `camber = 0.0`:
+
+| Sample count | Points returned | Peak half-thickness |
+|---|---|---|
+| 6 | 4 | 0.04212 |
+| 12 | 10 | 0.04910 |
+| 24 | 22 | 0.04995 |
+| 40 | 38 | 0.04990 |
+| 400 | 398 | 0.05000 |
+
+The series is non-monotone between 24 and 40 samples. That is sampling
+behaviour, not a defect: the peak of the thickness distribution is not required
+to coincide with a sample position. Point counts are `n - 2` in every row.
+
+A backward loft of three rings of ten vertices, swept toward negative X,
+produced `signed_volume = +0.19952084794791036`, Euler characteristic 2, and
+zero boundary edges, non-manifold edges and coincident vertices. The
+inward-normal defect recorded against the withdrawn module is therefore
+structurally prevented rather than merely absent.
+
+---
+
 ## 3. Coverage policy, superseding volume 3 section 8.3
 
 Section 8.3 of `Documentation/CI_EVIDENCE_VOL3.md` required every commit on
@@ -167,6 +294,8 @@ Consequences already in effect:
 * Commit `dc966c21`, which carries D-054 and D-055, is Markdown-only and carries
   no obligation.
 * The commit that creates this file is Markdown-only and carries no obligation.
+* The commit that records batch 7 in this file is Markdown-only and carries no
+  obligation.
 
 The acceptance rule in section 1 is unchanged. This policy governs *when* a
 batch is owed, never *what counts as passing*.
@@ -192,24 +321,35 @@ batch is owed, never *what counts as passing*.
    `main`; the marker files exist only on their disposable branches.
 
 Fifty-five seconds is a lower bound observed to be usually but not always
-sufficient. Batch 4 required the second poll; batch 6 did not.
+sufficient. Batch 4 required the second poll; batches 6 and 7 did not.
 
 ---
 
 ## 5. Standing limits on what a green batch proves
 
-A green batch proves exactly three things:
+A green batch proves exactly four things:
 
 1. Every Python file under `Tools/` and `BlenderPipeline/scripts/` compiles
    under Python 3.9, 3.11 and 3.12.
 2. The static validation entry point exits zero, meaning the declared module
    graph, dependency table, prohibited-identifier rules, C++ copyright and
    pragma rules, required configuration keys and bone-name expectations are
-   internally consistent; and the self-tests invoked by `validate.yml` pass.
-3. The headless Blender smoke test completes.
+   internally consistent.
+3. Every self-test **explicitly invoked as its own step** in `validate.yml`
+   passes on a clean runner. As of batch 7 those are: lap rules model, drift
+   guard, circuit generator, track drift guard, configuration digest guard,
+   mesh quality gate and bodywork geometry core, plus the two guards' runs
+   against the real sources.
+4. The headless Blender smoke test completes.
 
-It proves none of the following, none of which has ever occurred in this
-project:
+Clause 3 is narrower than it looks and the narrowness is the point. A module
+with no step of its own is byte-compiled and never imported, so its behaviour is
+entirely unverified no matter how many cases it contains. Adding a module to
+this repository without adding a step is what produced the situation D-056 had
+to resolve.
+
+A green batch proves none of the following, none of which has ever occurred in
+this project:
 
 * No C++ has been compiled. No build tool has been invoked.
 * No Unreal project has been opened.
@@ -217,9 +357,9 @@ project:
 * No mesh has been inspected visually.
 * No lap has been driven. No playtest has occurred.
 
-Continuous integration here is a **structural** gate, not an **execution** gate.
-It confirms that the declared structure is self-consistent. It cannot confirm
-that anything runs. Milestone advancement requires the author's own machine with
+Continuous integration here remains overwhelmingly a **structural** gate. Clause
+3 makes it an execution gate for a named and short list of modules, and for
+nothing else. Milestone advancement requires the author's own machine with
 Unreal Engine and Blender installed, and no number of green batches substitutes
 for that.
 
@@ -237,5 +377,6 @@ for that.
 | 4 | #22 | `5961d95b` | 22:39:47Z | 10/10 success, second poll required |
 | 5 | #23 | `49c93957` | 23:02:47Z | 10/10 success |
 | 6 | #24 | `23f5c1cf` | 23:28:51Z | 10/10 success |
+| 7 | #25 | `5dd77051` | 23:54:15Z | 10/10 success, first executed-module batch |
 
-Eight batches, eighty check runs, zero failures.
+Nine batches, ninety check runs, zero failures.
