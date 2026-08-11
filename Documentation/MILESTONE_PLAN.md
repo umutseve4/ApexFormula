@@ -69,7 +69,7 @@
 - Bounding box and wheel positions within tolerance, reported in both metres and centimetres.
 - No hardcoded bone names, units, axes or paths outside `af_pipeline_config.py`.
 
-**Local verification.** `requires Blender execution` for every script behaviour and for exporter option names. `automatically validated` for the checks in the JSON report. `statically inspected` for script structure and naming.
+**Local verification.** `automatically validated` — CI downloads Blender 5.2 LTS and runs `blender --background --factory-startup --python BlenderPipeline/scripts/af_smoke_test.py` on every push. The exit code, the stage results and the measured JSON report are the evidence. `requires visual inspection` remains open for whether the generated geometry *looks* right in the viewport, which no automated check can answer.
 
 **Risks.** Blender 5.2 LTS FBX exporter option names or defaults differing from expectation; leaf-bone injection; unit-scale surprises; UCX naming not surviving export.
 
@@ -168,7 +168,7 @@
 
 **Local verification.** `requires Blender execution`; `automatically validated` via the JSON report; `requires visual inspection` for whether it looks right.
 
-**Risks.** Procedural geometry producing non-manifold or self-intersecting surfaces; face budget overruns.
+**Risks.** Procedural geometry producing non-manifold or self-intersecting surfaces; face budget overruns. The Milestone 2 halo defect (D-040) is the worked example of this risk arriving early: a generated arc overshot the design height envelope by 24 mm and only the executed validator could see it.
 
 **Explicitly excluded.** No physics integration yet. No final shading.
 
@@ -377,6 +377,7 @@
 4. **Engine vehicle access stays behind `UAFVehicleCompatibilityLayer`** from Milestone 2 onward, so Milestone 10 remains possible.
 5. **Bone names live in `af_pipeline_config.py` and `UAFBoneNameMap`** and change together, never independently.
 6. **Nothing under `LocalReference/` is ever committed or packaged**, at any milestone.
+7. **Vehicle dimensions live in `af_pipeline_config.py::DESIGN`** and every other copy follows it (D-041).
 
 ---
 
@@ -387,10 +388,12 @@ This table records what has been *authored* and what has been *verified*. Author
 | # | Authored? | Acceptance criteria met? | Notes |
 | --- | --- | --- | --- |
 | 0A | Yes | Yes — `statically inspected` | Documentation set exists and is cross-consistent. |
-| 0B | Yes | Not confirmed — `requires Blender execution` | Scripts exist under `BlenderPipeline/scripts`; no script has been run, so no measured validation report exists. |
+| 0B | Yes | Yes — `automatically validated` | Blender 5.2.0 LTS runs `af_smoke_test.py` headless in CI on every push. All seven stages pass, the harness exits 0, and the pre-export validator reports 19 passed / 0 failed / 1 skipped of 21 checks against measured values. `requires visual inspection` remains open for whether the geometry looks right. |
 | 1 | Yes | Not confirmed — `requires local compilation`, `requires Unreal Editor verification` | Six modules and their base classes exist as source; the project has never been compiled here and the editor has never been opened here. |
 | 2 | Yes | 1 of 4 — see below | Implementation files, automation tests and a dedicated static checker landed; behaviour unverified. |
 | 3–12 | No | Not started | Not begun. |
+
+The 0B row previously read "Not confirmed — no script has been run". That was true when written and is no longer true. It was corrected rather than quietly deleted, because a status table that silently improves is indistinguishable from one that is being flattered.
 
 **Milestone 2 acceptance criteria, individually:**
 
@@ -401,7 +404,7 @@ This table records what has been *authored* and what has been *verified*. Author
 | All engine vehicle access goes through `UAFVehicleCompatibilityLayer` | **Met** | `automatically validated` — enforced by `Tools/af_static_validate.py` in CI |
 | Imported skeleton bone names match `UAFBoneNameMap` | Not met — no asset has been imported | `requires Unreal Editor verification` |
 
-The naming *convention* is agreed between `af_pipeline_config.py` and `UAFBoneNameMap` and that agreement is `statically inspected`; the fourth criterion concerns an actually imported skeleton, which is a different and unmet thing.
+Criterion 4 now has partial evidence, which is not the same as being met. The naming *convention* is agreed between `af_pipeline_config.py` and `UAFBoneNameMap`, and that agreement is `automatically validated` by emulation (D-029). The Blender rig stage is *executed* in CI and prints all eleven bones with parent and head position in metres and centimetres, asserting `bone_count == 11`, `bone_order_matches_config == True` and nine bound meshes — so the producing side of the contract is continuously verified. What is unverified is the consuming side: no FBX has been imported into an Unreal editor, because no Unreal editor exists in this environment. The criterion closes when someone imports the exported asset and reads the resulting skeleton.
 
 ## Verification Ledger for This Document
 
@@ -413,5 +416,10 @@ The naming *convention* is agreed between `af_pipeline_config.py` and `UAFBoneNa
 | Acceptance criteria are checkable rather than aspirational | statically inspected |
 | Milestones 0A, 0B, 1 and 2 have been authored | statically inspected |
 | Milestone 0A acceptance criteria are met | statically inspected |
-| Milestone 0B, 1 and 2 acceptance criteria are met | not claimed — see the Milestone Status table for the per-criterion position |
-| Any milestone beyond 0A is complete | not claimed |
+| Milestone 0B acceptance criteria are met | automatically validated — headless Blender in CI, exit 0, 19/21 passed with 1 permanent skip |
+| The 0B geometry looks correct in a viewport | not claimed — `requires visual inspection` |
+| Milestone 1 and 2 acceptance criteria are met | not claimed — see the Milestone Status table for the per-criterion position |
+| Milestone 2 criterion 3 is met | automatically validated |
+| Milestone 2 criterion 4 has partial (producing-side) evidence in CI | automatically validated |
+| Milestone 2 criterion 4 is met | not claimed — `requires Unreal Editor verification` |
+| Any milestone beyond 0A and 0B is complete | not claimed |
