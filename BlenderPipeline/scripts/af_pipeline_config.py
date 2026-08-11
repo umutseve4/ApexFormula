@@ -1,8 +1,8 @@
-"""ApexFormula - pipeline configuration (single source of truth).
+"""UludagFormula - pipeline configuration (single source of truth).
 
 Milestone 0B.
 
-This module is the ONLY place in the ApexFormula Blender pipeline where the
+This module is the ONLY place in the UludagFormula Blender pipeline where the
 following are defined:
 
   * unit system and scale conventions
@@ -21,7 +21,7 @@ scene operations. It is importable by a plain CPython interpreter so that its
 internal consistency can be checked without running Blender.
 
 Honesty note: nothing in this file has been executed inside Blender. The
-numbers below are ApexFormula design values chosen for this project. They are
+numbers below are UludagFormula design values chosen for this project. They are
 not measurements, and they are not regulations of any real motorsport series.
 """
 
@@ -35,7 +35,7 @@ import os
 # 0. Identity and versioning
 # ---------------------------------------------------------------------------
 
-PROJECT_NAME = "ApexFormula"
+PROJECT_NAME = "UludagFormula"
 ASSET_PREFIX = "AF_"
 SCRIPT_PREFIX = "af_"
 
@@ -207,9 +207,9 @@ DEFORM_BONES = (BONE_CHASSIS,) + BONE_SUSPENSIONS + BONE_WHEELS
 
 
 # ---------------------------------------------------------------------------
-# 4. Vehicle design dimensions (ApexFormula design values, metres)
+# 4. Vehicle design dimensions (UludagFormula design values, metres)
 # ---------------------------------------------------------------------------
-# ORIGINAL ApexFormula design values chosen for this project. NOT quoted from,
+# ORIGINAL UludagFormula design values chosen for this project. NOT quoted from,
 # derived from, or claimed to comply with any real motorsport regulation.
 
 VEHICLE_VARIANT = "Proto"
