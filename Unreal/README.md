@@ -1,4 +1,4 @@
-# ApexFormula — Unreal Project
+# Uludağ Formula — Unreal Project
 
 The Unreal Engine 5.8 project and its six C++ modules. Milestone 1 created the structure;
 Milestone 2 added the vehicle implementation behind it.
@@ -6,6 +6,18 @@ Milestone 2 added the vehicle implementation behind it.
 **Nothing in this directory has been compiled.** No Unreal Engine, Unreal Build Tool, MSVC or
 clang existed in the environment where this code was authored. Everything below that is stated
 as fact was checked by a program; everything else is labelled. See §7.
+
+> **Naming note (D-048).** The product is now **Uludağ Formula**. Every identifier on this page —
+> the six `ApexFormula*` module names, `ApexFormula.uproject`, both `*.Target.cs` files,
+> `DefaultApexFormula.ini`, and the `AF_`/`UAF*`/`FAF*`/`IAF*` symbol prefixes — is quoted exactly
+> as it exists in the tree, and none of it has been renamed here.
+> - The **module identifiers, project file, target files and project ini are wave-2 items.**
+>   `Tools/af_static_validate.py` asserts each of them, so a rename must patch the guard in the
+>   same commit or CI turns red.
+> - The **`AF_`/`af_` prefix family is permanent.** D-048 reclassified it from "old product name"
+>   to this project's internal code name; it will not change.
+>
+> Only product prose has been renamed on this page. No claim was strengthened.
 
 ---
 
@@ -56,7 +68,7 @@ program rather than by review — see §6.
 
 Three boundary rules hold and are checked:
 
-- **`ApexFormulaCore` depends on no ApexFormula module.** It is the bottom of the graph.
+- **`ApexFormulaCore` depends on no first-party module.** It is the bottom of the graph.
 - **`ApexFormulaRace` must not depend on `ApexFormulaVehicle`.** Race timing, sector logic and
   lap validation are expressed against the `IAFRaceParticipant` interface, so they can be tested
   with no vehicle in existence. This is why `UAFSectorTimer` and `UAFLapValidator` are plain
@@ -133,12 +145,15 @@ copy lives before they change one and not the other.
 Unchanged and still agreeing: `WheelbaseM` 3.60, `FrontTrackM` 1.60, `DryMassKg` 740.0,
 `CentreOfMassBiasRear` 0.55, `CentreOfMassHeightM` 0.28. `DataVersion` is 2.
 
-All default numeric values are **ApexFormula design values**. They are not measurements of any
+All default numeric values are **Uludağ Formula design values**. They are not measurements of any
 real vehicle or circuit and are not claimed to be realistic.
 
 `Config/DefaultApexFormula.ini` configures `UAFDeveloperSettings`. Every key in that file is
 checked to correspond to a real `UPROPERTY(Config)` on the class — a stale key is a silent
-failure otherwise, since Unreal ignores keys it does not recognise.
+failure otherwise, since Unreal ignores keys it does not recognise. The file name and the
+`[/Script/ApexFormulaCore.AFDeveloperSettings]` section header inside it are wave-2 rename items
+and must move together with the `Config=` UCLASS specifier and the guard's required-ini list, in
+one commit.
 
 Path settings reject absolute paths, drive letters and UNC paths, so a machine-specific path
 cannot be committed. `AFDeveloperSettings.cpp` is consequently the one file allowed to *contain*
@@ -160,6 +175,9 @@ Recorded as decision **D-029**.
 
 Consequence: changing the *style* of `AFBoneNameMap.cpp` can break the validator's parser even if
 behaviour is unchanged, and requires an emulator update.
+
+The eleven bone names all begin with `AF_`, and the guard asserts that prefix directly. Under
+D-048 that prefix is permanent, so the product rename does not touch this contract at all.
 
 There are now two independent checks on the Blender side of this contract, and they cover
 different things:
@@ -200,6 +218,10 @@ It has been mutation-tested — **11 of 11 injected defects detected**, with a n
 prohibited word inside a comment) correctly ignored. Recorded as decision **D-030**; details in
 `VERSION_MATRIX.md` §5.30.
 
+Its originality check tests for reserved motorsport marks. The product name **Uludağ Formula**
+matches none of those patterns — bare "Formula" is not among them — so the rename is
+automatically cleared rather than merely assumed safe.
+
 **`af_validate_interfaces.py`** compares every `override` against the pure-virtual it claims to
 implement and fails on a return-type mismatch. It exists because `af_static_validate.py` was
 structurally incapable of finding D-035 — a pawn returning `FText` where the interface declared
@@ -226,7 +248,7 @@ checking is weak.
 | --- | --- |
 | The directory layout in §1 is what exists in this repository | automatically validated |
 | The module table in §2 matches `TECHNICAL_ARCHITECTURE.md` §2 | automatically validated |
-| Core depends on no ApexFormula module; Race does not depend on Vehicle; the graph is acyclic | automatically validated |
+| Core depends on no first-party module; Race does not depend on Vehicle; the graph is acyclic | automatically validated |
 | No engine vehicle API appears outside the two D-008 files (§3) | automatically validated |
 | A Chaos backend is bound *in code* by `AFVehicleCompatibilityLayer.cpp` (§3) | statically inspected |
 | That backend binding does anything at run time (§3) | not claimed — `requires local compilation`, then `requires playtesting` |
@@ -240,8 +262,11 @@ checking is weak.
 | The mutation scores quoted in §6 are measured values | automatically validated |
 | The 2300 figure in §6 is the Milestone 1 measurement, not the current tree | statically inspected |
 | The D-040 halo overshoot was caught by the executed stage, not a static check (§6) | automatically validated |
+| The product name "Uludağ Formula" matches none of the reserved marks the originality check tests for | automatically validated |
+| The module identifiers, `.uproject`, target files and project ini still carry the previous product name and are queued for wave 2 | statically inspected |
+| The `AF_`/`af_` prefix family is retained deliberately as the internal code name (D-048) | statically inspected |
 | Design intent, rationale and the reasons behind each decision | statically inspected |
-| Default numeric values are ApexFormula design values, not measurements | statically inspected |
+| Default numeric values are Uludağ Formula design values, not measurements | statically inspected |
 | Any file in this directory compiles | not claimed — `requires local compilation` |
 | The Unreal Editor loads these six modules without error | not claimed — `requires Unreal Editor verification` |
 | The 37 declared automation tests are discovered, or pass | not claimed — `requires local compilation`, then `requires Unreal Editor verification` |
