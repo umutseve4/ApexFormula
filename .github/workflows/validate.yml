@@ -61,6 +61,17 @@ jobs:
       - name: Lap rules reference model self-test
         run: python3 Tools/af_lap_rules_model.py --self-test
 
+      # Milestone 3, acceptance criterion 5. This EXECUTES the test circuit
+      # geometry generator. Same reasoning as the step above: compileall
+      # would prove only that the file parses.
+      #
+      # The generator runs without bpy here, so a pass covers the layout
+      # mathematics, the checkpoint and sector derivation, and the
+      # hand-maintained mirror of UAFTrackDefinition::ValidateSelf()
+      # (decision D-043). It does not cover the Blender mesh path.
+      - name: Circuit generator self-test
+        run: python3 BlenderPipeline/scripts/af_circuit_generate.py --self-test
+
       - name: Byte-compile every script
         run: python3 -m compileall -q BlenderPipeline/scripts Tools
 
