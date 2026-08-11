@@ -1,11 +1,20 @@
-# ApexFormula — Blender Pipeline
+# Uludağ Formula — Blender Pipeline
 
 Milestone 0B. This directory holds the Blender-side authoring and export
-pipeline for the ApexFormula vehicle. It is the source of truth for geometry,
+pipeline for the Uludağ Formula vehicle. It is the source of truth for geometry,
 rig and export settings; Unreal consumes what leaves `exports/`.
 
 The design this code implements is documented in
 [`../Documentation/BLENDER_PIPELINE_DESIGN.md`](../Documentation/BLENDER_PIPELINE_DESIGN.md).
+
+> **Naming note (D-048).** The product is now **Uludağ Formula**. Nothing else on this page has
+> been renamed, and that is deliberate: the `af_*.py` script names, the `AF_*` collection names,
+> the `AF_M_*` material prefix and the eleven `AF_*` bone names are **not** leftovers of the old
+> product name. D-048 reclassified the `AF_`/`af_` family as this project's **permanent internal
+> code name**, so it will not change in any later wave. The bone prefix in particular is asserted
+> directly by `Tools/af_static_validate.py` and by the executed rig stage in CI.
+>
+> Only product prose was renamed here. No measured value and no verification label was touched.
 
 ---
 
@@ -208,6 +217,8 @@ describe a Blender scene, because no Blender scene has been built.
 | The bone list matches the config exactly, with no leaf bones | `automatically validated` |
 | No script hardcodes a bone name, unit, axis, modifier name or path outside the config | `automatically validated` — verified by an automated sweep, not by reading |
 | The token `F1` appears nowhere in the pipeline as a name | `automatically validated` — word-boundary scan across all eight scripts |
+| The product name "Uludağ Formula" matches none of the reserved motorsport marks the originality check tests for | `automatically validated` |
+| The `AF_`/`af_` prefix family is retained deliberately as the internal code name, not left behind by the rename (D-048) | `statically inspected` |
 | A scene built by these scripts passes all 21 checks | `requires Blender execution` |
 | The exported FBX contains exactly 11 bones and no leaf bones | `requires Blender execution` |
 | The FBX imports into Unreal Engine 5.8 with correct scale and orientation | `requires Unreal Editor verification` |
