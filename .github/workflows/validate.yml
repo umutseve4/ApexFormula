@@ -91,6 +91,31 @@ jobs:
       - name: Circuit generator self-test
         run: python3 BlenderPipeline/scripts/af_circuit_generate.py --self-test
 
+      # Milestone 3, decision D-045. The step above proves the circuit
+      # generator - including its copy of the track validator - is
+      # self-consistent. It cannot notice that that copy has stopped
+      # describing UAFTrackDefinition::ValidateSelf(), which was the last
+      # unguarded mirror left in Milestone 3 after D-044.
+      #
+      # Same two-step shape and same reasoning as the lap rules guard
+      # above: the self-test runs FIRST so a guard that has stopped
+      # detecting its own mutations fails here instead of quietly passing
+      # the real check.
+      - name: Track drift guard self-test
+        run: python3 Tools/af_track_drift_guard.py --self-test
+
+      # Then against the genuine checked-out sources. A failure here means
+      # Unreal/Source/ApexFormulaRace/Private/AFTrackDefinition.cpp and
+      # validate_track_definition() in
+      # BlenderPipeline/scripts/af_circuit_generate.py disagree on a
+      # diagnostic, a predicate or a field. Fix both sides. Do not delete
+      # this step, and do not add continue-on-error to it.
+      #
+      # This compares TEXT. It does not compile the C++ and it does not
+      # execute the Python mirror.
+      - name: Track definition drift guard
+        run: python3 Tools/af_track_drift_guard.py --root . --verbose
+
       - name: Byte-compile every script
         run: python3 -m compileall -q BlenderPipeline/scripts Tools
 
