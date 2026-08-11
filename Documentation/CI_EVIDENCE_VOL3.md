@@ -133,7 +133,7 @@ This limitation is recorded deliberately. Reporting the batch as "the guards are
 
 ---
 
-## 4. What five green batches do and do not prove
+## 4. What six green batches do and do not prove
 
 **Proven by CI:**
 
@@ -157,16 +157,18 @@ Green CI is a structural gate, not an execution gate. The distinction is maintai
 
 ---
 
-## 5. Timing characteristics (five batches, consistent)
+## 5. Timing characteristics (six batches, consistent)
 
 | Property | Observed |
 |---|---|
 | Delay from marker push to first job start | 5 – 28 s |
-| Full batch completion | within ~67 s |
+| Full batch completion | within ~70 s |
 | Polling strategy that works | one 55 s wait, then a single read |
 | Second poll | only if a run is still in progress, and it must use a varied argument to avoid the harness rejecting an identical repeat call |
 
 Batch 3 added one observation to this table. Its ten runs arrived in **two triggering waves** rather than one: five runs at the marker push (`22:24:05Z` – `22:24:15Z`) and five more when the pull request itself was opened (`22:27:18Z` – `22:27:26Z`). Both waves are later than the marker date, so the acceptance rule is satisfied, and the total is still exactly ten. The lesson is that the count must be checked against the matrix, not against the number of workflow runs.
+
+Batch 4 added a second observation. All ten runs arrived in a single wave, but the last `Blender smoke test (headless)` job was still `in_progress` at the first read, 55 s after the marker push. The second poll, taken 40 s later with a varied argument, showed it completed. The single 55 s wait is therefore a lower bound rather than a guarantee: a batch may need up to roughly 100 s when the slow job starts late in the wave.
 
 ---
 
@@ -179,8 +181,9 @@ Batch 3 added one observation to this table. Its ten runs arrived in **two trigg
 | wave 2, batch 1 | #19 | `ci/wave2-verify-1` | `099c33ea` | `21:24:15Z` | 10/10 | VOL3 §2 |
 | wave 2, batch 2 | #20 | `ci/wave2-verify-2` | `2979e8aa` | `21:56:06Z` | 10/10 | VOL3 §3 |
 | wave 2, batch 3 | #21 | `ci/wave2-verify-3` | `82c143cb` | `22:24:00Z` | 10/10 | VOL3 §7 |
+| wave 2, batch 4 | #22 | `ci/wave2-verify-4` | `5961d95b` | `22:39:47Z` | 10/10 | VOL3 §8 |
 
-All five completed pull requests are **closed unmerged**. None of the marker files exist on `main`.
+All six completed pull requests are **closed unmerged**. None of the marker files exist on `main`.
 
 ---
 
@@ -247,6 +250,68 @@ This matters because Markdown has **no compile gate**. A truncated Python file i
 ### 7.5 What batch 3 still does not prove
 
 Nothing in section 4 changes. In particular, `af_mesh_quality.py` was renamed and compiled, but its 46-case self-test was **not** executed by CI, and neither was the drift guard's. OPEN-051-B remains open, and the local rehearsal gate — mesh self-test 46/46 and the 274-check audit at exit 0 — remains the only route to closing it.
+
+---
+
+## 8. Batch 4 — PR #22
+
+| Field | Value |
+|---|---|
+| Pull request | #22 (draft), id `4257502573` |
+| Head branch | `ci/wave2-verify-4` |
+| Base | `main` |
+| Marker file | `Documentation/CI_MARKER_WAVE2_4.md` |
+| Marker commit | `5961d95b` |
+| Marker blob | `be954418` |
+| Marker size | 1,480 B |
+| Marker author date | `2026-08-11T22:39:47Z` |
+| Job start window | `22:39:54Z` – `22:40:16Z` |
+| Result | **10 / 10 success** |
+| Disposition | closed unmerged |
+
+Workflow runs: `31543367878`, `31543367943`, `31543375917`, `31543375920`.
+
+### 8.1 Job identifiers
+
+| Run | Job | Job id | Started | Completed |
+|---|---|---|---|---|
+| `31543367943` | Static validation (no engine, no DCC) | `93950514962` | `22:39:54Z` | `22:40:04Z` |
+| `31543367878` | af_static_validate (py3.9) | `93950521331` | `22:39:56Z` | `22:40:09Z` |
+| `31543367878` | af_static_validate (py3.12) | `93950521472` | `22:39:56Z` | `22:40:02Z` |
+| `31543367878` | Python syntax check | `93950521405` | `22:39:57Z` | `22:40:05Z` |
+| `31543375917` | Static validation (no engine, no DCC) | `93950533826` | `22:40:00Z` | `22:40:07Z` |
+| `31543375920` | af_static_validate (py3.9) | `93950533775` | `22:40:00Z` | `22:40:14Z` |
+| `31543375920` | af_static_validate (py3.12) | `93950533688` | `22:40:00Z` | `22:40:08Z` |
+| `31543375920` | Python syntax check | `93950533782` | `22:40:00Z` | `22:40:04Z` |
+| `31543367943` | Blender smoke test (headless) | `93950555044` | `22:40:06Z` | `22:40:41Z` |
+| `31543375917` | Blender smoke test (headless) | `93950566548` | `22:40:16Z` | `22:40:57Z` |
+
+Earliest start `22:39:54Z` is seven seconds after the marker author date, so the anti-staleness rule holds for every run. Slowest job: `Blender smoke test (headless)`, 35–41 s.
+
+### 8.2 Commits covered
+
+| File | Commit | Blob | Size | Note |
+|---|---|---|---|---|
+| `Documentation/DECISION_LOG_VOL3.md` | `0ca1d70f` | `8f12d093` | 25,950 B | D-052 appended, wave 1.5 closure record |
+| `Documentation/CI_EVIDENCE_VOL3.md` | earlier on `main` | `a310851b` | — | section 7, batch 3 record |
+
+Both files are Markdown, so neither carries a compile gate. The byte-delta prediction described in section 7.3 was the only automated truncation detector available for this batch, and both files grew by the amount their new sections required.
+
+### 8.3 Why this batch was run at all
+
+The two files above are the closure records for wave 1.5. Every earlier wave-1.5 artifact was verified by batches 1 to 3, but the records *describing* that verification landed on `main` afterwards and were therefore themselves unverified. Batch 4 closes that gap. Without it the migration would carry an unverified tail — a documentation set claiming green status that had never itself passed the gate it describes.
+
+This is a deliberate policy: **every commit on `main` is covered by at least one green batch, including the commits that record the batches.**
+
+### 8.4 A timing correction
+
+The first read of this batch, taken 55 s after the marker push, showed nine runs completed and one `Blender smoke test (headless)` still `in_progress`. A second read 40 s later showed all ten complete. The single-poll strategy in section 5 is therefore a lower bound and not a guarantee. The corrected guidance: poll once at 55 s, and if any run is still in progress, poll again after a further 40 s using a varied argument.
+
+The batch was **not** accepted on the first read. Nine of ten with one in progress is not ten of ten, and accepting it would have violated the rule in section 1.
+
+### 8.5 What batch 4 does not prove
+
+Nothing in section 4 changes. Batch 4 verifies that two Markdown files did not break the static gate. It says nothing about the correctness of their contents, because no automated check reads Markdown prose. The claims inside those documents are only as good as the measurements they cite, and each such claim carries its own evidence pointer for that reason.
 
 ---
 
