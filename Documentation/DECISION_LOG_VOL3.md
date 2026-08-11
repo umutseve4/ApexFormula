@@ -2,7 +2,7 @@
 
 Status: **active**
 Range: **D-051 onward**
-Next free identifier: **D-052**
+Next free identifier: **D-053**
 
 ---
 
@@ -125,12 +125,9 @@ constrains `describe()` only in two ways — the short hash must appear, and
 no hash-like token that is not a prefix of the computed hash may appear —
 and a product name satisfies both trivially.
 
-*Honesty label:* this finding is **read-verified, not execution-verified**.
-It follows from the fact that `PROJECT_NAME` does not appear anywhere in
-the body of `effective_config()`, which is a structural property of the
-source, not an estimate. It has not been confirmed by running the guard,
-because neither Blender nor a clone of the repository is available in this
-environment. The first wave 2 CI batch will confirm it.
+*Honesty label:* this finding was **read-verified, not execution-verified**
+when D-051 was written. It has since been promoted to execution-verified
+by CI batch 1 (PR #19). See D-052.1.
 
 **F-3 — Python docstrings are outside the hash guard's prose scan.**
 Check B of `af_config_hash_guard.py` walks `Documentation/`, `Tools/` and
@@ -311,18 +308,211 @@ its new name**. That is all it means.
 
 ---
 
+## D-052 — Wave 1.5 closure record and the corrections it forced
+
+**Date recorded:** immediately after CI batch 3 (PR #21) returned 10/10.
+**Supersedes:** nothing. **Amends:** D-051 sections 051.1, 051.2, 051.3.
+**Status:** accepted. Wave 1.5 is closed.
+
+### 052.0 Statement
+
+**All seven wave-1.5 items are shipped to `main` and covered by a green CI
+batch.** Three batches were required, all of them 10/10 `success`, all of
+them closed unmerged. Wave 1.5 is therefore **content complete and
+CI-verified**, which is the strongest label available in this environment
+and is still weaker than "working".
+
+| # | File | Commit | Size | Delta | Substitutions | Batch |
+|---|---|---|---|---|---|---|
+| 1 | `BlenderPipeline/scripts/af_pipeline_config.py` | `86d74ecc` | 30,922 B | +12 B | 6 | #19 |
+| 2 | `Tools/af_validate_interfaces.py` | `f1cea387` | 17,155 B | +22 B | 11 | #19 |
+| 3 | `Tools/af_config_hash_guard.py` | `aa5283c7` | 26,519 B | +2 B | 1 | #19 |
+| 4 | `Tools/af_drift_guard.py` | `baa6427b` | 38,569 B | +12 B | 4 (predicted +8) | #20 |
+| 5 | `Tools/af_track_drift_guard.py` | `d2afee20` | 30,180 B | +8 B | 4 | #20 |
+| 6a | `Tools/af_lap_rules_model.py` | `62477469` | 30,250 B | +8 B | 4 | #21 |
+| 6b | `Tools/af_mesh_quality.py` | `cc85f950` | 30,783 B | +8 B | 4 | #21 |
+| 7 | `Documentation/VERSION_MATRIX.md` | `edfd74ba` | 40,439 B | +12 B | 3 (display form) | #21 |
+
+Supporting documentation commits covered by the same batches:
+`2267c6de` (VOL2 close), `bb9a83e2` (VOL3 open, D-051), `d20d041c`
+(CI_EVIDENCE_VOL3 open).
+
+### 052.1 F-2 is promoted to execution-verified
+
+D-051 labelled F-2 "read-verified, not execution-verified". Item 1 changed
+`PROJECT_NAME` to `UludagFormula` and batch 1 ran the digest guard's check
+A twice, both `success`. The pinned digest did not move. **No D-046 re-pin
+is required, and the largest risk carried into wave 2 is closed by
+measurement rather than by argument.**
+
+### 052.2 The lockstep rule is broader than D-051.2 stated
+
+D-051.2 named `af_static_validate.py` as the artifact that must be patched
+in the same commit as a module rename. Reading the remaining tools proved
+that is **necessary but not sufficient**. Module *directory* names are also
+embedded as path constants, docstrings and prose in four further artifacts.
+
+Measured inventory:
+
+| Artifact | Old-identity carrier | Module named |
+|---|---|---|
+| `Tools/af_track_drift_guard.py` | `PATH_TRACK_CPP` | Race |
+| `Tools/af_drift_guard.py` | `PATH_TYPES_H` | Core |
+| `Tools/af_drift_guard.py` | `PATH_SECTOR_CPP`, `PATH_VALIDATOR_CPP`, module docstring | Race |
+| `Tools/af_lap_rules_model.py` | module docstring, two lines | Race |
+| `Documentation/VERSION_MATRIX.md` | section 5.21, section 5.28 | Race, Vehicle |
+| `Documentation/VERSION_MATRIX.md` | section 5.26, section 5.28 | Core, Editor |
+| `Tools/af_mesh_quality.py` | **none** — dynamic generator lookup | — |
+
+**Amended rule.** The atomic commit set per module is:
+
+* **Race** — five artifacts in one commit: `af_static_validate.py`,
+  `af_track_drift_guard.py`, `af_drift_guard.py` (constants **and**
+  docstring), `af_lap_rules_model.py` (docstring), `VERSION_MATRIX.md`
+  (5.21 and 5.28).
+* **Core** — three artifacts: `af_static_validate.py`, `af_drift_guard.py`,
+  `VERSION_MATRIX.md` (5.26 and 5.28).
+* **Vehicle** — `af_static_validate.py` plus `VERSION_MATRIX.md` (5.21,
+  5.28).
+* **Editor** — `af_static_validate.py` plus `VERSION_MATRIX.md` (5.26).
+* **UI, Tests** — `af_static_validate.py` only, on current evidence.
+
+`af_mesh_quality.py` is the negative control that makes the rule
+believable: it was renamed alone, with no companion patch, and CI stayed
+green. The rule is a property of artifacts that hard-code module directory
+names, not a blanket property of `Tools/`.
+
+The eight strings deliberately left in `VERSION_MATRIX.md` are enumerated
+in `Documentation/CI_EVIDENCE_VOL3.md` section 7.4 and in OPEN-052-B below.
+They are **not defects**. Renaming them before their module exists would
+make the document describe a tree that does not exist.
+
+### 052.3 Byte-delta arithmetic is the transcription safeguard
+
+Every edit in this environment is a full-file retranscription. There is no
+patch mode. The only cheap, automatic check that a 30–40 KB rewrite was not
+silently truncated is to predict the resulting size and compare it with the
+size the write API returns.
+
+Two substitution forms, measured, not assumed:
+
+| Form | Replacement | Cost per substitution |
+|---|---|---|
+| Identifier | `ApexFormula` (11 B) → `UludagFormula` (13 B) | **+2 B** |
+| Display | `ApexFormula` (11 B) → `Uludağ Formula` (15 B) | **+4 B** |
+
+The display form is 15 bytes and not 14 characters' worth: `ğ` is two bytes
+in UTF-8. **This arithmetic must always be done in bytes, never in
+characters.** Item 7 confirmed it exactly: three display substitutions,
++12 B, zero deviation.
+
+Result across wave 1.5: seven of eight rewrites matched their prediction
+exactly. The single miss is item 4, discussed next.
+
+### 052.4 OPEN-052-A is resolved — cosmetic only
+
+`af_drift_guard.py` grew +12 B on four substitutions where +8 B was
+predicted. Truncation is excluded: both `Python syntax check` jobs in batch
+2 compiled the module and reported `success`, and a truncated Python file
+does not compile. A full re-read confirmed every rule, every self-test
+method and every path constant present and unmodified. **The delta is
+cosmetic whitespace with no functional impact.**
+
+**The limit of that resolution is recorded explicitly.** A syntax check is
+not a self-test. CI compiles the guards; it never invokes `--self-test` on
+any of them. This was confirmed again in batch 3. Therefore:
+
+* the guards' internal assertion counts remain **unmeasured**;
+* **OPEN-051-B stays open** — the drift guard's banner claims 27 cases, the
+  documentation claims 31 over 17 methods, and a static reading of the
+  dispatcher counts 16 methods emitting 6 + 5 + 4 + 1 + 11 + 4 = **31**.
+  The documentation reconciles with the code; the guard's own banner is the
+  outlier. **Do not "fix" either number without running the self-test.**
+
+### 052.5 Markdown has no compile gate
+
+Python rewrites have a real safety net: the CI syntax check. Markdown
+rewrites have **none**. No workflow parses, lints or renders Markdown.
+
+**Consequence, and it is a rule, not an observation:** for every Markdown
+rewrite the byte-delta prediction is mandatory and is the only automated
+truncation detector available. A Markdown write whose returned size does
+not match the prediction must be re-read in full before the session moves
+on. This applies to the largest files in the repository, including
+`VERSION_MATRIX.md` at 40,439 B.
+
+### 052.6 Corrections to recorded facts
+
+* `BlenderPipeline/scripts/af_circuit_generate.py` is **43,731 B**, not the
+  figure quoted in earlier planning notes.
+* The inline read and write ceiling is now measured at **≥ 40,439 B**.
+  `VERSION_MATRIX.md` was fetched whole and rewritten whole through the
+  same channel at that size without truncation. Files above this size have
+  not been tested.
+* `create_or_update_file` returns `content.size`, `content.sha`,
+  `commit.sha` and `commit.author.date` inline. A separate confirmation
+  read is therefore unnecessary for the size check — but size alone is
+  **not** proof of fidelity, only of length.
+
+### 052.7 CI timing and trigger behaviour
+
+Five batches now agree:
+
+* jobs start **5 – 28 s** after their triggering event;
+* a batch completes within **~70 s**;
+* one 55-second wait followed by a single read is sufficient;
+* a repeat read must vary at least one argument, or the harness rejects it
+  as an identical call.
+
+Batch 3 added a new observation. Its ten runs arrived in **two triggering
+waves** — five at the marker push, five when the pull request was opened
+three minutes later. Both waves post-date the marker, so the acceptance
+rule held, and the total was still exactly ten. **Do not assume a single
+trigger group.** Acceptance is judged on the count against the job matrix
+and on the timestamp threshold, never on the number of workflow runs.
+
+### 052.8 What wave 1.5 does not claim
+
+Eight files now carry the new identity and five CI batches are green.
+Nothing in that sentence describes a game.
+
+* No C++ has been compiled; the engine is not installed here.
+* No Unreal project has been opened.
+* No FBX or GLB has been imported.
+* No mesh has been visually inspected.
+* No lap has been driven; no playtest has occurred.
+* No guard's `--self-test` has been executed by CI.
+
+Wave 1.5 means: **the tooling layer is internally consistent under the new
+name.** That is the whole claim.
+
+### 052.9 Immediate consequences for wave 2A
+
+1. The local rehearsal gate of D-051.6 is now the **blocking** item. It is
+   the only route to closing OPEN-051-B, and it must be attempted before
+   the first module commit. If the tree cannot be assembled faithfully, the
+   gate is recorded as **not met** and the risk is carried explicitly.
+2. The Editor module remains commit 1, because it is the smallest possible
+   test of the amended lockstep rule of 052.2.
+3. `af_static_validate.py` is still touched exactly once, per D-051.5.
+
+---
+
 ## Open items carried into volume 3
 
 | Id | Item | State |
 |---|---|---|
 | OPEN-M4-01 | Bodywork profile work on branch `milestone-4-bodywork`, draft PR #9 — merge or close undecided | open, carried from volume 2 |
-| OPEN-051-A | `af_drift_guard.py` (38,557 B) and `af_track_drift_guard.py` (30,172 B) identity maps not yet taken | open |
-| OPEN-051-B | Drift-guard self-test count disagreement: the guard reports 27 cases, `MILESTONE_3_IMPLEMENTATION.md` section 6A says "31 cases over 17 methods" plus 11 mutation tests | open, **do not "fix" without evidence** |
-| OPEN-051-C | Commit `2267c6de` has no CI batch of its own; rides along in `ci/wave2-verify-1` | open |
+| OPEN-051-A | `af_drift_guard.py` and `af_track_drift_guard.py` identity maps not yet taken | **closed** by D-052.2 — both maps taken and both files shipped |
+| OPEN-051-B | Drift-guard self-test count disagreement: the guard reports 27 cases, the documentation says "31 cases over 17 methods"; a static reading of the dispatcher counts 31 | open, **do not "fix" without evidence** — CI never runs `--self-test` |
+| OPEN-051-C | Commit `2267c6de` has no CI batch of its own | **closed** — covered by batch 1, PR #19 |
 | OPEN-051-D | Volume 2's header says the file "starts at D-047" while its index lists D-045 and D-046 | open, deliberately left unedited — volume 2 is frozen |
 | OPEN-051-E | The master specification file still fixes the root identity as `ApexFormula`. Only Umut can update his copy; the repository cannot | open, external |
-| OPEN-051-F | Blender verification never performed: Face Orientation overlay with zero red faces, bounds `[5.6, 1.94, 0.94]`, halo apex `0.940` | open, external — requires a machine with Blender |
+| OPEN-051-F | Blender verification never performed: Face Orientation overlay with zero red faces, bounds `[5.6, 1.94, 0.94]`, halo apex `0.940`, and `af_mesh_quality.py --self-test` at 46/46 | open, external — requires a machine with Blender |
+| OPEN-052-A | `af_drift_guard.py` +12 B on four substitutions | **closed** by D-052.4 — cosmetic, no functional impact |
+| OPEN-052-B | Old-identity strings deliberately retained until their module commit: `af_drift_guard.py` docstring plus three `PATH_*` constants; `af_track_drift_guard.py` `PATH_TRACK_CPP`; `af_lap_rules_model.py` docstring; `VERSION_MATRIX.md` sections 5.21, 5.26 and 5.28 (eight strings) | open by design — resolved atomically in wave 2A |
+| OPEN-052-C | `VERSION_MATRIX.md` section 5.28 quotes "2300 checks" as a Milestone 1 figure and explicitly refuses to re-guess the current count | open by design — **never silently refresh this number** |
 
 ---
 
-*Next free identifier: **D-052**.*
+*Next free identifier: **D-053**.*
