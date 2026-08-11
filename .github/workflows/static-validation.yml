@@ -44,6 +44,16 @@ jobs:
       - name: Run static validation
         run: python Tools/af_static_validate.py --root .
 
+      - name: Self-test the interface override checker
+        # Runs BEFORE the checker itself. A checker that has stopped
+        # detecting its own mutations must fail the build rather than
+        # report a green tree, because a green check from a broken
+        # checker is worse than no check at all. Decision D-030.
+        run: python Tools/af_validate_interfaces.py --self-test
+
+      - name: Check interface override agreement
+        run: python Tools/af_validate_interfaces.py --root .
+
   syntax:
     name: Python syntax check
     runs-on: ubuntu-latest
