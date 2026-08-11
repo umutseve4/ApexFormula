@@ -2,10 +2,9 @@
 
 An original 3D formula racing game built with Unreal Engine 5.8 and Blender 5.2 LTS.
 
-> **Current state:** Milestone 2 authored, largely unverified — documentation, the Blender
-> pipeline scripts, the Unreal C++ project foundation, and the vehicle implementation behind it.
-> There is no art asset in this repository yet. Nothing here has been compiled, executed,
-> imported or visually inspected.
+> **Current state:** the Blender pipeline is executed and green in CI. The Unreal side is
+> authored and statically validated but **has never been compiled**. There is no art asset in
+> this repository yet, nothing has been imported into an editor, and nothing has been played.
 
 ---
 
@@ -23,7 +22,7 @@ ApexFormula/
 ├── Tools/
 │   ├── af_static_validate.py
 │   └── af_validate_interfaces.py
-├── .github/workflows/      static validation on every push
+├── .github/workflows/      static validation + headless Blender smoke test on every push
 ├── .gitattributes
 ├── .gitignore
 └── README.md
@@ -69,6 +68,8 @@ Full detail and the list of assumptions that still require local verification ar
 - Asset prefix `AF_`; C++ prefixes `UAF`, `AAF`, `FAF`, `IAF`; Blender script prefix `af_`.
 - Metres inside Blender, centimetres at the Unreal boundary (`CM_PER_UNIT = 100.0`).
 - Bone names are defined once (`af_pipeline_config.py` / `UAFBoneNameMap`) and never hardcoded.
+- Vehicle dimensions are defined once, in `af_pipeline_config.py::DESIGN`. `UAFVehicleDefinition`
+  follows it and never contradicts it (D-041).
 - The project uses no real motorsport branding, teams, drivers, sponsors, liveries, or exact
   reproductions of real cars or circuits.
 
@@ -83,6 +84,10 @@ not decoratively.
 
 Each document ends with a Verification Ledger applying these labels to its own claims.
 
+As of the Milestone 2 merge, `requires Blender execution` is **no longer an open label for the
+pipeline scripts** — Blender runs them in CI. It remains open for anything that needs a human
+looking at the result in the Blender viewport, which is `requires visual inspection`.
+
 ## Privacy
 
 Reference photographs and any biometric-adjacent material must remain in a machine-local
@@ -94,15 +99,22 @@ committed, packaged or transmitted. See `Documentation/DRIVER_PIPELINE_DESIGN.md
 | Milestone | State | Output |
 | --- | --- | --- |
 | **0A — Technical foundation** | Complete | `Documentation/` — design documents |
-| **0B — Blender pipeline foundation** | Complete | `BlenderPipeline/` — eight `af_*.py` scripts |
-| **1 — Unreal project foundation** | Complete, unverified | `Unreal/` — six C++ modules; `Tools/af_static_validate.py` |
-| **2 — Vehicle implementation** | Authored; 1 of 4 acceptance criteria met | Vehicle/pawn/controller implementations, 10 automation tests, `Tools/af_validate_interfaces.py` |
+| **0B — Blender pipeline foundation** | Complete, **executed and green in CI** | `BlenderPipeline/` — eight `af_*.py` scripts |
+| **1 — Unreal project foundation** | Complete, never compiled | `Unreal/` — six C++ modules; `Tools/af_static_validate.py` |
+| **2 — Vehicle implementation** | Authored and merged; 1 of 4 acceptance criteria met | Vehicle/pawn/controller implementations, 37 automation tests, `Tools/af_validate_interfaces.py` |
 | **3 onwards** | Not started | See `Documentation/MILESTONE_PLAN.md` |
 
-"Complete, unverified" for Milestone 1 means every file is authored and the static validator
+"Complete, never compiled" for Milestone 1 means every file is authored and the static validator
 passes with zero failures, but **nothing has been compiled**, no editor has been opened and no
 automation test has been executed — no Unreal Engine exists in the environment where this was
-authored.
+authored. That is unchanged by Milestone 2.
+
+Milestone 0B is different, and the difference is worth stating precisely. `Blender 5.2.0 LTS`
+downloads and runs headless in CI on every push, executing
+`BlenderPipeline/scripts/af_smoke_test.py`. All seven stages pass: scene setup, geometry
+generation, rig, materials, pre-export validation, export and post-export validation. The
+pre-export validator reports **19 passed, 0 failed, 1 skipped of 21 checks** (the skip is
+permanent and documented). This is `automatically validated`, not `requires Blender execution`.
 
 For Milestone 2 the four acceptance criteria are:
 
@@ -114,7 +126,14 @@ For Milestone 2 the four acceptance criteria are:
 4. Imported skeleton bone names match `UAFBoneNameMap` — **not met**,
    `requires Unreal Editor verification`.
 
-Only the third can be evaluated without an engine, and it is enforced on every push. See
+Criterion 4 deserves a note rather than a bare "not met". The Blender smoke test now prints the
+full eleven-bone hierarchy on every CI run, with each bone's parent and head position in both
+metres and centimetres, and the rig stage asserts `bone_order_matches_config == True`. So the
+*producing* side of the contract is verified continuously. What remains unverified is the
+*consuming* side: no FBX has been imported into an Unreal editor, because no Unreal editor
+exists here. Criterion 4 closes when someone imports the exported asset and reads the skeleton.
+
+Only criterion 3 can be evaluated without an engine, and it is enforced on every push. See
 `Documentation/MILESTONE_2_IMPLEMENTATION.md` and `Unreal/README.md` §7.
 
 ## Repository layout
@@ -147,6 +166,24 @@ implement and fails on a return-type mismatch. It was written because the first 
 structurally unable to detect D-035, a real mismatch that had been sitting in `main`. It carries
 a nine-case mutation suite in `--self-test`, which CI runs *before* the real check so that a
 checker which has stopped working fails the build rather than reporting a green tree (D-037).
+
+A third job runs the Blender pipeline itself:
+
+```
+blender --background --factory-startup --python BlenderPipeline/scripts/af_smoke_test.py
+```
+
+CI resolves the newest `5.2.x` build from `download.blender.org` by directory listing rather
+than pinning a patch number, installs the GL libraries a headless Blender still links against,
+and uploads `BlenderPipeline/reports/` as an artifact whether the run passes or fails. The
+harness exits 0 on success, 1 on validation failure, 2 if `bpy` is unavailable and 3 if a stage
+raised.
+
+This job is what caught D-040. The generated halo arc reached **0.97415 m** against a design
+envelope of **0.950 m** with a **0.010 m** tolerance — a 24 mm breach that no static check could
+have seen, because it only exists once the geometry is actually built. The apex is now solved
+downward from the envelope instead of being scaled from the halo tube radius, and lands at
+**0.940 m**. Full detail in `DECISION_LOG.md` D-040.
 
 ## Next milestone
 
