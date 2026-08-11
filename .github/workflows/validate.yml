@@ -1,20 +1,23 @@
-name: validate
+# ApexFormula - static validation and headless Blender smoke test.
+#
+# Two gates run on every push and pull request:
+#
+#   1. static-validation  - no engine, no DCC. Repository structure, naming,
+#                           originality rules, and every reference model that
+#                           can execute on a bare Python interpreter.
+#   2. blender-pipeline   - installs Blender and runs the pipeline headless.
+#
+# What this workflow deliberately CANNOT do (Cross-Milestone Rule 1: never
+# claim completion without evidence of the right kind):
+#
+#   * It does not compile any C++. There is no Unreal Engine here.
+#   * It does not open the Unreal Editor, import an FBX, or play the game.
+#   * It does not prove any mesh looks correct, only that it was built.
+#
+# Anything needing those remains labelled "requires Unreal Editor
+# verification" or "requires playtesting" until a human does it.
 
-# Two independent gates:
-#
-#   static-validation  needs neither Unreal nor Blender. It is the fast,
-#                      always-green-or-genuinely-broken gate.
-#
-#   blender-pipeline   installs Blender headlessly and actually executes
-#                      af_smoke_test.py. This is what turns the Milestone 0B
-#                      `requires Blender execution` labels into evidence.
-#
-# What this workflow deliberately cannot do: `requires local compilation`,
-# `requires Unreal Editor verification`, `requires playtesting` and
-# `requires visual inspection`. Unreal Engine cannot run on free hosted
-# runners. Those labels stay unsatisfied until the project is built on a
-# real Windows machine, and no green tick here should be read as covering
-# them (Cross-Milestone Rule 1).
+name: validate
 
 on:
   push:
@@ -42,93 +45,84 @@ jobs:
         with:
           python-version: '3.12'
 
-      # Standard library only, by design. No pip install step exists here
-      # and none should be added.
+      # Standard library only, by design. No pip install step exists here and
+      # none should be added.
+
       - name: Repository-wide static validator
         run: python3 Tools/af_static_validate.py --root .
 
       - name: Blender pipeline config self-check
         run: python3 BlenderPipeline/scripts/af_pipeline_config.py
 
-      # Milestone 3. This EXECUTES the lap timing and lap validity rules.
-      # It has to be its own step: the compileall step below byte-compiles
-      # every script but runs none of them, so without this line the
-      # self-test would compile cleanly and prove nothing.
+      # Milestone 3 added a Python reference model of the lap and sector
+      # rules. Byte-compiling it would only prove it parses; the point of the
+      # model is that its behaviour matches the C++, and that can only be
+      # shown by running its cases. It has no third-party imports and no
+      # engine dependency, so it runs here rather than in the Blender job.
       #
-      # A pass here means the rules are self-consistent and satisfy M3
-      # acceptance criteria 1-4 arithmetically. It does not mean the C++
-      # compiles - nothing in this repository has ever been compiled.
+      # There is no continue-on-error below on purpose. A non-zero exit fails
+      # the job, so a green run IS the evidence that every case executed and
+      # passed.
+
       - name: Lap rules reference model self-test
         run: python3 Tools/af_lap_rules_model.py --self-test
+
+      # The circuit generator keeps all of its layout maths free of bpy for
+      # exactly the same reason: so the geometry can be executed and checked
+      # here instead of merely byte-compiled. The bpy path is not exercised
+      # by this step; it runs in the Blender job's scene only.
+
+      - name: Circuit generator self-test
+        run: python3 BlenderPipeline/scripts/af_circuit_generate.py --self-test
 
       - name: Byte-compile every script
         run: python3 -m compileall -q BlenderPipeline/scripts Tools
 
   blender-pipeline:
     name: Blender smoke test (headless)
-    runs-on: ubuntu-latest
     needs: static-validation
+    runs-on: ubuntu-latest
     env:
-      # Pinned to the series in VERSION_MATRIX.md. The exact patch release is
-      # resolved at run time so a 5.2.x bump does not silently break CI.
       BLENDER_SERIES: '5.2'
     steps:
       - name: Check out
         uses: actions/checkout@v4
 
-      # Blender links against these even in --background mode.
       - name: Install runtime libraries
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libgl1 libxi6 libxxf86vm1 libxfixes3 libxrender1 libsm6 libice6
 
-      # Every failure path below names itself via ::error::, which surfaces
-      # as a check annotation without needing the job log. The previous
-      # version failed silently under `set -e`, which is why -e is gone:
-      # the failures worth seeing were the ones it was swallowing.
       - name: Resolve and install Blender ${{ env.BLENDER_SERIES }} LTS
         run: |
           set -uo pipefail
-          release_root="https://download.blender.org/release/"
-          base="${release_root}Blender${BLENDER_SERIES}/"
-          echo "Listing ${base}"
-          if ! listing="$(curl -fsSL "${base}")"; then
-            published="$(curl -fsSL "${release_root}" \
-              | grep -oE 'Blender[0-9]+\.[0-9]+' \
-              | sort -Vu | tr '\n' ' ')"
-            echo "::error::Blender series ${BLENDER_SERIES} has no directory at ${base}. Series actually published: ${published:-<parent listing also unavailable>}. The Blender ${BLENDER_SERIES} LTS assumption recorded in VERSION_MATRIX.md needs revisiting."
+          INDEX="https://download.blender.org/release/Blender${BLENDER_SERIES}/"
+          echo "Listing ${INDEX}"
+          LISTING="$(curl -fsSL "${INDEX}")" || {
+            echo "::error::Cannot reach ${INDEX}. Blender ${BLENDER_SERIES} may not be published under that path."
             exit 1
-          fi
-          archive="$(printf '%s' "${listing}" \
+          }
+          ARCHIVE="$(printf '%s' "${LISTING}" \
             | grep -oE "blender-${BLENDER_SERIES}\.[0-9]+-linux-x64\.tar\.xz" \
             | sort -V | tail -n 1)"
-          if [ -z "${archive}" ]; then
-            present="$(printf '%s' "${listing}" \
-              | grep -oE 'blender-[0-9.]+-linux-x64\.tar\.xz' \
-              | sort -Vu | tr '\n' ' ')"
-            echo "::error::${base} exists but publishes no blender-${BLENDER_SERIES}.x linux-x64 archive. Present instead: ${present:-<no linux-x64 archives at all>}."
+          if [ -z "${ARCHIVE}" ]; then
+            echo "::error::No linux-x64 build found for Blender ${BLENDER_SERIES}."
             exit 1
           fi
-          echo "Resolved: ${archive}"
-          if ! curl -fsSL -o blender.tar.xz "${base}${archive}"; then
-            echo "::error::Download of ${base}${archive} failed after the archive was successfully resolved."
+          echo "Selected ${ARCHIVE}"
+          curl -fsSL -o "${RUNNER_TEMP}/blender.tar.xz" "${INDEX}${ARCHIVE}" || {
+            echo "::error::Download of ${ARCHIVE} failed."
             exit 1
-          fi
+          }
           mkdir -p "${RUNNER_TEMP}/blender"
-          if ! tar -xf blender.tar.xz -C "${RUNNER_TEMP}/blender" --strip-components=1; then
-            echo "::error::${archive} downloaded but could not be extracted."
-            exit 1
-          fi
+          tar -xJf "${RUNNER_TEMP}/blender.tar.xz" \
+            -C "${RUNNER_TEMP}/blender" --strip-components=1
           echo "${RUNNER_TEMP}/blender" >> "${GITHUB_PATH}"
 
       - name: Record the Blender version actually used
         run: blender --version
 
-      # Exit codes, per BlenderPipeline/README.md §5:
-      #   0 success · 1 validation failure · 2 bpy unavailable · 3 run failed
-      # Reaching this step under `blender` means 2 is not expected; if it
-      # appears, the invocation is wrong, not the content.
       - name: Run af_smoke_test.py end to end
         run: |
           blender --background --factory-startup \
@@ -141,6 +135,6 @@ jobs:
           name: blender-pipeline-output
           path: |
             BlenderPipeline/reports/
-            BlenderPipeline/exports/
-            BlenderPipeline/generated/
+            exports/
+            generated/
           if-no-files-found: warn
