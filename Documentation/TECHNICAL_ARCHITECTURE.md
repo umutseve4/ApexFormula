@@ -1,14 +1,21 @@
-# ApexFormula — Technical Architecture
+# Uludağ Formula — Technical Architecture
 
 **Document status:** statically authored design document (Milestone 0A). Nothing in this document has been compiled, opened in the Unreal Editor, or executed. All module, class and interface names below are *proposed* and become real only in Milestone 1.
 
 **Fixed environment:** Unreal Engine 5.8, Blender 5.2 LTS, Windows, C++ primary, Blueprints for configuration and presentation. See `Documentation/VERSION_MATRIX.md`.
 
+> **Naming note (D-048).** The product is **Uludağ Formula** (previously *Apex Formula*). This document still contains the old string in two different roles, and they are not the same thing:
+>
+> - **Queued for wave 2 — will change:** the six module identifiers `ApexFormulaCore`, `ApexFormulaVehicle`, `ApexFormulaRace`, `ApexFormulaUI`, `ApexFormulaEditor`, `ApexFormulaTests`, and the settings file `Config/DefaultApexFormula.ini`. These are directory names, `.Build.cs` class names and `.uproject` entries that are asserted by `Tools/af_static_validate.py`; they can only move in the same commit that patches the guard, so they are deliberately untouched here.
+> - **Permanent — will not change:** `AF_`, `af_`, `UAF*`, `FAF*`, `AAF*`, `IAF*`, `LogAF*` and the `af.` console-variable prefix. D-048 reclassified `AF_` from "old product name" to the project's **internal code name**. It is retained indefinitely.
+>
+> Everything else in this document is product prose and has been renamed.
+
 ---
 
 ## 1. Overall System Architecture
 
-ApexFormula is structured as **five horizontal layers**. Dependencies point downward only. A lower layer never includes a higher layer's headers.
+Uludağ Formula is structured as **five horizontal layers**. Dependencies point downward only. A lower layer never includes a higher layer's headers.
 
 ```
 Layer 5  Presentation      HUD, menus, garage, podium, cameras, audio, VFX
@@ -41,9 +48,11 @@ Proposed module split. Each is a real Unreal build module with its own `.Build.c
 
 `*` The exact Chaos Vehicles module dependency name and availability in Unreal Engine 5.8 is **an assumption requiring verification** — see `Documentation/VERSION_MATRIX.md` §5 and `Documentation/VEHICLE_SYSTEM_DECISION.md` §7.
 
+The six module identifiers above are **wave-2 items**, per the naming note. They are asserted by `Tools/af_static_validate.py` in at least eight places (the module list, the dependency table, the engine-dependency table, the `.uproject` checks, the target-file checks and the per-module `startswith` filters), so renaming them in a documentation commit would turn CI red immediately. They move only in a commit that also patches the guard.
+
 **Boundary rules:**
 
-- `ApexFormulaCore` depends on no other ApexFormula module. It must remain free of vehicle-specific and race-specific types.
+- `ApexFormulaCore` depends on no other module of this project. It must remain free of vehicle-specific and race-specific types.
 - `ApexFormulaRace` must not depend on `ApexFormulaVehicle`. It talks to vehicles only through interfaces declared in Core (e.g. `IAFRaceParticipant`, `IAFTelemetrySource`). This is what allows AI cars, player cars and future networked cars to be treated uniformly.
 - `ApexFormulaUI` reads; it does not decide. No race rule, penalty or lap validity may be computed in the UI module.
 - Editor-only code never leaks into runtime modules.
@@ -124,7 +133,7 @@ Rules:
 
 ### Central bone-name convention
 
-The initial ApexFormula skeletal convention is:
+The skeletal convention is:
 
 ```
 AF_Root
@@ -140,7 +149,9 @@ AF_Suspension_RL
 AF_Suspension_RR
 ```
 
-This convention is **not** assumed to be any Chaos Vehicles default. It is an ApexFormula convention. It is stored in exactly one place — `UAFBoneNameMap` — and both the Unreal wheel/suspension setup and the Blender generator read their names from a shared source of truth (`af_pipeline_config.py` mirrors the same list; see `Documentation/BLENDER_PIPELINE_DESIGN.md`). Changing a bone name must be a one-file change plus a re-export, never a code hunt.
+This convention is **not** assumed to be any Chaos Vehicles default. It is this project's own convention, and under D-048 it is **permanent**: the rename to Uludağ Formula explicitly does not touch these eleven bone names. `Tools/af_static_validate.py` asserts the `AF_` prefix directly (the prefix check plus the `AF_Root` / `AF_Steering` presence checks and the `bone.startswith("AF_")` loop), and the same names are hard-coded in `af_pipeline_config.py` and in the circuit and lap-rules self-tests. Renaming them would be a large, high-risk change with no user-visible benefit — see `Documentation/PROJECT_VISION.md` §1 for the full three-name identity model.
+
+The names are stored in exactly one place — `UAFBoneNameMap` — and both the Unreal wheel/suspension setup and the Blender generator read their names from a shared source of truth (`af_pipeline_config.py` mirrors the same list; see `Documentation/BLENDER_PIPELINE_DESIGN.md`). Changing a bone name must be a one-file change plus a re-export, never a code hunt.
 
 **Status:** `requires Unreal Editor verification` — that Unreal Engine 5.8's vehicle setup accepts a fully data-driven bone mapping with these names.
 
@@ -148,7 +159,7 @@ This convention is **not** assumed to be any Chaos Vehicles default. It is an Ap
 
 Three tiers, in increasing specificity:
 
-1. **Project settings** — `UAFDeveloperSettings` (`UDeveloperSettings` subclass), stored in `Config/DefaultApexFormula.ini`. Holds pipeline paths, default Data Asset references, telemetry toggles, quality profile default.
+1. **Project settings** — `UAFDeveloperSettings` (`UDeveloperSettings` subclass), stored in `Config/DefaultApexFormula.ini`. Holds pipeline paths, default Data Asset references, telemetry toggles, quality profile default. *(Wave-2 item: this filename, the matching `Config=` UCLASS specifier and the `[/Script/ApexFormulaCore.AFDeveloperSettings]` section header all move together, in one commit, with the guard patched alongside.)*
 2. **Data Assets** — all gameplay and vehicle tuning, as in §5.
 3. **Level / instance overrides** — Blueprint-exposed properties on placed actors, for level-specific configuration only.
 
@@ -156,7 +167,7 @@ Rules:
 
 - No gameplay constant is read from a hardcoded literal in a `.cpp` file.
 - Machine-specific configuration (local paths, personal reference directories, editor layout) is **never committed**; it is excluded by `.gitignore`.
-- Console variables (`af.` prefix) are permitted for debugging and profiling only, never as the primary configuration route.
+- Console variables (`af.` prefix) are permitted for debugging and profiling only, never as the primary configuration route. The `af.` prefix is permanent under D-048.
 
 ## 7. Asset Pipeline Boundaries
 
@@ -198,7 +209,7 @@ Principle: **rules logic must be testable without a car, a track or a frame.** I
 
 ### Logging
 
-- Dedicated categories: `LogAFCore`, `LogAFVehicle`, `LogAFRace`, `LogAFPipeline`, `LogAFUI`.
+- Dedicated categories: `LogAFCore`, `LogAFVehicle`, `LogAFRace`, `LogAFPipeline`, `LogAFUI`. These keep the `AF` internal code name permanently, per D-048.
 - Verbosity is configuration-driven, not compile-time.
 - Every rule decision that affects the player (lap invalidated, penalty issued, pit stop judged) logs at `Log` level with participant id, session time and the reason. Silent rule decisions are prohibited.
 
@@ -212,7 +223,7 @@ Principle: **rules logic must be testable without a car, a track or a frame.** I
 
 ## 11. Proposed Runtime Class Sketch
 
-Illustrative only; nothing below has been compiled.
+Illustrative only; nothing below has been compiled. Module names are wave-2 items; the class names are permanent.
 
 ```
 ApexFormulaCore
@@ -261,6 +272,8 @@ ApexFormulaUI
 | --- | --- |
 | Layering and module boundaries are internally consistent | statically inspected |
 | No real motorsport brand appears as an identifier | statically inspected |
+| The product name "Uludağ Formula" matches none of the prohibited identifier patterns in `af_static_validate.py` | automatically validated |
+| Module identifiers still carry the old product name and are queued for wave 2 | statically inspected |
 | Proposed module names compile as Unreal modules | requires local compilation |
 | Chaos Vehicles module availability/naming in UE 5.8 | requires Unreal Editor verification |
 | Data-driven bone mapping accepted by UE 5.8 vehicle setup | requires Unreal Editor verification |
