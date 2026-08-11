@@ -19,6 +19,7 @@ claimed as complete.
 | Lap timing rules (`UAFSectorTimer`) | Source written, rules verified by executable model | `automatically validated` (rules only) |
 | Lap validity rules (`UAFLapValidator`) | Source written, rules verified by executable model | `automatically validated` (rules only) |
 | Model/source drift guard (`Tools/af_drift_guard.py`) | Written, self-tested, enforced in CI | `automatically validated` |
+| Track/source drift guard (`Tools/af_track_drift_guard.py`) | Written, self-tested, mutation-proven, enforced in CI | `automatically validated` |
 | Checkpoint actor (`AAFCheckpoint`) | Source written | `requires local compilation` |
 | Session rules (`UAFSessionRules`) | Source written | `requires local compilation` |
 | Track definition (`UAFTrackDefinition`) | Source written | `requires local compilation` |
@@ -259,6 +260,43 @@ and a non-zero exit from either would fail the job. That is a sound
 inference, but it is an inference, not a log reading, and it is labelled
 as such.
 
+### 4.4 CI execution of the track drift guard
+
+Pull request #12, branch `feature/m3-d045-track-guard`, squash-merged to
+`main` as `a77dcd50cad331242d8c3fca0739010f0f832006`.
+
+Ten check runs were returned, all `completed` with conclusion `success`.
+Five distinct names, each appearing twice because both the `push` and the
+`pull_request` trigger fire:
+
+| Check | Runs | Conclusion |
+| --- | --- | --- |
+| Static validation (no engine, no DCC) | 2 | success |
+| Blender smoke test (headless) | 2 | success |
+| af_static_validate (py3.9) | 2 | success |
+| af_static_validate (py3.12) | 2 | success |
+| Python syntax check | 2 | success |
+
+Workflow runs observed: `31517348832`, `31517348846`, `31517409235`,
+`31517409242`.
+
+**Merge diff:** 2 files changed, **+854 / −0**. Additions only, so the
+`validate.yml` truncation class that bit PR #7 did not recur.
+
+The green `Static validation` job is the one that matters here for a
+second reason. Locally the guard was exercised against a **reduced**
+3,290-character copy of `af_circuit_generate.py`. In CI it ran against
+the real 42,975-byte generator on a clean checkout. That retires the
+"the fixture was a reduction, so the real file might parse differently"
+risk — it did not.
+
+Two things are **not** claimed. The job-level-only inference of §4.3
+applies unchanged: the guard steps are believed to have run because the
+job passed and neither step carries `continue-on-error`, not because a
+step log was read. And unlike PR #10, the post-merge blob SHA of
+`Tools/af_track_drift_guard.py` was **not** recomputed locally and
+compared; that verification was simply not performed.
+
 ---
 
 ## 5. Acceptance criteria
@@ -281,10 +319,12 @@ One qualification of that wording has changed since D-042. The phrase
 model* are proven, with a human promise that the model matched the C++.
 Since D-044 the enum membership and ordering, the public method surface
 and sixteen named behavioural rules are **mechanically compared** between
-the two languages on every push. The rules are now proven to be the same
-rules on both sides of the boundary, not merely proven on one side. What
-is still unproven is unchanged: that the C++ compiles, and that anything
-calls it correctly at runtime.
+the two languages on every push. Since D-045 the same is true of the
+track-definition validator: its sixteen diagnostic messages, sixteen
+predicates and eleven field names are compared as well. The rules are now
+proven to be the same rules on both sides of the boundary, not merely
+proven on one side. What is still unproven is unchanged: that the C++
+compiles, and that anything calls it correctly at runtime.
 
 ---
 
@@ -436,10 +476,13 @@ found nothing wrong.
 * The `PYTHON_ONLY_ALLOWLIST` is a maintained exception list. Adding a
   genuinely new Python-only method requires editing the allowlist, which
   is intentional friction.
-* **D-043 part B is not yet covered.** The circuit mirror
+* ~~**D-043 part B is not yet covered.** The circuit mirror
   (`UAFTrackDefinition::ValidateSelf()` ↔ `validate_track_definition()`)
   has the same drift exposure and no guard. This is an open gap, tracked
-  in §7 and in `MILESTONE_3_CIRCUIT.md` §4.
+  in §7 and in `MILESTONE_3_CIRCUIT.md` §4.~~
+  **Closed by D-045 (§6B).** The wording is struck through rather than
+  deleted so the record shows the gap was declared before it was closed,
+  not discovered afterwards.
 * `Tools/af_lap_rules_model.py` is now a **guard input**. Editing it —
   including editing its docstring — requires CI to pass afterwards.
 
@@ -460,19 +503,274 @@ produce false failures.
 
 ---
 
+## 6B. Decision D-045 — guard the track-definition mirror as well
+
+**Status.** Accepted and in force. Implemented by
+`Tools/af_track_drift_guard.py`, merged to `main` as
+`a77dcd50cad331242d8c3fca0739010f0f832006` (PR #12).
+
+**Closes.** The last consequence bullet of D-044 (§6A) and the first
+residual bullet of §7 — the circuit mirror created by D-043.
+
+### 6B.1 Context
+
+D-043 shipped `validate_track_definition()` in
+`BlenderPipeline/scripts/af_circuit_generate.py` as a hand-maintained
+mirror of `UAFTrackDefinition::ValidateSelf()` in
+`Unreal/Source/ApexFormulaRace/Private/AFTrackDefinition.cpp`. D-044
+guarded the *lap-rules* mirror and explicitly recorded that this second
+mirror was still unguarded.
+
+That was the last known instance of the pattern in the repository. Its
+failure mode is the same one D-044 was created to eliminate, and it is
+the dangerous kind: **silent**. If someone tightens a validation rule in
+the C++ and forgets the generator, the generator keeps emitting circuit
+data that the engine would reject, CI stays green, and the evidence
+chain keeps reporting `automatically validated` for a mirror that no
+longer mirrors anything. No test fails. Nothing goes red. The
+documentation simply becomes false.
+
+No drift has ever actually been observed between these two files. The
+guard is preventative, not corrective — it was written because the
+exposure existed, not because a bug was found.
+
+### 6B.2 The invariant that makes this checkable
+
+The decisive discovery is that the sixteen diagnostic strings on the C++
+side and the sixteen on the Python side are **byte-identical** once
+Python's implicit string concatenation is resolved. `ast` resolves it for
+free: templates 12, 14 and 15 are split across source lines in the Python
+but arrive from the parser already joined, so no manual reassembly is
+needed.
+
+Ordered, byte-identical diagnostic parity is therefore a strong invariant
+with a very low false-positive rate. It is not a proxy for behaviour —
+it is the literal user-visible contract of both validators, in the same
+order, with the same `%d` / `%f` / `%s` placeholders.
+
+### 6B.3 Decision
+
+Add `Tools/af_track_drift_guard.py`: a standard-library-only,
+Python 3.9-compatible, **standalone** program that reads both files as
+text and fails CI when they disagree.
+
+Standalone matters. It imports nothing from `Tools/af_drift_guard.py`,
+following the precedent set by D-037 (`af_validate_interfaces.py` was
+kept separate rather than folded into `af_static_validate.py`). A guard
+that depends on another guard fails in two places at once and is harder
+to reason about when it does.
+
+**Design correction carried out at the same time.** D-044's checks read
+`CLASS_PAIRS` and `RULES` as *module globals*. That is an anti-pattern:
+the check functions cannot be exercised against anything except the real
+repository tables, so its self-test has to construct comparatively
+awkward scenarios. D-045's check functions take their rule tables as
+**parameters**. That single change lets the self-test drive tiny
+synthetic fixtures — a 3,462-character C++ fixture and a 3,290-character
+reduced Python fixture — through the exact same code path CI uses. The
+D-044 guard was deliberately left unmodified; retrofitting it is
+backlog, not part of this decision.
+
+### 6B.4 What it checks
+
+Three checks, with fault-isolating message prefixes so a failure names
+its own category immediately.
+
+| Check | Prefix | Compares | Count |
+| --- | --- | --- | --- |
+| A — diagnostic message parity | `A:` | The ordered list of message templates emitted by `Problems.Add(...)` in the C++ against those appended to `problems` in the Python | 16 vs 16 |
+| B — predicate parity | `B: P-nn` | 16 named predicate rules, each requiring a specific guard construct to be present on **both** sides | 16 |
+| C — field-name parity | `C:` | 11 C++ member names against the quoted dict keys the Python actually reads | 11 |
+
+Check C matches the Python side on the **quoted** form (`"lap_length_m"`)
+specifically to prove a real dict read, not an incidental identifier.
+
+The eleven field pairs: `DataVersion`/`data_version`, `TrackId`/`track_id`,
+`DisplayName`/`display_name`, `LapLengthM`/`lap_length_m`,
+`GridSlotCount`/`grid_slot_count`, `CheckpointOrder`/`checkpoint_order`,
+`Sectors`/`sectors`, `SectorIndex`/`sector_index`,
+`ClosingCheckpointIndex`/`closing_checkpoint_index`,
+`bHasPitLane`/`has_pit_lane`,
+`PitLaneSpeedLimitKph`/`pit_lane_speed_limit_kph`.
+
+Exit codes follow D-044 exactly: `0` parity holds, `1` drift detected,
+`2` a source file is missing or the invocation is wrong.
+
+### 6B.5 Four implementation hazards, each found by running the code
+
+These are recorded because each one would have produced a *quietly wrong*
+guard rather than a crash.
+
+1. **String-aware parenthesis matching is mandatory.** Template 14 is
+   `Sectors[%d].ClosingCheckpointIndex %d is outside CheckpointOrder (0..%d)`
+   — it contains an unbalanced-looking `(0..%d)` **inside a string
+   literal**. A naive paren scanner terminates the call early and
+   extracts a truncated template.
+2. **Sink restriction is mandatory on both sides.** The C++ body contains
+   a non-message `TEXT(" ")` used by predicate P-04. Extracting every
+   `TEXT(...)` rather than only those inside the `Problems.Add` sink
+   yields 17 templates, not 16.
+3. **`ast.walk` is breadth-first.** Results must be sorted by
+   `(lineno, col_offset)` to recover source order; without the sort,
+   "ordered parity" silently compares an arbitrary order.
+4. **The bare `Problems.Add(TEXT("…"));` form is extracted.** Templates
+   2, 5 and 11 use it. An early version that only handled the
+   `FString::Printf` form found 13, not 16 — and 13-vs-13 would have
+   looked like passing parity.
+
+### 6B.6 Local evidence
+
+Python 3.12.9, build environment.
+
+| Run | Result | Exit |
+| --- | --- | --- |
+| `--self-test` | **27 cases over 21 methods, 0 failed** | 0 |
+| `--root . --verbose` against the local tree | 16 C++ diagnostics, 16 Python diagnostics, 16 predicates, 11 field pairs, `RESULT clean` | 0 |
+
+Before any of that, all 43 rule fragments — the 16 message templates, the
+16 predicate constructs and the 11 field pairs — were read back
+**verbatim** against the real repository files at
+`dfc696cff6efeeed523a7ac468c2a66268771303`. All 43 matched. A guard whose
+rule table is wrong passes vacuously, so this hand-check is a
+precondition for the run above meaning anything.
+
+### 6B.7 Negative evidence — five mutations
+
+A guard that passes proves nothing on its own. Five mutations were
+applied to copies of the tree, each one syntactically valid, each one run
+through the guard.
+
+| # | Mutation | Detected as | Exit |
+| --- | --- | --- | --- |
+| 1 | Delete the C++ `Problems.Add(TEXT("DisplayName must be set"));` | `A:` — 15 vs 16, "present in Python but missing in C++" | 1 |
+| 2 | Reword the Python `GridSlotCount must be >= 1` to `…must be at least 1` | `A:` — two findings, one C++-only and one Python-only | 1 |
+| 3 | C++ `LapLengthM <= 0.0` → `LapLengthM < 0.0001` | `B: P-06` — C++ fragment not found | 1 |
+| 4 | Rename the **first** `"pit_lane_speed_limit_kph"` in the Python | `B: P-16` — Python fragment not found | 1 |
+| 5 | Rename **every** `"grid_slot_count"` in the Python | `B: P-07` **and** `C:` — Python never reads key `grid_slot_count` | 1 |
+
+Mutations 4 and 5 are a matched pair and the reason the set is five
+rather than four. A partial `str.replace(old, new, 1)` trips only Check
+B; Check C is only exercised when *every* occurrence is renamed. Without
+mutation 5, Check C would have been unproven — present in the code, never
+demonstrated to fire.
+
+**Fixture hazard, recorded because it cost a debugging cycle.** The first
+self-test run reported 2 failures that were fixture defects, not guard
+defects: a mutation deleted a `problems.append(...)` that was the *sole
+body* of an `if`, orphaning the `if` and producing a `SyntaxError` that
+masked the finding the test was asserting. Mutations must remain
+syntactically valid or they test the parser's error path instead of the
+guard.
+
+### 6B.8 CI wiring
+
+Two steps were added to the `static-validation` job in
+`.github/workflows/validate.yml`, immediately after
+`Circuit generator self-test`, neither with `continue-on-error`:
+
+```yaml
+- name: Track drift guard self-test
+  run: python3 Tools/af_track_drift_guard.py --self-test
+
+- name: Track drift guard (C++ / Python parity)
+  run: python3 Tools/af_track_drift_guard.py --root . --verbose
+```
+
+**Correction on the record.** The first attempt targeted
+`.github/workflows/static-validation.yml`. That was wrong: the D-044
+guard steps live in `validate.yml`, and `static-validation.yml` only runs
+`af_static_validate`, `af_validate_interfaces` and `compileall`. The
+target was corrected before the pull request was opened, and
+`static-validation.yml` was left unmodified.
+
+`.github/workflows/validate.yml` now carries six execution steps and is
+8,958 bytes on `main`. The `blender-pipeline` job and its Blender 5.2
+archive-resolution block (D-039) were preserved byte-for-byte.
+
+### 6B.9 Result
+
+PR #12, 10/10 check runs `success` across five distinct names, diff
+**+854 / −0**, squash-merged to `main` as
+`a77dcd50cad331242d8c3fca0739010f0f832006`. Full check table, workflow
+run IDs and the caveats are in §4.4.
+
+### 6B.10 What is explicitly NOT claimed
+
+* **Not claimed: behavioural equivalence.** The guard compares *text*.
+  Sixteen identical messages, sixteen present predicates and eleven
+  shared field names do not prove the two validators reject the same
+  inputs. A C++ change from `<= 0.0` to `< 0.0` would keep the message,
+  keep the field, and still be caught only if it breaks the recorded
+  predicate fragment — which is precisely why the predicate table exists,
+  but the table is a subset of behaviour, not all of it.
+* **Not claimed: that the C++ compiles.** Nothing under `Unreal/` has
+  ever been compiled. The guard does not build anything.
+* **Not claimed: that the generator was executed.** The guard parses
+  `af_circuit_generate.py` with `ast`; it does not import or run it.
+* **Not claimed: that the guard steps were observed executing in CI.**
+  Job-level-only inference, exactly as recorded in §4.3 and §4.4.
+* **Not claimed: that the merged blob was byte-verified.** The post-merge
+  blob SHA of `Tools/af_track_drift_guard.py` was not recomputed. PR #10
+  did perform that check; this one did not.
+
+**Disclosure — a commit message that overstates its own content.** Commit
+`5fb08f2010510b275adb97414db14a150d0fd687` contains
+`Tools/af_track_drift_guard.py` **only**, but its message describes the
+CI steps as already wired. They were not; the wiring landed separately in
+`99cf8078d834b34f76dfdb2ec27cb42bc098ced4`. Git history is immutable, so
+the message cannot be corrected in place. It is disclosed here, in the
+PR #12 body, in the squash-merge message and in `CI_EVIDENCE.md` §4
+rather than left to be discovered by someone reading the log later.
+
+### 6B.11 Follow-up recorded, not silently dropped
+
+The module docstring of `BlenderPipeline/scripts/af_circuit_generate.py`
+still reads that the mirror is "maintained BY HAND. Nothing mechanically
+ties it to the C++. See D-043." **That sentence is now stale** — D-045 is
+exactly the mechanical tie it says does not exist.
+
+It was not fixed in this change. Every edit through the available tooling
+is a full-file rewrite with no patch mechanism, and that file is 42,975
+bytes; rewriting all of it to change three sentences risks a truncation
+defect of the same class that damaged `validate.yml` in PR #7, for no
+functional gain. The same reasoning defers the equivalent stale sentence
+in `Tools/af_lap_rules_model.py` ("review discipline, not automation",
+30,021 bytes).
+
+Both are open documentation defects. They are listed in §7 so that the
+deferral is a recorded decision rather than an oversight.
+
+**Reversibility.** Deleting the two workflow steps disables the guard and
+restores the pre-D-045 position exactly. Nothing imports
+`af_track_drift_guard.py`; nothing else depends on it.
+
+---
+
 ## 7. Known gaps carried forward
 
 * The C++ in `Unreal/Source/ApexFormulaRace/` has never been compiled.
   Label: `requires local compilation`.
 * No FBX import, no editor load, no visual inspection, no playtesting.
 * ~~Model/source drift is unguarded, as stated in D-042.~~ Closed for the
-  lap-rules mirror by D-044 (§6A). Two residual gaps remain and are not
-  presented as closed:
-  * `validate_track_definition()` (D-043 part B) is still a
+  lap-rules mirror by D-044 (§6A).
+  * ~~`validate_track_definition()` (D-043 part B) is still a
     hand-maintained mirror with **no** guard. It is the obvious next
-    extension of the `RULES` table.
-  * Guard coverage is bounded by the 16-rule table; behaviour outside
-    that table can still drift silently.
+    extension of the `RULES` table.~~ **Closed by D-045 (§6B)**, though
+    by a separate standalone guard rather than by extending the D-044
+    `RULES` table.
+  * Guard coverage is bounded by its rule tables — 16 rules for D-044,
+    16 messages plus 16 predicates plus 11 fields for D-045. Behaviour
+    outside those tables can still drift silently. This gap is narrowed
+    twice over but is **not** closed and is not presented as closed.
+  * Both guards are **text-only**. Neither compiles the C++ nor executes
+    the Python. Textual parity is not behavioural equivalence.
+* **Stale documentation, deferred deliberately (see §6B.11):**
+  * `BlenderPipeline/scripts/af_circuit_generate.py` — the docstring
+    still says the mirror is hand-maintained with nothing tying it to the
+    C++. D-045 made that false.
+  * `Tools/af_lap_rules_model.py` — the docstring still describes drift
+    protection as "review discipline, not automation". D-044 made that
+    false.
 * `config_hash = c9ef9f7e985a1aaf` is still asserted **by construction
   only**. This is the single evidence gap carried over from Milestone 2
   and it remains open.
