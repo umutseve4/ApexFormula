@@ -1,4 +1,4 @@
-# ApexFormula
+# Uludağ Formula
 
 An original 3D formula racing game built with Unreal Engine 5.8 and Blender 5.2 LTS.
 
@@ -6,7 +6,55 @@ An original 3D formula racing game built with Unreal Engine 5.8 and Blender 5.2 
 > authored and statically validated but **has never been compiled**. There is no art asset in
 > this repository yet, nothing has been imported into an editor, and nothing has been played.
 
+> **Rename in progress (D-048):** the project was previously called *Apex Formula*. The product
+> name is now **Uludağ Formula**. The rename is being applied in waves and is **not finished**.
+> The Unreal module names, the C++ file names, the `AF_`/`af_` prefixes and the validator
+> scripts still carry the old identity. See [Naming](#naming) for exactly what has and has not
+> moved.
+
 ---
+
+## Naming
+
+Three distinct names exist in this repository and they are not interchangeable.
+
+| Form | Value | Where it is used | Status |
+| --- | --- | --- | --- |
+| Product name | `Uludağ Formula` | Displayed title, project description, documentation prose | **Applied** |
+| Identifier form | `UludagFormula` | Repository name, `ProjectName`, `CompanyName` | **Partially applied** |
+| Internal code name | `ApexFormula*` | Unreal module names, directories, `.uproject`, `.Build.cs`, `.Target.cs` | **Not yet migrated** |
+| Symbol prefix | `AF_`, `af_`, `UAF`, `AAF`, `FAF`, `IAF` | C++ types, asset prefix, bone names, Python scripts | **Not yet migrated** |
+
+The identifier form drops the breve because Unreal Build Tool requires the module name, the
+directory name and the `ModuleRules` C# class name to be the same ASCII token. The same
+constraint applies to FBX bone names crossing the Blender→Unreal boundary and to shell paths in
+CI. The accented form is therefore confined to display strings and prose, which is where it is
+actually seen.
+
+Applied so far:
+
+- `Unreal/Config/DefaultGame.ini` — `ProjectName`, `CompanyName`, `ProjectDisplayedTitle`,
+  `Description`
+- This README
+- The GitHub repository itself, renamed to `UludagFormula`
+
+Not applied yet, and each one is tracked as a separate wave:
+
+- Six Unreal module names and their directories (`ApexFormulaCore`, `ApexFormulaVehicle`,
+  `ApexFormulaRace`, `ApexFormulaUI`, `ApexFormulaEditor`, `ApexFormulaTests`)
+- `ApexFormula.uproject`, `ApexFormula.Target.cs`, `ApexFormulaEditor.Target.cs`,
+  `Config/DefaultApexFormula.ini`
+- 65 C++ files, their `#include` graph, their `APEXFORMULA*_API` macros and the
+  `// Copyright ApexFormula.` header line that `af_static_validate.py` enforces on every one
+- The `AF_`/`af_` prefixes, the eleven bone names and the `AF_CP_` checkpoint prefix
+- The seven `Tools/af_*.py` validators and the nine `BlenderPipeline/scripts/af_*.py` scripts
+- Both workflow files, whose script paths follow the script names
+
+`Tools/af_static_validate.py` hard-codes the module dependency graph, the `.uproject` filename,
+both `.Target.cs` filenames, the settings section name and the copyright header line — 87
+occurrences of the old identity in one file. Any module rename must therefore land **in the same
+commit** as the corresponding validator change, or CI turns red. That constraint is the reason
+this is a staged migration rather than a single sweep.
 
 ## What this repository contains
 
@@ -15,13 +63,11 @@ project foundation and vehicle implementation, and the standalone static validat
 them against each other.
 
 ```
-ApexFormula/
+UludagFormula/
 ├── Documentation/          design documents, decision log, version matrix
-├── BlenderPipeline/        eight af_*.py scripts + README
+├── BlenderPipeline/        nine af_*.py scripts + README
 ├── Unreal/                 .uproject, Config/, Source/ with six C++ modules
-├── Tools/
-│   ├── af_static_validate.py
-│   └── af_validate_interfaces.py
+├── Tools/                  seven standalone af_*.py validators
 ├── .github/workflows/      static validation + headless Blender smoke test on every push
 ├── .gitattributes
 ├── .gitignore
@@ -65,6 +111,9 @@ Full detail and the list of assumptions that still require local verification ar
 
 ## Conventions
 
+These are the conventions **as they exist in the tree today**. They are pre-rename and are
+scheduled to migrate; see [Naming](#naming).
+
 - Asset prefix `AF_`; C++ prefixes `UAF`, `AAF`, `FAF`, `IAF`; Blender script prefix `af_`.
 - Metres inside Blender, centimetres at the Unreal boundary (`CM_PER_UNIT = 100.0`).
 - Bone names are defined once (`af_pipeline_config.py` / `UAFBoneNameMap`) and never hardcoded.
@@ -99,10 +148,10 @@ committed, packaged or transmitted. See `Documentation/DRIVER_PIPELINE_DESIGN.md
 | Milestone | State | Output |
 | --- | --- | --- |
 | **0A — Technical foundation** | Complete | `Documentation/` — design documents |
-| **0B — Blender pipeline foundation** | Complete, **executed and green in CI** | `BlenderPipeline/` — eight `af_*.py` scripts |
+| **0B — Blender pipeline foundation** | Complete, **executed and green in CI** | `BlenderPipeline/` — nine `af_*.py` scripts |
 | **1 — Unreal project foundation** | Complete, never compiled | `Unreal/` — six C++ modules; `Tools/af_static_validate.py` |
 | **2 — Vehicle implementation** | Authored and merged; 1 of 4 acceptance criteria met | Vehicle/pawn/controller implementations, 37 automation tests, `Tools/af_validate_interfaces.py` |
-| **3 onwards** | Not started | See `Documentation/MILESTONE_PLAN.md` |
+| **3 onwards** | Partial | See `Documentation/MILESTONE_PLAN.md` |
 
 "Complete, never compiled" for Milestone 1 means every file is authored and the static validator
 passes with zero failures, but **nothing has been compiled**, no editor has been opened and no
@@ -166,6 +215,12 @@ implement and fails on a return-type mismatch. It was written because the first 
 structurally unable to detect D-035, a real mismatch that had been sitting in `main`. It carries
 a nine-case mutation suite in `--self-test`, which CI runs *before* the real check so that a
 checker which has stopped working fails the build rather than reporting a green tree (D-037).
+
+`Tools/af_mesh_quality.py` audits generated geometry — winding, manifoldness, degenerate faces,
+normals, bounds and budgets — across 13 check families. Its `--self-test` carries 46 mutation
+cases and runs before the real audit, same house rule. It was written in Milestone 4 and
+immediately found a real defect: every face produced by the box generator was wound inward,
+giving a signed volume of −1.0. The generator was fixed, not the test (D-047).
 
 A third job runs the Blender pipeline itself:
 
