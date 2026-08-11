@@ -1,6 +1,6 @@
 # ApexFormula — Milestone Plan
 
-**Document status:** statically authored plan (Milestone 0A). Milestone numbering in this document is authoritative and is used identically in every other ApexFormula document.
+**Document status:** statically authored plan, first written at Milestone 0A and kept current as later milestones are authored. Milestone numbering in this document is authoritative and is used identically in every other ApexFormula document. Milestone *bodies* below (objective, inputs, outputs, acceptance criteria) are the plan as authored and are not rewritten as work proceeds; current status is recorded separately in the Milestone Status table at the end of this document.
 
 **Verification labels used throughout:** `statically inspected`, `automatically validated`, `requires Blender execution`, `requires Unreal Editor verification`, `requires local compilation`, `requires visual inspection`, `requires playtesting`.
 
@@ -378,6 +378,31 @@
 5. **Bone names live in `af_pipeline_config.py` and `UAFBoneNameMap`** and change together, never independently.
 6. **Nothing under `LocalReference/` is ever committed or packaged**, at any milestone.
 
+---
+
+## Milestone Status
+
+This table records what has been *authored* and what has been *verified*. Authoring and acceptance are different things: a milestone is only complete when its acceptance criteria have been checked with evidence carrying a verification label, per Cross-Milestone Rule 1.
+
+| # | Authored? | Acceptance criteria met? | Notes |
+| --- | --- | --- | --- |
+| 0A | Yes | Yes — `statically inspected` | Documentation set exists and is cross-consistent. |
+| 0B | Yes | Not confirmed — `requires Blender execution` | Scripts exist under `BlenderPipeline/scripts`; no script has been run, so no measured validation report exists. |
+| 1 | Yes | Not confirmed — `requires local compilation`, `requires Unreal Editor verification` | Six modules and their base classes exist as source; the project has never been compiled here and the editor has never been opened here. |
+| 2 | Yes | 1 of 4 — see below | Implementation files, automation tests and a dedicated static checker landed; behaviour unverified. |
+| 3–12 | No | Not started | Not begun. |
+
+**Milestone 2 acceptance criteria, individually:**
+
+| Criterion | Status | Label |
+| --- | --- | --- |
+| Vehicle accelerates, brakes and steers | Not met — not demonstrated | `requires playtesting` |
+| Vehicle does not fall through the ground, oscillate, or invert at rest | Not met — not demonstrated | `requires playtesting` |
+| All engine vehicle access goes through `UAFVehicleCompatibilityLayer` | **Met** | `automatically validated` — enforced by `Tools/af_static_validate.py` in CI |
+| Imported skeleton bone names match `UAFBoneNameMap` | Not met — no asset has been imported | `requires Unreal Editor verification` |
+
+The naming *convention* is agreed between `af_pipeline_config.py` and `UAFBoneNameMap` and that agreement is `statically inspected`; the fourth criterion concerns an actually imported skeleton, which is a different and unmet thing.
+
 ## Verification Ledger for This Document
 
 | Claim | Label |
@@ -386,4 +411,7 @@
 | Dependencies form an acyclic order (0A → 0B → 1 → 2 → …) | statically inspected |
 | Every referenced document and section exists | statically inspected |
 | Acceptance criteria are checkable rather than aspirational | statically inspected |
-| Any milestone has actually been completed | not claimed — nothing beyond 0A has been started |
+| Milestones 0A, 0B, 1 and 2 have been authored | statically inspected |
+| Milestone 0A acceptance criteria are met | statically inspected |
+| Milestone 0B, 1 and 2 acceptance criteria are met | not claimed — see the Milestone Status table for the per-criterion position |
+| Any milestone beyond 0A is complete | not claimed |
