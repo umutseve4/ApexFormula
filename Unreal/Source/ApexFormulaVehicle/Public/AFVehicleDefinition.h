@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "AFWheelSetup.h"
 #include "AFVehicleDefinition.generated.h"
 
 class UAFBoneNameMap;
@@ -13,6 +14,7 @@ class USkeletalMesh;
  * UAFVehicleDefinition - the root Data Asset describing one vehicle.
  *
  * Architecture reference: TECHNICAL_ARCHITECTURE.md section 5.
+ * Milestone reference: MILESTONE_2_IMPLEMENTATION.md section 4.
  *
  * Holds identity, mass, dimensions and references to the profile assets that
  * describe each subsystem. Per the no-magic-numbers rule, no vehicle constant
@@ -33,7 +35,7 @@ class APEXFORMULAVEHICLE_API UAFVehicleDefinition : public UPrimaryDataAsset
 public:
 	/** Schema version for this asset type. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ApexFormula|Meta")
-	int32 DataVersion = 1;
+	int32 DataVersion = 2;
 
 	/** Stable internal id, lower case, no spaces. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ApexFormula|Meta")
@@ -81,6 +83,20 @@ public:
 	/** Centre of mass height above the reference plane, metres. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ApexFormula|Mass", meta = (ClampMin = "0.0"))
 	double CentreOfMassHeightM = 0.28;
+
+	//
+	// Wheels. Added in Milestone 2.
+	//
+	// Exactly four entries are expected, and each BoneName must be one of the
+	// four D-012 wheel bones. The order of the array does not matter; the
+	// compatibility layer derives axle assignment from bAffectedBySteering
+	// rather than from array position, so a reordered array produces an
+	// identical car.
+	//
+
+	/** Per-corner wheel configuration. Exactly four entries. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "ApexFormula|Wheels")
+	TArray<FAFWheelSetup> Wheels;
 
 	//
 	// Asset references
