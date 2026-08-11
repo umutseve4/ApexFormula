@@ -31,9 +31,10 @@ decisions already recorded.
 | D-046 | Pin the pipeline configuration digest and enforce it | merged, registered retrospectively |
 | D-047 | Mesh quality gate, and the inward winding fix | merged, registered retrospectively |
 | D-048 | Rename: Apex Formula becomes Uludağ Formula | wave 1 merged, later waves planned |
+| D-049 | Documentation wave scope, triage rule, and evidence procedure | merged |
 | OPEN-M4-01 | Collision proxies authored from the wrong datum | open |
 
-Next free decision identifier: **D-049**.
+Next free decision identifier: **D-050**.
 
 ---
 
@@ -214,6 +215,79 @@ only the product name contradicts. It needs updating on his side.
 
 **Status.** wave 1 merged and *automatically validated* at job level.
 Waves 2 onward: *not claimed*.
+
+---
+
+## D-049 — documentation wave scope, triage rule, and evidence procedure
+
+**Decision.** Treat wave 1 of D-048 as a bounded, separately recorded
+unit of work: rename product prose across the documentation set, change
+nothing that any guard reads, and prove it with a purpose-built pull
+request rather than by assertion.
+
+**What wave 1 actually covered.** Thirteen commits. One ini display
+string, ten files under `Documentation/`, the root `README.md`, and the
+two nested `README.md` files under `Unreal/` and `BlenderPipeline/`. The
+full table, with commit identifiers and resulting file sizes, is section
+3 of `CI_EVIDENCE_VOL2.md`. It is not duplicated here, because two
+copies of a table are two chances to disagree.
+
+**Triage-before-rewrite rule, adopted here.** Every candidate file was
+fetched and scanned for actual product prose **before** any replacement
+text was composed. This is not a formality. It produced a real result:
+`MILESTONE_3_CIRCUIT.md` was fetched, scanned, and found to contain no
+product prose at all — only circuit identifiers and merge references.
+It was therefore **deliberately left untouched**.
+
+The reason this is recorded rather than left implicit: without it, the
+absence of a commit for that file is indistinguishable from an
+oversight. A skipped file that is not written down is a defect waiting
+to be re-discovered. The rule is now standing — a file is skipped only
+after it has been read, and the skip is recorded.
+
+**Two files deferred, not forgotten.** `MILESTONE_3_IMPLEMENTATION.md`
+(37,137 B) and `VERSION_MATRIX.md` (40,427 B) still carry the previous
+product name in prose. Both exceed the size at which a full
+retranscription becomes the dominant risk in the change. They are
+handled under the volume-split policy already applied to the decision
+log and to the CI evidence file, rather than rewritten wholesale.
+`DECISION_LOG.md` (50,726 B) stays **frozen** under that same policy.
+
+Deferral is a decision with a stated reason. It is not a backlog item
+that quietly never happens, and the state of these files is not to be
+described as complete.
+
+**Evidence procedure, corrected.** Check runs in this environment are
+readable only through a pull request, and a pull request's check runs
+belong to its **head commit**. Work pushed directly to `main` is
+therefore invisible to any pull request whose head is a different
+branch. That is exactly what happened: PR #9 tracks
+`milestone-4-bodywork`, so reading it returned the same frozen batch no
+matter how many documentation commits landed on `main`.
+
+Procedure adopted, in this order and no other:
+
+1. Push the work to `main`.
+2. Cut a verification branch from `main` **after the final write**, so
+   its tip contains everything.
+3. Add one marker commit so the pull request has a non-empty diff.
+4. Open the pull request, read its check runs, then close it without
+   merging.
+
+Acceptance is **10 of 10 `success` with every start time later than the
+last documentation commit**. A green batch that started earlier is
+evidence about a different tree and is rejected as stale. Step 2's
+ordering is load-bearing: a branch cut too early certifies a tree that
+is missing the last write.
+
+**What this decision does not do.** It upgrades no milestone status, no
+verification label, and no measured value. Wave 1 renamed prose. Every
+module identifier, target file, project file and guard constant still
+carries the internal code name, and every rewritten document says so on
+its own page.
+
+**Status.** merged. *automatically validated* at job level, subject to
+the acceptance criteria above.
 
 ---
 
