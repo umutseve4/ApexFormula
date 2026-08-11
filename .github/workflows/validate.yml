@@ -72,23 +72,43 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libgl1 libxi6 libxxf86vm1 libxfixes3 libxrender1 libsm6 libice6
 
+      # Every failure path below names itself via ::error::, which surfaces
+      # as a check annotation without needing the job log. The previous
+      # version failed silently under `set -e`, which is why -e is gone:
+      # the failures worth seeing were the ones it was swallowing.
       - name: Resolve and install Blender ${{ env.BLENDER_SERIES }} LTS
         run: |
-          set -euo pipefail
-          base="https://download.blender.org/release/Blender${BLENDER_SERIES}/"
+          set -uo pipefail
+          release_root="https://download.blender.org/release/"
+          base="${release_root}Blender${BLENDER_SERIES}/"
           echo "Listing ${base}"
-          listing="$(curl -fsSL "${base}")"
+          if ! listing="$(curl -fsSL "${base}")"; then
+            published="$(curl -fsSL "${release_root}" \
+              | grep -oE 'Blender[0-9]+\.[0-9]+' \
+              | sort -Vu | tr '\n' ' ')"
+            echo "::error::Blender series ${BLENDER_SERIES} has no directory at ${base}. Series actually published: ${published:-<parent listing also unavailable>}. The Blender ${BLENDER_SERIES} LTS assumption recorded in VERSION_MATRIX.md needs revisiting."
+            exit 1
+          fi
           archive="$(printf '%s' "${listing}" \
             | grep -oE "blender-${BLENDER_SERIES}\.[0-9]+-linux-x64\.tar\.xz" \
             | sort -V | tail -n 1)"
           if [ -z "${archive}" ]; then
-            echo "::error::No linux-x64 build found under ${base} — the Blender ${BLENDER_SERIES} assumption in VERSION_MATRIX.md needs revisiting."
+            present="$(printf '%s' "${listing}" \
+              | grep -oE 'blender-[0-9.]+-linux-x64\.tar\.xz' \
+              | sort -Vu | tr '\n' ' ')"
+            echo "::error::${base} exists but publishes no blender-${BLENDER_SERIES}.x linux-x64 archive. Present instead: ${present:-<no linux-x64 archives at all>}."
             exit 1
           fi
           echo "Resolved: ${archive}"
-          curl -fsSL -o blender.tar.xz "${base}${archive}"
+          if ! curl -fsSL -o blender.tar.xz "${base}${archive}"; then
+            echo "::error::Download of ${base}${archive} failed after the archive was successfully resolved."
+            exit 1
+          fi
           mkdir -p "${RUNNER_TEMP}/blender"
-          tar -xf blender.tar.xz -C "${RUNNER_TEMP}/blender" --strip-components=1
+          if ! tar -xf blender.tar.xz -C "${RUNNER_TEMP}/blender" --strip-components=1; then
+            echo "::error::${archive} downloaded but could not be extracted."
+            exit 1
+          fi
           echo "${RUNNER_TEMP}/blender" >> "${GITHUB_PATH}"
 
       - name: Record the Blender version actually used
