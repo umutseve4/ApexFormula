@@ -1,10 +1,12 @@
-# ApexFormula — Driver Pipeline Design
+# Uludağ Formula — Driver Pipeline Design
 
 **Document status:** statically authored design document (Milestone 0A). **No driver geometry exists. No reference photograph has been requested, received, processed or stored. No MetaHuman has been created.** This document defines the intended workflow only.
 
 **Destination:** Unreal Engine 5.8 MetaHuman. **Source-side tooling:** Blender 5.2 LTS.
 
 **Scope note:** driver work begins at Milestone 6 (cockpit driver) and Milestone 7 (MetaHuman integration). Nothing in this document is to be executed during Milestone 0A.
+
+> **Naming note (D-048).** The product is now **Uludağ Formula**; it was previously *Apex Formula*. The `AF_` prefix used throughout this document (`AF_DriverReference`, `AF_DriverHead_*`, and so on) is **not** a leftover of the old name — it is the project's permanent internal code name and is explicitly retained by D-048. Only the product name changes.
 
 ---
 
@@ -32,7 +34,7 @@ These rules are constraints on the project, not suggestions.
 
 ## 2. Explicitly Prohibited Claims
 
-The following must never be stated in any ApexFormula document, commit, comment or status report:
+The following must never be stated in any Uludağ Formula document, commit, comment or status report:
 
 - That camera projection creates real geometry. It does not; it projects colour onto existing geometry.
 - That a single photograph provides depth information. It does not.
@@ -91,7 +93,7 @@ Any wording that implies one of these is a defect in the document and must be co
 
 The intended sequence, with manual checkpoints. **Every step below is `requires Unreal Editor verification`; none has been performed, and the exact UE 5.8 MetaHuman tooling behaviour must be confirmed against the installed version rather than assumed.**
 
-1. **Prepare the ApexFormula head mesh** in Blender per §4 and export it under the conventions of `BLENDER_PIPELINE_DESIGN.md`.
+1. **Prepare the Uludağ Formula head mesh** in Blender per §4 and export it under the conventions of `BLENDER_PIPELINE_DESIGN.md`.
    *Checkpoint:* geometry is clean, scaled correctly, and oriented correctly.
 2. **Bring the mesh into the MetaHuman authoring workflow in UE 5.8** as the shape target.
    *Checkpoint:* the mesh is accepted and the proportions survive the transfer.
@@ -103,9 +105,9 @@ The intended sequence, with manual checkpoints. **Every step below is `requires 
    *Checkpoint:* no bald/eyeless placeholder remains; hairline reads correctly against reference.
 6. **Assign skin material and tune tone/roughness/subsurface** using MetaHuman skin materials.
    *Checkpoint:* skin does not read as plastic or as flat diffuse under the project's lighting.
-7. **Add racing suit, gloves and helmet** as ApexFormula-original assets. Helmet and suit designs are original; no real team, sponsor or driver livery.
+7. **Add racing suit, gloves and helmet** as Uludağ Formula original assets. Helmet and suit designs are original; no real team, sponsor or driver livery.
    *Checkpoint:* helmet fits the head shape at cockpit camera distance; no interpenetration in the driving pose.
-8. **Import into the ApexFormula Unreal project** and place in the cockpit.
+8. **Import into the Uludağ Formula Unreal project** and place in the cockpit.
    *Checkpoint:* driver scale matches the vehicle cockpit; hands reach the wheel; eyeline matches the cockpit camera.
 
 ### 5.1 Responsibility split
@@ -117,10 +119,10 @@ The intended sequence, with manual checkpoints. **Every step below is `requires 
 | Hair, eyebrows, eyelashes | MetaHuman system assets |
 | Eyes, teeth | MetaHuman system assets |
 | Skin material | MetaHuman skin material, tuned in Unreal |
-| Racing suit, gloves | ApexFormula original assets |
-| Helmet | ApexFormula original asset |
-| Cockpit pose, hand placement, steering link | ApexFormula Unreal-side setup |
-| Body proportions in cockpit | ApexFormula Unreal-side setup |
+| Racing suit, gloves | Uludağ Formula original assets |
+| Helmet | Uludağ Formula original asset |
+| Cockpit pose, hand placement, steering link | Uludağ Formula Unreal-side setup |
+| Body proportions in cockpit | Uludağ Formula Unreal-side setup |
 
 ## 6. Quality Tiers
 
@@ -185,7 +187,7 @@ If likeness work does not converge, the project is not blocked:
 | Mesh hygiene, scale, orientation, naming, export settings | Automatable — belongs in scripts and validation |
 | Reference plane setup | Semi-automatable — placement is scripted, alignment is judged |
 | Proportion sculpting | Artistic — not automatable |
-| Facial rig | System-owned (MetaHuman) — neither scripted by ApexFormula nor hand-built |
+| Facial rig | System-owned (MetaHuman) — neither scripted by this project nor hand-built |
 | Skin/hair look | Artistic, tuned in Unreal |
 | Cockpit pose and attachment | Engineering + artistic, verified in the Editor |
 | Likeness judgement | Human only |
@@ -208,8 +210,9 @@ Attempting to automate anything in the "artistic" or "human only" rows would pro
 | No driver geometry exists in this repository | statically inspected |
 | Prohibited claims (§2) appear nowhere in this document as assertions | statically inspected |
 | Naming conventions match `BLENDER_PIPELINE_DESIGN.md` and contain no `F1` token | statically inspected |
+| The product name "Uludağ Formula" collides with none of the prohibited identifier patterns in `af_static_validate.py` | automatically validated |
 | Blender sculpt/cleanup steps run and produce a clean exportable head | requires Blender execution |
-| UE 5.8 MetaHuman tooling accepts the ApexFormula head mesh as a shape source | requires Unreal Editor verification |
+| UE 5.8 MetaHuman tooling accepts the Uludağ Formula head mesh as a shape source | requires Unreal Editor verification |
 | MetaHuman facial rig drives the resulting face correctly | requires Unreal Editor verification |
 | Driver scale, pose and eyeline are correct in the cockpit | requires Unreal Editor verification |
 | Driver asset performance cost at target frame rate | requires Unreal Editor verification |
