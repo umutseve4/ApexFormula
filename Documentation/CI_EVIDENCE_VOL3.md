@@ -133,7 +133,7 @@ This limitation is recorded deliberately. Reporting the batch as "the guards are
 
 ---
 
-## 4. What four green batches do and do not prove
+## 4. What five green batches do and do not prove
 
 **Proven by CI:**
 
@@ -157,14 +157,16 @@ Green CI is a structural gate, not an execution gate. The distinction is maintai
 
 ---
 
-## 5. Timing characteristics (four batches, consistent)
+## 5. Timing characteristics (five batches, consistent)
 
 | Property | Observed |
 |---|---|
-| Delay from marker push to first job start | 7 – 28 s |
+| Delay from marker push to first job start | 5 – 28 s |
 | Full batch completion | within ~67 s |
 | Polling strategy that works | one 55 s wait, then a single read |
 | Second poll | only if a run is still in progress, and it must use a varied argument to avoid the harness rejecting an identical repeat call |
+
+Batch 3 added one observation to this table. Its ten runs arrived in **two triggering waves** rather than one: five runs at the marker push (`22:24:05Z` – `22:24:15Z`) and five more when the pull request itself was opened (`22:27:18Z` – `22:27:26Z`). Both waves are later than the marker date, so the acceptance rule is satisfied, and the total is still exactly ten. The lesson is that the count must be checked against the matrix, not against the number of workflow runs.
 
 ---
 
@@ -176,21 +178,75 @@ Green CI is a structural gate, not an execution gate. The distinction is maintai
 | doc wave, run 2 | #18 | `ci/doc-wave-verify-3` | `219667a4` | `20:38:41Z` | 10/10 | VOL2 |
 | wave 2, batch 1 | #19 | `ci/wave2-verify-1` | `099c33ea` | `21:24:15Z` | 10/10 | VOL3 §2 |
 | wave 2, batch 2 | #20 | `ci/wave2-verify-2` | `2979e8aa` | `21:56:06Z` | 10/10 | VOL3 §3 |
-| wave 2, batch 3 | pending | `ci/wave2-verify-3` | pending | pending | pending | VOL3 §7 |
+| wave 2, batch 3 | #21 | `ci/wave2-verify-3` | `82c143cb` | `22:24:00Z` | 10/10 | VOL3 §7 |
 
-All four completed pull requests are **closed unmerged**. None of the marker files exist on `main`.
+All five completed pull requests are **closed unmerged**. None of the marker files exist on `main`.
 
 ---
 
-## 7. Batch 3 — reserved
+## 7. Batch 3 — PR #21
 
-Batch 3 will cover the remaining wave-1.5 commits:
+| Field | Value |
+|---|---|
+| Pull request | #21 (draft), id `4257435914` |
+| Head branch | `ci/wave2-verify-3` |
+| Base | `main` |
+| Marker file | `Documentation/CI_MARKER_WAVE2_3.md` |
+| Marker commit | `82c143cb` |
+| Marker blob | `ca28e1c9` |
+| Marker size | 2,183 B |
+| Marker author date | `2026-08-11T22:24:00Z` |
+| Job start window | `22:24:05Z` – `22:27:26Z` |
+| Result | **10 / 10 success** |
+| Disposition | closed unmerged |
 
-- `Tools/af_lap_rules_model.py` — commit `62477469`, 30,250 B, +8 B exact
-- `Tools/af_mesh_quality.py` — commit `cc85f950`, 30,783 B, +8 B exact
-- `Documentation/VERSION_MATRIX.md` — pending
+Workflow runs: `31542241965`, `31542242010`, `31542476386`, `31542476393`.
 
-Until batch 3 returns 10/10 with all job starts later than its marker, those three items are **shipped but unverified**. Wave 1.5 does not close before then.
+### 7.1 Job identifiers
+
+| Run | Job | Job id | Started | Completed |
+|---|---|---|---|---|
+| `31542241965` | Static validation (no engine, no DCC) | `93947069423` | `22:24:05Z` | `22:24:13Z` |
+| `31542242010` | af_static_validate (py3.9) | `93947071183` | `22:24:06Z` | `22:24:22Z` |
+| `31542242010` | af_static_validate (py3.12) | `93947071194` | `22:24:06Z` | `22:24:11Z` |
+| `31542242010` | Python syntax check | `93947071269` | `22:24:06Z` | `22:24:13Z` |
+| `31542241965` | Blender smoke test (headless) | `93947106157` | `22:24:15Z` | `22:24:50Z` |
+| `31542476393` | af_static_validate (py3.12) | `93947790941` | `22:27:18Z` | `22:27:25Z` |
+| `31542476386` | Static validation (no engine, no DCC) | `93947790310` | `22:27:18Z` | `22:27:24Z` |
+| `31542476393` | af_static_validate (py3.9) | `93947790884` | `22:27:19Z` | `22:27:36Z` |
+| `31542476393` | Python syntax check | `93947790754` | `22:27:19Z` | `22:27:27Z` |
+| `31542476386` | Blender smoke test (headless) | `93947817341` | `22:27:26Z` | `22:28:04Z` |
+
+Earliest start `22:24:05Z` is five seconds after the marker author date, so the anti-staleness rule holds for every run in the batch. Slowest job: `Blender smoke test (headless)`, 35–38 s.
+
+### 7.2 Commits covered
+
+| File | Commit | Blob | Size | Delta |
+|---|---|---|---|---|
+| `Tools/af_lap_rules_model.py` | `62477469` | `b18635e0` | 30,250 B | +8 B, exactly 4 substitutions |
+| `Tools/af_mesh_quality.py` | `cc85f950` | `889cbbdd` | 30,783 B | +8 B, exactly 4 substitutions |
+| `Documentation/CI_EVIDENCE_VOL3.md` | `d20d041c` | `cef3ead4` | 9,790 B | new file, no delta to predict |
+| `Documentation/VERSION_MATRIX.md` | `edfd74ba` | `8fb657e5` | 40,439 B | +12 B, exactly 3 substitutions |
+
+### 7.3 The byte arithmetic in this batch
+
+Batch 3 is the first to mix the two substitution forms in one batch, and both predictions held exactly.
+
+- The **identifier form** replaces an 11-byte ASCII token with a 13-byte ASCII token: **+2 B per substitution**. Both Python modules matched (4 × 2 = +8 B each).
+- The **display form** replaces the same 11-byte token with a 15-byte UTF-8 string — five letters, a two-byte `ğ`, a space, then seven letters: **+4 B per substitution**. `VERSION_MATRIX.md` matched (3 × 4 = +12 B).
+
+This matters because Markdown has **no compile gate**. A truncated Python file is caught by the syntax check; a truncated Markdown file is caught by nothing. For documentation rewrites the byte-delta prediction is the only automated truncation detector available, so it must be computed in UTF-8 bytes and never in characters.
+
+### 7.4 Verdicts
+
+- **Wave 1.5 is now fully CI-verified: seven of seven items shipped and green.** Items 1–3 in batch 1, items 4–5 in batch 2, items 6a, 6b and 7 in batch 3.
+- **The lockstep rule survived a negative control.** `af_mesh_quality.py` was measured to contain no module-directory path constants — it locates the generator dynamically — and it renamed cleanly with no companion patch. The rule is therefore specific to the artifacts that hard-code module directory names, not a blanket property of the tools directory.
+- **Deliberately retained old-identity strings did not trip any gate.** `af_lap_rules_model.py` still names `Unreal/Source/ApexFormulaRace/Private/...` in its module docstring and `VERSION_MATRIX.md` still carries eight module and file names in sections 5.21, 5.26 and 5.28. All ten runs stayed green, which confirms those strings are safe to carry until their module commit renames them atomically.
+- **The inline read and write ceiling is now measured at 40,439 B.** `VERSION_MATRIX.md` was both fetched and rewritten whole through the same channel at that size without truncation.
+
+### 7.5 What batch 3 still does not prove
+
+Nothing in section 4 changes. In particular, `af_mesh_quality.py` was renamed and compiled, but its 46-case self-test was **not** executed by CI, and neither was the drift guard's. OPEN-051-B remains open, and the local rehearsal gate — mesh self-test 46/46 and the 274-check audit at exit 0 — remains the only route to closing it.
 
 ---
 
