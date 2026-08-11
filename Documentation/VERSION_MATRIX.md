@@ -1,6 +1,6 @@
 # ApexFormula — Version Matrix
 
-**Document status:** statically authored. First written at Milestone 0A; §5.21–§5.30 added at Milestone 1; §5.31–§5.32 added at Milestone 2. No tool listed in §1 has been launched, compiled against or executed by this document's author. Every entry in §1 is a *pinned intent*, not an observed installation. The only things in this document that were mechanically measured are the ones explicitly labelled `automatically validated`.
+**Document status:** statically authored. First written at Milestone 0A; §5.21–§5.30 added at Milestone 1; §5.31–§5.32 added at Milestone 2; §5.33 added after the first executed Blender run. An earlier revision of this header stated that *no* tool listed in §1 had been launched, compiled against or executed. **That is no longer true of Blender.** Blender 5.2 LTS is now downloaded and run headless in CI on every push, so the Blender entries in §1 are observed installations rather than pinned intent. Every other entry in §1 — Unreal Engine above all — remains a *pinned intent*, not an observed installation. The only things in this document that were mechanically measured are the ones explicitly labelled `automatically validated`.
 
 ---
 
@@ -20,6 +20,8 @@
 | Large file handling | **Git LFS** | Binary and large asset storage | Fixed by project decision |
 
 **Rule:** these choices are not to be re-litigated during implementation milestones. Changing any of them is a decision-log event, not an implementation detail.
+
+**Observed, not assumed (added after the first executed run):** the CI Blender job prints its own banner before doing anything else. The observed string is `Blender 5.2.0 LTS (hash fbe6228777e7 built 2026-07-14 01:32:04)`. The pinned series and the running series therefore agree, and the point release is **5.2.0**. Per §6 this is the first row of that table that can now be filled in from evidence rather than guessed. `automatically validated`.
 
 ---
 
@@ -74,18 +76,20 @@ These are the places where a version difference is most likely to break somethin
 | 4.11 | Git LFS tracking rules | Patterns must exist before the first commit of a matching file | Large binaries committed directly into Git history |
 | 4.12 | Windows path length and casing | Deep asset paths and case-insensitive filesystems | Assets that build locally but fail on a case-sensitive checkout |
 
+**Status note.** Rows 4.1 to 4.5 concern Blender and are no longer purely theoretical: the pipeline has been executed against Blender 5.2.0 LTS and none of those failure modes occurred in that run. That is evidence about *this* version on *this* runner; it does not retire the rows, because the Windows workstation the project targets is a different installation and has still never run the scripts. Rows 4.6 to 4.10 concern Unreal and remain entirely untriggered, because nothing has been compiled or imported.
+
 ---
 
 ## 5. Assumptions Requiring Verification
 
-Everything in this section is an **assumption**, not a fact. None of it has been observed. Each item states what must be checked and how.
+Everything in this section began as an **assumption**. Items still labelled `requires …` have not been observed. Items now labelled `automatically validated` were upgraded because CI executed them; each states what the evidence covers and what it does not.
 
 | # | Assumption | How to verify | Verification label |
 | --- | --- | --- | --- |
 | 5.1 | Unreal Engine 5.8 is installed and a Windows C++ toolchain is present and working | Create the Milestone 1 project and build it from clean | requires local compilation |
-| 5.2 | Blender 5.2 LTS is installed and its Python interpreter can run the `af_*.py` scripts headless | Run `af_smoke_test.py` from the command line | requires Blender execution |
-| 5.3 | The Blender 5.2 LTS FBX exporter accepts the option names used in `af_export.py` | Execute the exporter with the documented option set and read the resulting error or success | requires Blender execution |
-| 5.4 | Leaf-bone injection can be disabled in the installed exporter | Export the rig, then list the bones in the resulting FBX | requires Blender execution |
+| 5.2 | Blender 5.2 LTS is installed and its Python interpreter can run the `af_*.py` scripts headless | Run `af_smoke_test.py` from the command line | **automatically validated** — CI runs `blender --background --factory-startup --python BlenderPipeline/scripts/af_smoke_test.py` on every push; the harness exits 0 |
+| 5.3 | The Blender 5.2 LTS FBX exporter accepts the option names used in `af_export.py` | Execute the exporter with the documented option set and read the resulting error or success | **automatically validated, with a limit** — the export stage runs and the harness exits 0, so the exporter did not reject the call; which individual options `af_export.py` had to *drop* (§5.16) has not been read out of the log |
+| 5.4 | Leaf-bone injection can be disabled in the installed exporter | Export the rig, then list the bones in the resulting FBX | **automatically validated, with a limit** — post-export validation runs and passes; the exported bone list itself has not been independently enumerated outside the validator |
 | 5.5 | The unit and axis conversion described in `BLENDER_PIPELINE_DESIGN.md` §2 produces a correctly scaled, non-mirrored vehicle in Unreal | Import the FBX and measure the bounding box in centimetres; check which side the steering wheel is on | requires Unreal Editor verification |
 | 5.6 | Chaos Vehicles in UE 5.8 supports the wheel and suspension configuration assumed by the prototype decision | Build the Milestone 2 vehicle and drive it | requires local compilation, then requires playtesting |
 | 5.7 | `UAFVehicleCompatibilityLayer` is a sufficient abstraction to allow the Milestone 10 migration without rewriting gameplay code | Attempt the first model migration behind the layer | requires local compilation |
@@ -94,16 +98,16 @@ Everything in this section is an **assumption**, not a fact. None of it has been
 | 5.10 | The MetaHuman workflow steps in `DRIVER_PIPELINE_DESIGN.md` §5 match the tooling actually present in UE 5.8 | Walk the eight steps in the editor and record deviations | requires Unreal Editor verification |
 | 5.11 | Git LFS is installed and its filters are active in this repository | Commit a tracked binary and confirm the pointer file, not the binary, is in the tree | automatically validated |
 | 5.12 | The reference development machine can reach the Final Quality frame-rate target | Profile at Milestone 12 and record measured numbers | requires playtesting |
-| 5.13 | The face and bone budgets in `BLENDER_PIPELINE_DESIGN.md` are achievable for a formula-style vehicle at the intended visual quality | Generate the Milestone 4 vehicle and read the validation report | requires Blender execution, then requires visual inspection |
+| 5.13 | The face and bone budgets in `BLENDER_PIPELINE_DESIGN.md` are achievable for a formula-style vehicle at the intended visual quality | Generate the Milestone 4 vehicle and read the validation report | **automatically validated for the Milestone 0B/2 placeholder** — the body generates at 132 polygons / 176 vertices and 11 bones, within budget; the Milestone 4 vehicle does not exist yet, so the budget question is not closed. `requires visual inspection` for whether it looks right |
 | 5.14 | Placeholder materials authored in Blender import without polluting the Unreal material library | Import and inspect the created material assets | requires Unreal Editor verification |
 | 5.15 | Nothing in the committed tree contains private reference material, credentials, machine configuration or build output | Inspect the repository tree and `.gitignore` coverage | statically inspected |
-| 5.16 | The FBX exporter option names in `af_pipeline_config.FBX_EXPORT_SETTINGS` are the names Blender 5.2 LTS actually accepts | Run `af_export.py`; it introspects the operator's RNA and prints every key it had to drop (D-026) | requires Blender execution |
-| 5.17 | `bpy.types.MeshPolygon.edge_keys` and `bpy.types.MeshEdge.key` exist in Blender 5.2 LTS | Run `af_validate.py`; validation checks 3 and 4 (non-manifold and boundary edges) depend on them | requires Blender execution |
-| 5.18 | `bpy.ops.export_scene.fbx` is still the export operator's path in Blender 5.2 LTS, and the FBX add-on is enabled by default | Run `af_export.py` and observe whether the operator resolves | requires Blender execution |
-| 5.19 | The `DECIMATE` modifier's `COLLAPSE` ratio produces LOD meshes within the face budgets in `BLENDER_PIPELINE_DESIGN.md` | Generate LODs and read the measured polygon counts in the validation report | requires Blender execution |
-| 5.20 | The eight `af_*.py` scripts are syntactically valid Python for the interpreter Blender 5.2 LTS embeds | `python -m py_compile` passes on all eight under CPython 3.12; Blender's embedded interpreter version is unobserved | automatically validated for CPython 3.12 only |
+| 5.16 | The FBX exporter option names in `af_pipeline_config.FBX_EXPORT_SETTINGS` are the names Blender 5.2 LTS actually accepts | Run `af_export.py`; it introspects the operator's RNA and prints every key it had to drop (D-026) | **automatically validated, with a limit** — the introspection-and-drop mechanism is exactly why the export stage survives; the printed drop list has not been read |
+| 5.17 | `bpy.types.MeshPolygon.edge_keys` and `bpy.types.MeshEdge.key` exist in Blender 5.2 LTS | Run `af_validate.py`; validation checks 3 and 4 (non-manifold and boundary edges) depend on them | **automatically validated** — those checks execute and report pass rather than error |
+| 5.18 | `bpy.ops.export_scene.fbx` is still the export operator's path in Blender 5.2 LTS, and the FBX add-on is enabled by default | Run `af_export.py` and observe whether the operator resolves | **automatically validated** — the operator resolved under `--factory-startup`, which is the strictest case since it disables user add-on configuration |
+| 5.19 | The `DECIMATE` modifier's `COLLAPSE` ratio produces LOD meshes within the face budgets in `BLENDER_PIPELINE_DESIGN.md` | Generate LODs and read the measured polygon counts in the validation report | **automatically validated** — three LODs are generated at ratios 0.60, 0.35 and 0.18 and the LOD checks pass |
+| 5.20 | The eight `af_*.py` scripts are syntactically valid Python for the interpreter Blender 5.2 LTS embeds | `python -m py_compile` passes on all eight under CPython 3.12; Blender's embedded interpreter version is unobserved | **automatically validated** — superseded by execution: the scripts now import and run inside Blender's own interpreter, which is a stronger result than a syntax check |
 
-**Reading rule for this section:** if a later document, script comment or commit message asserts any of the above as settled, it is wrong unless it also cites the verification that settled it.
+**Reading rule for this section:** if a later document, script comment or commit message asserts any of the above as settled, it is wrong unless it also cites the verification that settled it. The upgrades above cite one specific verification: the `Blender smoke test (headless)` job in `.github/workflows/validate.yml`, exit code 0, on every push.
 
 ### 5.21 — `ChaosVehicles` module name and `ChaosVehiclesPlugin` plugin name
 
@@ -162,7 +166,9 @@ Double comparisons pass an explicit tolerance (`1.0e-9`). Two call sites compare
 
 Every entry in §5.21 to §5.26 is a **statement about C++ that has never been fed to a compiler**. No Unreal Engine installation, no Unreal Build Tool, no MSVC and no clang exist in the environment where this project was authored. The whole of §5.21 to §5.26 therefore carries the label `requires local compilation`, and no claim to the contrary appears anywhere in this repository. The same is true of §5.31.
 
-What *was* mechanically verified is described in §5.28 and §5.32.
+The Blender upgrades in the §5 table change nothing here. Blender executing does not make Unreal execute; the two halves of the pipeline are verified independently and only one of them has been run.
+
+What *was* mechanically verified is described in §5.28, §5.32 and §5.33.
 
 ### 5.28 — What the static validator actually proves
 
@@ -180,7 +186,7 @@ The Blender/Unreal bone agreement is not checked by comparing text. The validato
 
 This matters because the two known bone bugs in this project were both **doc comments that drifted away from correct code**, not wrong code. A textual diff would have compared the drifted comment; an emulation compares behaviour. Consequence: a change to the *style* of `AFBoneNameMap.cpp` — not its behaviour — can break the parser and must be accompanied by an emulator update.
 
-**Scope limit worth restating at Milestone 2:** this check proves the two *conventions* agree. It says nothing about whether an actually imported skeleton carries those bone names, because no FBX has been exported or imported. That is Milestone 2 acceptance criterion 4 and it is not met.
+**Scope limit, restated after the first executed run.** The emulation proves the two *conventions* agree. Execution has since added a second, independent piece of evidence on the **producing** side: the CI rig stage builds the armature in Blender and prints all eleven bones with parent and head position in metres and centimetres, asserting `bone_count == 11`, `bone_order_matches_config == True` and nine bound meshes. So the convention is agreed *and* Blender actually emits it. What is still missing is the **consuming** side: no FBX has been imported into an Unreal editor, because no Unreal editor exists here. Milestone 2 acceptance criterion 4 is therefore still **not met** — partial evidence is not the criterion.
 
 ### 5.30 — The validator itself was mutation-tested
 
@@ -231,20 +237,42 @@ This exists because Milestone 2 began with exactly that defect: `IAFRaceParticip
 
 It is a separate script rather than a change to `af_static_validate.py` because amending the primary validator would have required re-transmitting roughly 60 KB of source verbatim through a whole-file write API, risking silent corruption of the project's main checker. That trade-off is recorded as D-037.
 
+### 5.33 — What executing the pipeline actually caught
+
+The first genuinely executed Blender run did not merely confirm assumptions. It failed, and the failure was real. This section records what the executed run found that no static check could have, because that is the argument for keeping the job.
+
+**The halo envelope defect (D-040).** Stages 1 to 4 passed. Stage 5, pre-export validation, failed one check of twenty-one: `bounding box within design envelope`. Nineteen passed, one failed, one skipped (the UV check that is a permanent skip by design). The harness exited 3.
+
+The defect was in **height**, not length, which is worth stating because the first plausible-sounding hypothesis was about the vehicle being too long. Measured against the design envelope:
+
+| Axis | Design | Measured (before) | Delta | Verdict |
+| --- | --- | --- | --- | --- |
+| X (length) | 5.600 m | 5.60000 m | 0.00000 | pass |
+| Y (width) | 2.000 m | 1.94000 m | −0.06000 | pass |
+| Z (height) | 0.950 m | **0.97415 m** | **+0.02415** | **fail** — tolerance is 0.010 m |
+
+The halo apex was computed *bottom-up* — ride height, plus chassis top, plus a fraction of the halo radius, plus half the arc, plus the arc times the maximum sine of the segment angles. Every term was individually reasonable and the sum overshot the roof by 24 millimetres. The fix (D-040) inverts the computation: the apex is now **solved from the design envelope downward**, targeting `overall_height_m − HALO_APEX_CLEARANCE_M` = 0.950 − 0.010 = **0.940 m**, and the arc height is derived from that target rather than the target emerging from the arc. Measured after the fix: Z = **0.94000 m**, delta **−0.01000 m**, pass. The mesh is unchanged at 176 vertices and 132 polygons.
+
+A second guard was added in the same change: `check_design_envelope()` runs in `main()` **before** `bpy` is touched, so the arithmetic contradiction is caught without a Blender session at all. Both the fix and the guard are `automatically validated` — the smoke test is green in CI at the commit that introduced them.
+
+**The Unreal/Blender dimension conflict (D-041).** Reading the two sides against each other while fixing the above surfaced a disagreement that had nothing to do with the halo: `UAFVehicleDefinition` carried `OverallLengthM = 5.30` and `RearTrackM = 1.55`, while `af_pipeline_config.py::DESIGN` used `overall_length_m = 5.600` and `track_rear_m = 1.540`. Blender wins, because Blender builds the mesh — a 30 cm mismatch between the chassis definition and the actual geometry would have surfaced three milestones later as "collision feels wrong". The Unreal values were changed to 5.60 and 1.54 and `DataVersion` was raised to 2. `af_pipeline_config.py::DESIGN` is now the single source of truth for vehicle dimensions, recorded as Cross-Milestone Rule 7 in `MILESTONE_PLAN.md`.
+
+**Two lessons, recorded because they generalise.** First, an over-height car is exactly the kind of defect that looks fine in a viewport and fails a tolerance check — which is the case for automated validation over visual inspection. Second, the initial diagnosis of the CI failure was **wrong**: the working hypothesis was that Blender 5.2 might not exist on the download server. The job log disproved it in its first line. That retraction is recorded in D-039 rather than deleted, along with the specific reasoning error — job *duration* was treated as evidence of a download failure, and it is not evidence of anything: the same passing job has taken 36 seconds and roughly 8 minutes on different runs.
+
 ---
 
 ## 6. What Is Deliberately Not Pinned
 
-| Item | Why it is left open |
-| --- | --- |
-| Exact UE 5.8 patch/hotfix revision | Not yet observed; will be recorded once the project is created |
-| Exact Blender 5.2 LTS point release | Not yet observed; will be recorded once the scripts are first executed |
-| Windows edition and build number | Not yet observed |
-| Git and Git LFS client versions | Not yet observed |
-| Compiler/toolchain version | Determined by the installed engine's requirements |
-| Target hardware specification | Recorded at Milestone 12 when profiling actually happens |
+| Item | Why it is left open | Status |
+| --- | --- | --- |
+| Exact UE 5.8 patch/hotfix revision | Not yet observed; will be recorded once the project is created | Still open |
+| Exact Blender 5.2 LTS point release | Recorded once the scripts were first executed | **Observed: 5.2.0, hash `fbe6228777e7`, built 2026-07-14 01:32:04, on the CI runner.** The Windows workstation build is still unobserved |
+| Windows edition and build number | Not yet observed | Still open |
+| Git and Git LFS client versions | Not yet observed | Still open |
+| Compiler/toolchain version | Determined by the installed engine's requirements | Still open |
+| Target hardware specification | Recorded at Milestone 12 when profiling actually happens | Still open |
 
-When any of these becomes observed, it is recorded here with the date and the command that produced it — never guessed.
+When any of these becomes observed, it is recorded here with the source that produced it — never guessed. The Blender row is the first to graduate, and it names its source rather than asserting a bare number.
 
 ---
 
@@ -253,12 +281,16 @@ When any of these becomes observed, it is recorded here with the date and the co
 | Claim | Label |
 | --- | --- |
 | The pinned versions in §1 are the project's fixed decisions | statically inspected |
+| The running Blender is 5.2.0 LTS, matching the pinned series | automatically validated — the job's own banner |
+| Any *Unreal* version claim in §1 has been observed | not claimed — no engine exists in the authoring environment |
 | The C++/Blueprint split in §2 matches `TECHNICAL_ARCHITECTURE.md` | statically inspected |
 | The FBX-primary / GLB-optional policy in §3 matches `BLENDER_PIPELINE_DESIGN.md` §7 and §8 | statically inspected |
-| The version-sensitive areas in §4 are real risk surfaces | statically inspected — none has been triggered, because nothing has been run |
-| Every item in §5 is unverified | statically inspected — §5 exists precisely because these are unverified |
+| The version-sensitive areas in §4 are real risk surfaces | statically inspected |
+| Blender rows 4.1–4.5 did not trigger on the CI runner | automatically validated — for that runner and that build only |
+| Unreal rows 4.6–4.10 have been exercised | not claimed — nothing compiled or imported |
 | §5.16 to §5.19 are the version-sensitive surfaces introduced by the Milestone 0B scripts | statically inspected |
-| §5.20 records the one thing about the scripts that was actually measured, and states its limit | automatically validated |
+| The Milestone 0B scripts run inside Blender's embedded interpreter | automatically validated — supersedes the CPython-only syntax check in §5.20 |
+| Which exporter options `af_export.py` had to drop at run time | not claimed — the drop list is printed but has not been read out of the log |
 | §5.21 to §5.26 are the version-sensitive surfaces introduced by the Milestone 1 C++ | statically inspected |
 | Every API in §5.21 to §5.26 exists in UE 5.8 with the signature assumed | not claimed — `requires local compilation`; see §5.27 |
 | §5.22 (`double` in a dynamic delegate) and §5.24 (`AddExpectedError` on a Warning) are the two highest-risk Milestone 1 assumptions | statically inspected — a judgement, not a measurement |
@@ -266,7 +298,8 @@ When any of these becomes observed, it is recorded here with the date and the co
 | The current check count after Milestone 2 | not claimed — read the latest CI run; it has deliberately not been re-guessed |
 | The specific properties listed in §5.28 are the ones the validator actually enforces | automatically validated |
 | The bone check re-derives behaviour rather than diffing text (§5.29) | automatically validated |
-| The bone check says anything about an actually imported skeleton | not claimed — no FBX has been exported or imported; see §5.29 |
+| Blender emits 11 bones in config order with 9 bound meshes | automatically validated — the CI rig stage prints and asserts it |
+| The bone check says anything about an actually imported skeleton | not claimed — no FBX has been imported; Milestone 2 criterion 4 is not met |
 | `af_static_validate.py` detects 11 of 11 injected defects and ignores the negative control (§5.30) | automatically validated |
 | §5.31 lists the version-sensitive surfaces introduced by the Milestone 2 C++ | statically inspected |
 | Any Milestone 2 C++ file has been compiled, or the vehicle has moved | not claimed — `requires local compilation`, then `requires playtesting` |
@@ -276,4 +309,7 @@ When any of these becomes observed, it is recorded here with the date and the co
 | Any automation test has been executed | not claimed — no engine, UBT, MSVC or clang exists in the authoring environment |
 | `af_validate_interfaces.py` passes its 9-case self-test on Python 3.9 and 3.12, and reports zero errors on the real tree | automatically validated |
 | `af_validate_interfaces.py` checks anything beyond return types | not claimed — see the limits listed in §5.32 |
-| Any listed tool is installed, runnable, or of the stated version | not claimed — see §5.1, §5.2, §5.11 |
+| The halo apex breached the design height envelope by 0.02415 m and now measures 0.94000 m (§5.33, D-040) | automatically validated — failing then passing CI runs |
+| The Unreal and Blender vehicle dimensions disagreed and were reconciled toward Blender (§5.33, D-041) | statically inspected — the reconciled values have not been imported or driven |
+| The generated geometry looks correct | not claimed — `requires visual inspection` |
+| Unreal, Git LFS or the Windows toolchain is installed and runnable | not claimed — see §5.1, §5.11 |
