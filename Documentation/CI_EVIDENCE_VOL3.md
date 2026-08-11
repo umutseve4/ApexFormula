@@ -1,6 +1,6 @@
 # CI Evidence — Volume 3
 
-**Status:** active volume
+**Status:** CLOSED by size after section 9. Successor: `Documentation/CI_EVIDENCE_VOL4.md`
 **Opened:** 2026-08-11
 **Predecessors:** `Documentation/CI_EVIDENCE.md` (frozen, 23,864 B) → `Documentation/CI_EVIDENCE_VOL2.md` (frozen at 15,534 B)
 **Scope of this volume:** verification batches executed during the *Uludağ Formula* identity migration, wave 2 onwards.
@@ -133,7 +133,7 @@ This limitation is recorded deliberately. Reporting the batch as "the guards are
 
 ---
 
-## 4. What six green batches do and do not prove
+## 4. What seven green batches do and do not prove
 
 **Proven by CI:**
 
@@ -157,18 +157,20 @@ Green CI is a structural gate, not an execution gate. The distinction is maintai
 
 ---
 
-## 5. Timing characteristics (six batches, consistent)
+## 5. Timing characteristics (seven batches, consistent)
 
 | Property | Observed |
 |---|---|
 | Delay from marker push to first job start | 5 – 28 s |
-| Full batch completion | within ~70 s |
+| Full batch completion | within ~70 s in six batches, ~100 s in one |
 | Polling strategy that works | one 55 s wait, then a single read |
 | Second poll | only if a run is still in progress, and it must use a varied argument to avoid the harness rejecting an identical repeat call |
 
 Batch 3 added one observation to this table. Its ten runs arrived in **two triggering waves** rather than one: five runs at the marker push (`22:24:05Z` – `22:24:15Z`) and five more when the pull request itself was opened (`22:27:18Z` – `22:27:26Z`). Both waves are later than the marker date, so the acceptance rule is satisfied, and the total is still exactly ten. The lesson is that the count must be checked against the matrix, not against the number of workflow runs.
 
 Batch 4 added a second observation. All ten runs arrived in a single wave, but the last `Blender smoke test (headless)` job was still `in_progress` at the first read, 55 s after the marker push. The second poll, taken 40 s later with a varied argument, showed it completed. The single 55 s wait is therefore a lower bound rather than a guarantee: a batch may need up to roughly 100 s when the slow job starts late in the wave.
+
+Batch 5 confirmed the corrected model without needing the second poll. Its slow job started 32 s after the marker and finished 70 s after it, which still fell inside the 55 s wait plus the round trip of the read call. The rule stands as written: poll once, reject any reading that contains an `in_progress` run, and only then wait again.
 
 ---
 
@@ -182,8 +184,9 @@ Batch 4 added a second observation. All ten runs arrived in a single wave, but t
 | wave 2, batch 2 | #20 | `ci/wave2-verify-2` | `2979e8aa` | `21:56:06Z` | 10/10 | VOL3 §3 |
 | wave 2, batch 3 | #21 | `ci/wave2-verify-3` | `82c143cb` | `22:24:00Z` | 10/10 | VOL3 §7 |
 | wave 2, batch 4 | #22 | `ci/wave2-verify-4` | `5961d95b` | `22:39:47Z` | 10/10 | VOL3 §8 |
+| wave 2, batch 5 | #23 | `ci/wave2-verify-5` | `49c93957` | `23:02:47Z` | 10/10 | VOL3 §9 |
 
-All six completed pull requests are **closed unmerged**. None of the marker files exist on `main`.
+All seven completed pull requests are **closed unmerged**. None of the marker files exist on `main`.
 
 ---
 
@@ -315,4 +318,66 @@ Nothing in section 4 changes. Batch 4 verifies that two Markdown files did not b
 
 ---
 
-*Volume 3 opened after volume 2 reached its practical size ceiling. Records are appended in batch order and are not rewritten once accepted.*
+## 9. Batch 5 — PR #23
+
+| Field | Value |
+|---|---|
+| Pull request | #23 (draft), id `4257617711` |
+| Head branch | `ci/wave2-verify-5` |
+| Base | `main` |
+| Marker file | `Documentation/CI_MARKER_WAVE2_5.md` |
+| Marker commit | `49c93957` |
+| Marker blob | `b3e488f5` |
+| Marker size | 2,535 B |
+| Marker author date | `2026-08-11T23:02:47Z` |
+| Job start window | `23:02:52Z` – `23:03:19Z` |
+| Result | **10 / 10 success** |
+| Disposition | closed unmerged |
+
+Workflow runs: `31544921701`, `31544921709`, `31544936799`, `31544936826`.
+
+### 9.1 Job identifiers
+
+| Run | Job | Job id | Started | Completed |
+|---|---|---|---|---|
+| `31544921709` | af_static_validate (py3.9) | `93955246396` | `23:02:52Z` | `23:03:06Z` |
+| `31544921709` | Python syntax check | `93955246295` | `23:02:53Z` | `23:03:00Z` |
+| `31544921709` | af_static_validate (py3.12) | `93955246354` | `23:02:54Z` | `23:03:03Z` |
+| `31544936799` | Static validation (no engine, no DCC) | `93955288655` | `23:03:05Z` | `23:03:13Z` |
+| `31544921701` | Static validation (no engine, no DCC) | `93955285804` | `23:03:05Z` | `23:03:17Z` |
+| `31544936826` | af_static_validate (py3.9) | `93955288819` | `23:03:05Z` | `23:03:18Z` |
+| `31544936826` | af_static_validate (py3.12) | `93955288843` | `23:03:05Z` | `23:03:11Z` |
+| `31544936826` | Python syntax check | `93955288699` | `23:03:05Z` | `23:03:14Z` |
+| `31544936799` | Blender smoke test (headless) | `93955321221` | `23:03:14Z` | `23:03:47Z` |
+| `31544921701` | Blender smoke test (headless) | `93955336614` | `23:03:19Z` | `23:03:57Z` |
+
+Earliest start `23:02:52Z` is five seconds after the marker author date, so the anti-staleness rule holds for every run. Slowest job: `Blender smoke test (headless)`, 33–38 s. Total span from marker push to last completion: 70 s.
+
+### 9.2 Commits covered
+
+| File | Commit | Blob | Size | Note |
+|---|---|---|---|---|
+| `Documentation/CI_EVIDENCE_VOL3.md` | `3a20762b` | `aba2a71d` | 18,896 B | section 8, batch 4 record |
+| `Documentation/DECISION_LOG_VOL4.md` | `232bb31c` | `d1eaaae8` | 13,450 B | new volume, carries D-053 |
+
+Both are Markdown and therefore carry no compile gate. Both sizes above were returned by the write call itself and are the only automated truncation signal available for them.
+
+### 9.3 Why this batch was run
+
+Under the policy stated in section 8.3, the commit that records a batch must itself be covered by a later batch. Batch 4 was recorded by `3a20762b`, which no batch had covered. `232bb31c` opened Decision Log Volume 4 with D-053 and was likewise uncovered. Batch 5 covers both, which closes the chain: no commit currently on `main` is unverified.
+
+### 9.4 Confirmation of the corrected timing model
+
+Batch 5 completed inside a single poll. The slow `Blender smoke test (headless)` job started 32 s after the marker and finished 70 s after it, which the 55 s wait plus the read round trip happened to cover. This is consistent with the batch-4 finding rather than a contradiction of it: the 55 s wait is a lower bound that usually suffices and occasionally does not. The corrected procedure in section 8.4 stays in force and is not relaxed on the strength of one favourable sample.
+
+### 9.5 What batch 5 does not prove
+
+Nothing in section 4 changes. In particular, batch 5 verifies that D-053 did not break the static gate; it does not verify a single claim made inside D-053, because no automated check reads Markdown prose. Two of those claims are explicitly negative and remain so: the local rehearsal gate for `Tools/af_mesh_quality.py` is recorded as **NOT MET**, and **OPEN-051-B** — the drift guard's 27-versus-31 self-test count — remains **open**. Neither can be settled by CI, because no workflow invokes any guard's `--self-test` mode.
+
+---
+
+## 10. Volume closure
+
+This volume is **closed by size** at section 9. Batch 6 and everything after it are recorded in `Documentation/CI_EVIDENCE_VOL4.md`, which must open with a pointer back to this file and must carry forward the acceptance rule in section 1, the corrected polling procedure in section 8.4, the total-coverage policy in section 8.3, and the standing limits in section 4 verbatim in substance.
+
+Records here are appended in batch order and are not rewritten once accepted.
