@@ -11,7 +11,7 @@ this volume and any earlier volume disagree, this volume is current and the
 earlier volume is history. Errata are recorded here; frozen volumes are never
 retro-edited.
 
-Next decision id: **D-068**.
+Next decision id: **D-069**.
 
 ---
 
@@ -173,6 +173,196 @@ this gets forgotten:
 
 ---
 
+## D-068 — The Blender patch release resolved by CI is 5.2.0
+
+**Status: verified.** Read from the live step log of a green run by Umut and
+transcribed here. Two independent values inside the same job agree.
+
+### D-068.1 — The evidence
+
+Workflow `validate`, run **#208**, job **Blender smoke test (headless)**,
+result `succeeded`, duration 35 seconds, 2026-08-12. The two relevant steps
+produced:
+
+| Source | Value |
+|---|---|
+| Step `Resolve and install Blender 5.2 LTS`, echoed archive | `blender-5.2.0-linux-x64.tar.xz` |
+| Step `Record the Blender version actually used`, `blender --version` | `Blender 5.2.0 LTS` |
+| Build date | 2026-07-14 |
+| Build time | 01:32:04 |
+| Build commit date | 2026-07-13 |
+| Build commit time | 15:20 |
+| Build hash | `fbe6228777e7` |
+| Build branch | `blender-v5.2-release` |
+| Build platform | Linux |
+| Build type | Release |
+
+The directory listed immediately before resolution was
+`https://download.blender.org/release/Blender5.2/`.
+
+This matters more than a version string usually would, because the two values
+come from different mechanisms. The first is a filename chosen by
+`sort -V | tail -n 1` over a scraped directory index; the second is the
+binary's own self-report after extraction and execution. If the resolver had
+picked one archive and the runner had somehow executed another — a stale
+cached binary on `PATH`, an extraction into an unexpected prefix — the two
+lines would disagree. They do not. The archive that was resolved is the
+binary that ran.
+
+**OPEN-067-A: closed.** The answer is **5.2.0**.
+
+### D-068.2 — What 5.2.0 implies about the resolver
+
+The resolver takes the highest `blender-5.2.x-linux-x64.tar.xz` in the series
+directory. It returned `5.2.0`. Therefore, as of 2026-08-12, **no patch
+release above 5.2.0 exists in that directory**.
+
+This is a fact about today, not a property of the build. It is precisely the
+kind of statement that ages badly, so it is dated here rather than asserted
+generally. The moment 5.2.1 is published, this repository's CI will begin
+using it, silently, with no commit, no review and no note in any log that a
+human reads by default. That is the substance of D-068.3.
+
+Note also that the build is dated 2026-07-14 and the commit it was built from
+is dated 2026-07-13 — a one-day lag consistent with an ordinary release
+build, and a small corroboration that this is the official upstream artifact
+rather than something rebuilt or repackaged.
+
+### D-068.3 — OPEN-068-A is opened: the patch is unpinned, and that is a real drift risk
+
+`BLENDER_SERIES: '5.2'` pins the series. Nothing pins the patch.
+
+The argument for leaving it unpinned is genuine: within an LTS series, patch
+releases are bug fixes, and floating means the pipeline is continuously
+tested against the version Umut's own machine would most likely install.
+
+The argument against is stronger for this project specifically. The one
+outstanding Milestone 4 blocker, OPEN-051-F, is a **visual** acceptance gate.
+Eight of its fifteen criteria are judged by eye in Blender. If CI silently
+moves to 5.2.1 while Umut's machine stays on 5.2.0, and a mesh renders
+differently, the difference is attributable to nothing in this repository and
+there is no record of the change to point at. A floating dependency behind a
+visual gate is a bad combination.
+
+**OPEN-068-A — should `BLENDER_SERIES` be replaced by a pinned
+`BLENDER_VERSION: '5.2.0'`, with a documented procedure for bumping it
+deliberately?** Not decided here. This is a design decision with a real
+trade-off, and it should be taken by Umut rather than assumed. Recording it
+as a question is the honest state.
+
+### D-068.4 — OPEN-068-B is opened: Node 20 deprecation
+
+Run #208 carried exactly one annotation, a warning, quoted verbatim:
+
+> Node.js 20 is deprecated. The following actions target Node.js 20 but are
+> being forced to run on Node.js 24: `actions/checkout@v4`,
+> `actions/upload-artifact@v4`.
+
+This does not block anything. Both actions are being force-migrated by the
+runner and both completed successfully. It is recorded because a deprecation
+warning is a dated promise of a future failure, and the cost of acting on it
+now — bumping two action versions — is trivial compared to the cost of
+discovering it when the forced migration ends.
+
+**OPEN-068-B — bump `actions/checkout` and `actions/upload-artifact` from
+`@v4` to `@v5` in both workflow files.** Deferred, not forgotten. It requires
+editing `.github/workflows/validate.yml` (19,229 bytes) and
+`.github/workflows/static-validation.yml` (2,386 bytes), and the former is a
+full retype under D-053.6. It should be batched with OPEN-066-A, OPEN-066-B
+and D-064.7, which all require the same retype, so that the 19 KB file is
+rewritten **once** rather than four times.
+
+### D-068.5 — Step timings from run #208, and what they do and do not show
+
+Run #208's step durations, in order, as displayed:
+
+| Step | Duration |
+|---|---|
+| Set up job | 1s |
+| Check out | 1s |
+| Install runtime libraries | 6s |
+| Resolve and install Blender 5.2 LTS | 20s |
+| Record the Blender version actually used | 0s |
+| Run `af_smoke_test.py` end to end | 2s |
+| Upload pipeline output | 2s |
+| Post Check out | 0s |
+| Complete job | 0s |
+
+Total 35 seconds, consistent with the 33-second and 35-second figures shown
+on the run header at two different moments while it was being read.
+
+This corroborates D-067.3 concretely. The 20-second resolve step is the
+download and `xz` extraction of a full Blender archive; that is real work and
+it dominates the job, exactly as D-067.3 predicted from reading the workflow
+rather than from timing it. The job is not short-circuiting.
+
+**One observation is recorded without being turned into a finding.** The
+smoke test itself runs in 2 seconds for seven stages. That is fast. Under the
+method note in D-067.3 the correct response is to read the source before
+saying anything about it, and that has not been done in this pass —
+`af_smoke_test.py` was read in full earlier this session and its stages are
+procedural mesh construction with no I/O beyond a report write, which makes
+2 seconds plausible rather than suspicious. It is not being logged as a
+defect, and it is not being logged as cleared either. If it is ever
+investigated, the number to compare against is here.
+
+### D-068.6 — Where 5.2.0 is recorded, and where it is not yet
+
+The value is recorded **here**, and under D-061.2 the tables in the open
+decision volume are authoritative. That is sufficient for the record to be
+correct and findable.
+
+It is **not** yet in `VERSION_MATRIX.md`. That file is 40,439 bytes. Under
+D-053.6 every write from the agent side is a full-file retype, and retyping
+40 KB of verified reference material to insert one version string is a
+disproportionate corruption risk — the same reasoning that left
+`SCRIPT_INVENTORY.md` unedited in D-067.2.
+
+**OPEN-068-C — propagate the Blender 5.2.0 patch version into
+`VERSION_MATRIX.md` §5.** To be done when that file is being edited for an
+independent reason, or by Umut directly, for whom it is a one-line edit
+carrying none of this risk.
+
+### D-068.7 — Correction to the instruction given, not to the record
+
+The procedure handed over for resolving OPEN-067-A was under-specified and
+cost Umut a failed attempt. It said to open a `blender-pipeline` job log and
+read the `Resolved:` line. Three things were wrong with that:
+
+1. The job's **display name** is `Blender smoke test (headless)`.
+   `blender-pipeline` is only the YAML key and appears nowhere in the UI.
+2. `Resolved:` prints a **filename**, not a version, so searching the log for
+   a bare `5.2` finds nothing useful.
+3. Step output is **collapsed by default**, and the browser's find function
+   cannot see inside a collapsed group.
+
+The better instruction, established after the fact, is the adjacent step
+`Record the Blender version actually used`, whose entire output is the
+version banner. It is the shortest step in the job at 0 seconds, which is
+also why it is easy to scroll past.
+
+Recorded because the failure mode is general: an instruction that names an
+internal identifier instead of the label a human actually sees is not a
+usable instruction, and the cost of the error lands on the person following
+it rather than the person writing it.
+
+### D-068.8 — What is still not true
+
+Unchanged by anything in D-068, and restated because D-068 closes a question
+and closures create a false sense of progress:
+
+* No C++ in this repository has ever been compiled.
+* No generated mesh has ever been seen by a human being. Knowing the exact
+  Blender version that generated it does not change this.
+* **Milestone 4 is not accepted.** OPEN-051-F remains the sole blocker,
+  fifteen criteria, eight of them visual and requiring Blender 5.2 LTS on
+  Umut's machine with the face-orientation overlay at three angles.
+  **Partial pass is fail.**
+* D-068 identifies which Blender built the CI artifacts. It says nothing
+  about whether those artifacts are correct.
+
+---
+
 ## Open questions, authoritative table
 
 | Id | Subject | Status |
@@ -187,11 +377,19 @@ this gets forgotten:
 | OPEN-065-B | Cross-reference from `VERSION_MATRIX.md` §5.20 to `SCRIPT_INVENTORY.md` | narrowed to one pointer |
 | OPEN-066-A | `af_static_validate.py` has no `--self-test` step in either workflow | open |
 | OPEN-066-B | `af_bodywork_selftest.py`, 22,078 bytes, exercised by nothing but `compileall` | open |
-| OPEN-066-C | Old project name in two `af_smoke_test.py` literals | **closed by D-067.1** |
-| OPEN-067-A | Which Blender 5.2.x patch does CI resolve, and should it be pinned in `VERSION_MATRIX.md` | **open — new** |
+| OPEN-066-C | Old project name in two `af_smoke_test.py` literals | closed by D-067.1 |
+| OPEN-067-A | Which Blender 5.2.x patch does CI resolve | **closed by D-068.1 — 5.2.0** |
+| OPEN-068-A | Should the patch be pinned as `BLENDER_VERSION: '5.2.0'` rather than floating on the series | **open — new** |
+| OPEN-068-B | Bump `actions/checkout` and `actions/upload-artifact` from `@v4` to `@v5` | **open — new** |
+| OPEN-068-C | Propagate Blender 5.2.0 into `VERSION_MATRIX.md` §5 | **open — new** |
 
-Twelve entries. Three closed, one narrowed, eight open. OPEN-051-F is the
+Fifteen entries. Four closed, one narrowed, ten open. OPEN-051-F is still the
 only one gating a milestone.
+
+**Batching note.** OPEN-066-A, OPEN-066-B, OPEN-068-B and the deferred
+D-064.7 work all require editing `.github/workflows/validate.yml`, a 19,229
+byte full retype under D-053.6. They should be done in a single pass. Doing
+them separately multiplies the corruption risk by four for no benefit.
 
 ---
 
@@ -200,9 +398,9 @@ only one gating a milestone.
 | Volume | Size | Status |
 |---|---|---|
 | `DECISION_LOG.md` … `DECISION_LOG_VOL8.md` | — | frozen |
-| `DECISION_LOG_VOL9.md` | 19,545 B | **frozen at D-066** |
+| `DECISION_LOG_VOL9.md` | 19,545 B | frozen at D-066 |
 | `DECISION_LOG_VOL10.md` | this file | **open** |
 | `CI_EVIDENCE.md` … `CI_EVIDENCE_VOL6.md` | — | frozen |
 | `CI_EVIDENCE_VOL7.md` | 11,984 B | **open** |
 
-Next decision id: **D-068**.
+Next decision id: **D-069**.
