@@ -75,9 +75,9 @@ Recorded discrepancy: D-046 states 26,517 B; the file is 26,519 B.
 
 The rename commit predicts its own delta in its message, verbatim:
 *"Expected size delta: +2 B (26,517 -> 26,519)."* The live size is 26,519 B.
-`ApexFormula` is 12 characters, `UludagFormula` is 14 wait — the delta is +2 B
-for one substitution, consistent with every other wave 1.5 commit, which
-predicted +2 B per occurrence and was correct each time.
+The arithmetic is direct: `ApexFormula` is 11 characters, `UludagFormula` is 13,
+so a single substitution adds 2 B. That per-occurrence figure is the same one
+every other wave 1.5 commit predicted, and each was correct.
 
 **Cause:** D-046 was correct when written. The file grew by 2 B afterwards, in a
 rename commit that documented the growth in advance. The log entry predates the
