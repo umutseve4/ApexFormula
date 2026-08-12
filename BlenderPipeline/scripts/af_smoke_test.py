@@ -1,4 +1,4 @@
-"""ApexFormula - end-to-end pipeline smoke test.
+"""UludagFormula - end-to-end pipeline smoke test.
 
 Milestone 0B.
 
@@ -248,7 +248,7 @@ def write_report(report):
         json.dump(report, handle, indent=2, sort_keys=True, default=str)
         handle.write("\n")
 
-    lines = ["ApexFormula pipeline smoke test", RULE]
+    lines = ["UludagFormula pipeline smoke test", RULE]
     lines.append("pipeline version : %s" % report["pipeline_version"])
     lines.append("config hash      : %s" % report["config_hash"])
     lines.append("generated (UTC)  : %s" % report["generated_utc"])
