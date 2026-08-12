@@ -5,14 +5,20 @@ This volume opens at D-059.
 
 ## Volume history
 
-| Volume | Decisions | Closed at | Reason |
-|---|---|---|---|
-| 1 | D-001 .. D-018 | 19,904 bytes | size |
-| 2 | D-019 .. D-035 | 21,470 bytes | size |
-| 3 | D-036 .. D-045 | 20,663 bytes | size |
-| 4 | D-046 .. D-055 | 22,118 bytes | size |
-| 5 | D-056 .. D-058 | 20,132 bytes | size |
-| 6 | D-059 .. | open | - |
+Corrected by D-061. The table previously carried here was wrong in four of
+its five rows. Ranges below are taken from the section 0 tables of volumes
+3 and 4, which agree with each other and with the range header volume 3
+states for itself. Sizes are measured blob sizes from a directory listing
+of `Documentation/` taken on 2026-08-12.
+
+| Volume | File | Decisions | Size | Basis |
+|---|---|---|---|---|
+| 1 | `DECISION_LOG.md` | D-001 .. D-044 | 50,726 bytes | measured |
+| 2 | `DECISION_LOG_VOL2.md` | D-045 .. D-050 | 20,441 bytes | measured |
+| 3 | `DECISION_LOG_VOL3.md` | D-051 .. D-052 | 25,950 bytes | measured |
+| 4 | `DECISION_LOG_VOL4.md` | D-053 .. D-055 | 27,898 bytes | measured |
+| 5 | `DECISION_LOG_VOL5.md` | D-056 .. D-058 | 20,132 bytes | measured |
+| 6 | `DECISION_LOG_VOL6.md` | D-059 .. | open | measured |
 
 The convention is unchanged. A volume is closed when it passes roughly
 twenty kilobytes, because past that point a full file retranscription
@@ -20,6 +26,11 @@ becomes the dominant risk in every edit, and this repository has no patch
 mode. Closed volumes are never reopened, never reordered, and never
 silently corrected; an error in a closed volume is fixed by an erratum in
 the current one, per D-057.
+
+Note that volumes 1, 3 and 4 exceed twenty kilobytes, volume 1 by a factor
+of two and a half. The threshold was adopted after those volumes were
+written, and it is applied going forward rather than retroactively. Volume
+4 in particular must not be appended to; its own section 0 says so.
 
 ---
 
@@ -274,16 +285,132 @@ it in.
 
 ---
 
+## D-061. The volume history table was wrong in four of five rows
+
+**Status:** decided, corrected, and verified against primary evidence
+**Date:** 2026-08-12
+**Milestone:** none; documentation integrity
+**Supersedes:** the volume history table previously carried in section 0 of
+this volume
+**Superseded by:** nothing
+**Artefact:** this file
+**CI:** none, and none is owed. Markdown only, D-054 gate scoped coverage.
+
+### Context
+
+Volumes 3, 4 and 5 of this log were read end to end while discharging the
+transcription gap disclosed in
+`Documentation/MILESTONE_4_IMPLEMENTATION_VOL2.md`. Each closed volume
+carries its own section 0 volume history table. They do not all agree, and
+the table carried in this volume agreed with none of them.
+
+That is not a cosmetic problem. The volume history table is the index by
+which any future reader locates a decision. If it points at the wrong
+volume, a decision that exists is functionally lost, and the natural
+recovery - reading volumes until the decision turns up - is exactly the
+expensive operation the volume split was created to avoid.
+
+### The evidence
+
+Two independent kinds, both primary.
+
+**Ranges.** Volume 3 states its own range in its header: *Range: D-051
+onward*. Its body contains exactly two decisions, D-051 and D-052, and
+nothing else. Volume 4's section 0 table independently gives volume 1 as
+D-001 to D-044, volume 2 as D-045 to D-050, volume 3 as D-051 and D-052,
+and volume 4 as D-053 onward. Volume 3's section 0 table agrees with volume
+4 on volumes 1 and 2. Two closed volumes written at different times agree
+with each other and with volume 3's self-declared header.
+
+**Sizes.** A directory listing of `Documentation/` requesting only name,
+size and blob hash returns the byte count of every file without
+downloading any body - the technique recorded in D-055.6. Taken on
+2026-08-12 it returns: `DECISION_LOG.md` 50,726 bytes,
+`DECISION_LOG_VOL2.md` 20,441, `DECISION_LOG_VOL3.md` 25,950,
+`DECISION_LOG_VOL4.md` 27,898, `DECISION_LOG_VOL5.md` 20,132,
+`DECISION_LOG_VOL6.md` 13,477 before this entry.
+
+### The defect
+
+The table this volume carried before this entry read:
+
+| Volume | Decisions | Closed at |
+|---|---|---|
+| 1 | D-001 .. D-018 | 19,904 bytes |
+| 2 | D-019 .. D-035 | 21,470 bytes |
+| 3 | D-036 .. D-045 | 20,663 bytes |
+| 4 | D-046 .. D-055 | 22,118 bytes |
+| 5 | D-056 .. D-058 | 20,132 bytes |
+
+Every range on rows 1 through 4 is wrong. Every size on rows 1 through 4 is
+wrong, row 1 by 30,822 bytes. Only row 5 is correct, and row 5 is the row
+this volume was written immediately after.
+
+### Decision 1: correct in place, because this volume is open
+
+D-057 requires that an error in a **closed** volume be fixed by erratum in
+the current volume, never by editing the closed file. This error is in the
+current volume, so that rule does not apply and the table is corrected
+directly. Nothing frozen is touched.
+
+The defect is recorded here in full rather than quietly overwritten. A
+corrected table with no record of what it replaced would leave a reader
+unable to tell whether an old citation was wrong or merely unfamiliar.
+
+### Decision 2: this table supersedes any section 0 table in a closed volume
+
+Closed volumes each carry their own copy of the history, and copies made at
+different times cannot all be right. Rather than adjudicate each one, the
+rule is positional: the volume history in the **open** volume is
+authoritative, and any table in a closed volume that disagrees with it is
+superseded on sight and must not be edited.
+
+This has a specific consequence worth stating. Volume 5's section 0 table
+was not re-read while writing this entry, so this decision makes no claim
+about whether it agrees or disagrees. It does not need to. If it
+disagrees, it is superseded by this rule without further work.
+
+### Decision 3: D-049 and D-050 are in volume 2, and volume 2 has not been read
+
+The corrected table places D-045 through D-050 in `DECISION_LOG_VOL2.md`.
+That file is frozen at 20,441 bytes and has **not** been read in this
+session. Any statement about the content of D-049 or D-050 would therefore
+be reconstruction, which D-053.6 already ruled out in a more consequential
+setting: evidence about a file must be produced by that file.
+
+So the transcription gap disclosed in
+`MILESTONE_4_IMPLEMENTATION_VOL2.md` narrows but does not close. D-051
+through D-058 can now be summarised from volumes read in full. D-049 and
+D-050 remain genuinely unread and are to be labelled as such, not
+paraphrased from context.
+
+### Related open question
+
+This is the same family of defect as **OPEN-051-D**, which records that
+volume 2's header says the volume starts at D-047 while its index lists
+D-045 and D-046. OPEN-051-D stays open; it concerns a frozen file and can
+only ever be an erratum. Reading volume 2 would settle both it and decision
+3 above in a single pass, and that is the cheapest way to close either.
+
+### What this decision does not establish
+
+Nothing about the mesh, the geometry, the exporter, or Milestone 4. It
+corrects an index. The correctness of the individual decision entries
+themselves was not audited and is not claimed; only their location is.
+
+---
+
 ## Open questions carried into this volume
 
 | Id | Subject | State |
 |---|---|---|
 | OPEN-051-B | drift guard banner count 27 vs `VERSION_MATRIX.md` 31 | open, deferred by D-059 decision 4 |
-| OPEN-051-D | volume 2 header and index inconsistency | open, volume frozen, erratum only |
+| OPEN-051-D | volume 2 header and index inconsistency | open, volume frozen, erratum only; would be settled by reading volume 2 |
 | OPEN-051-F | Blender visual verification of the bodywork | open, gate defined by D-060, blocked only on execution on Umut's machine |
 | OPEN-052-C | `VERSION_MATRIX.md` section 5.28 "2300 checks" | open, never to be silently refreshed |
 | OPEN-053-A | local rehearsal gate for `af_mesh_quality.py` | open, declared not met rather than faked |
 | OPEN-060-A | 936 historical faces vs 798 serialised faces in the export plan | open, raised by D-060, not to be reconciled by adjusting either number |
+| OPEN-061-A | `DECISION_LOG_VOL2.md` is unread, so D-049 and D-050 are unsummarised | open, raised by D-061 decision 3, closes by reading the file |
 
 Closed and not to be reopened: OPEN-051-A, OPEN-051-C, OPEN-051-E,
 OPEN-052-A, OPEN-052-B, OPEN-M4-01 (D-056), OPEN-056-A (D-057),
