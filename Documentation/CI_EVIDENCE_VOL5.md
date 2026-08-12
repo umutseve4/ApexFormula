@@ -114,3 +114,101 @@ against its real configuration. It does not prove that any C++ has been
 compiled, that the Unreal project opens, that a mesh has been generated in
 Blender and looked at by a human, or that a car has been driven. None of
 those things has happened.
+
+---
+
+## 9. Batch 9, the mesh export gate
+
+**Pull request:** #27, `CI batch 9: bodywork mesh export gate (evidence only, do not merge)`
+**Head branch:** `ci-batch-9-mesh-export`
+**Base:** `main`
+**Marker commit:** `ef8e05424e6c701792cf8e93b57613449f40a0d3`, authored `2026-08-12T00:44:40Z`, adding `Documentation/CI_BATCH_9_MARKER.md` (blob `36d5917cc7f41b0f03ac5c3fe86462cb55d8d491`, 2,221 bytes)
+**Branch point:** `b2b427396eb16efba56787a6202a63d332911bfc`, verified equal to the tip of `main` at branch creation time
+**Disposition:** closed unmerged
+
+### What was under test
+
+| Commit | File | Blob | Bytes |
+|---|---|---|---|
+| `b5b935f8646368e5fd1a08b4df6d4b9fcaee6f82` | `BlenderPipeline/scripts/af_mesh_export.py` | `26d135e37997db20b41132fafc157f80b0f80576` | 23,654 |
+| `b2b427396eb16efba56787a6202a63d332911bfc` | `.github/workflows/validate.yml` | `1f84f7bc4fea238e7b7c2854a07ed33fd5942c98` | 14,140 |
+
+Both extensions are gate scoped under D-054, so both commits owed a batch.
+The second commit is the one that added the step under test, `Bodywork mesh
+export self-test`, running
+`python3 BlenderPipeline/scripts/af_mesh_export.py --self-test` immediately
+after the `Bodywork geometry core self-test` step. The workflow grew from
+12,999 to 14,140 bytes, a difference of 1,141 bytes, which is the inserted
+step plus its comment block and nothing else.
+
+### Check runs, all ten
+
+| # | Name | Id | Conclusion | started_at | completed_at |
+|---|---|---|---|---|---|
+| 1 | Blender smoke test (headless) | 93974336441 | success | 2026-08-12T00:45:22Z | 2026-08-12T00:45:58Z |
+| 2 | af_static_validate (py3.12) | 93974305469 | success | 2026-08-12T00:45:11Z | 2026-08-12T00:45:18Z |
+| 3 | af_static_validate (py3.9) | 93974305392 | success | 2026-08-12T00:45:11Z | 2026-08-12T00:45:26Z |
+| 4 | Static validation (no engine, no DCC) | 93974305323 | success | 2026-08-12T00:45:05Z | 2026-08-12T00:45:14Z |
+| 5 | Python syntax check | 93974305315 | success | 2026-08-12T00:45:12Z | 2026-08-12T00:45:19Z |
+| 6 | Blender smoke test (headless) | 93974294447 | success | 2026-08-12T00:45:01Z | 2026-08-12T00:45:35Z |
+| 7 | Static validation (no engine, no DCC) | 93974265418 | success | 2026-08-12T00:44:51Z | 2026-08-12T00:44:59Z |
+| 8 | af_static_validate (py3.9) | 93974246930 | success | 2026-08-12T00:44:44Z | 2026-08-12T00:44:57Z |
+| 9 | Python syntax check | 93974246922 | success | 2026-08-12T00:44:44Z | 2026-08-12T00:44:50Z |
+| 10 | af_static_validate (py3.12) | 93974246874 | success | 2026-08-12T00:44:44Z | 2026-08-12T00:44:49Z |
+
+`total_count` reported by the API: 10. Conclusions: 10 `success`, 0 of any
+other value. The earliest `started_at` is `2026-08-12T00:44:44Z`, four
+seconds after the marker commit at `2026-08-12T00:44:40Z`, so every run in
+the table postdates the marker. Workflow run ids observed: 31551283378,
+31551283344, 31551263679, 31551263682.
+
+### What this batch establishes
+
+The `Static validation` job now executes the serialiser. That means, on a
+machine that is not the author's and under both Python 3.9 and Python 3.12,
+the following ran and returned zero:
+
+- both writers, Wavefront OBJ and Stanford PLY, over all twelve generated
+  bodywork surfaces and over every collision proxy;
+- the OBJ parser, which raises on any record it does not recognise rather
+  than skipping it, because a parser that silently discards a line lets a
+  round trip pass while losing data;
+- the round trip comparisons themselves, which assert equality rather than
+  a tolerance. That is only possible because coordinates are emitted with
+  `%.17g`. Seventeen significant digits is the shortest decimal field that
+  round trips an IEEE 754 double exactly; the customary `%.6f` would discard
+  roughly ten digits and reduce every one of those assertions to theatre.
+
+### Expected self-test output
+
+```
+af_mesh_export: 21 cases, 227 assertions, 0 failures
+export plan: 14 files, 798 serialised faces
+```
+
+The same honest limitation as section 8 applies: step level logs are not
+reachable from this environment, so those two lines are the locally
+measured output, not a runner transcript. What the runner proves is the
+exit status, and `af_mesh_export.py` returns a non zero code if a single
+assertion fails.
+
+Separately, and locally only, two consecutive `--dump` runs produced 26
+byte identical files totalling 112,123 bytes: twelve part OBJ files, twelve
+part PLY files, one combined OBJ and one collision OBJ. The writers are
+deterministic. That determinism is not checked by CI, because the self test
+writes nothing to disk.
+
+### Cumulative position
+
+Batch 9 is the tenth consecutive all green batch. Total green check runs
+recorded across volumes 1 to 5: one hundred.
+
+The honest reading has not changed and will not change until something is
+actually looked at. One hundred green check runs prove that this repository
+parses, that its guards are satisfied, that a headless Blender process
+starts, that the bodywork geometry core computes what its cases expect, and
+now that the exporter can write geometry out and read it back without
+losing a bit. They prove nothing whatsoever about appearance. No C++ has
+been compiled, the Unreal project has never been opened, no FBX or GLB has
+been imported, no mesh has been seen by a human being, and no lap has been
+driven. Milestone 4 remains **not started for acceptance purposes**.
