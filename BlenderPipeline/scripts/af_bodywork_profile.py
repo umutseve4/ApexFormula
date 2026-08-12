@@ -2,16 +2,18 @@
 # -*- coding: utf-8 -*-
 """Uludag Formula - procedural bodywork surface module (geometry core).
 
-Slice 1 of the re-authored module. It carries the pure geometry layer only:
+The module is built in two slices. Slice one is the pure geometry layer:
 section maths, superellipse rings, lofting, mesh diagnostics, convexity and
-planar texture coordinates. Nothing in this slice reads the design config and
-nothing imports the Blender API, so the module is importable by the static
-validation job on a bare Python interpreter.
+planar texture coordinates. Slice two is the design driven layer: longitudinal
+stations, halo arithmetic, the twelve bodywork parts, the collision proxies,
+the envelope and budget reports, the level of detail plan and the diagnostics
+report. Slice two reads af_pipeline_config; neither slice imports the Blender
+API, so the module stays importable by the static validation job on a bare
+Python interpreter.
 
-The design driven layer (stations, halo arithmetic, build_parts,
-collision_proxies, budget, level of detail plan, diagnostics report) is not in
-this slice. Until it lands, the suite kept on branch milestone-4-bodywork
-cannot run; the cases below are this slice's own gate.
+Two suites run behind --self-test: the geometry cases kept in this file, and
+the acceptance suite in af_bodywork_selftest. The import of that suite is
+hard on purpose, because a gate that can silently skip itself is not a gate.
 
 Provenance: the previous module of this name was never committed and is lost.
 Nothing here is copied from its documentation. Every number reported by
@@ -25,7 +27,12 @@ Run:
 from __future__ import annotations
 
 import math
+import os
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import af_pipeline_config as cfg  # noqa: E402
 
 # --------------------------------------------------------------------------
 # tolerances
@@ -397,6 +404,446 @@ def uv_face_area(corners):
 
 
 # --------------------------------------------------------------------------
+# slice 2: stations, halo arithmetic, parts, collision, reports
+# --------------------------------------------------------------------------
+
+COLLISION_BASE_NAME = "Body"
+
+# The halo tube must fit under the height envelope with a little air above
+# it, so the apex of the tube centre line is pulled down by this clearance.
+HALO_APEX_CLEARANCE_M = 0.010
+
+# Odd count so that one station lands exactly on the apex sample.
+HALO_TUBE_STATIONS = 13
+
+# Ring resolutions. Even counts keep the extreme samples exact.
+_BODY_RING_POINTS = 12
+_WING_RING_POINTS = 12
+_HALO_RING_POINTS = 8
+
+# Superellipse fullness per family.
+_EXP_SHELL = 3.2
+_EXP_POD = 2.6
+_EXP_WING = 2.4
+_EXP_TUBE = 2.0
+
+BUDGET = {
+    "part_faces_max": 2000,
+    "body_faces_max": cfg.FACE_BUDGET["body"],
+    "body_verts_max": 40000,
+    "collision_pieces_max": cfg.MAX_COLLISION_PIECES,
+}
+
+
+def _d(key):
+    """One design dimension, in metres, straight from the pipeline config."""
+    return float(cfg.DESIGN[key])
+
+
+def _reserved_marks():
+    """Name fragments the project is not allowed to use."""
+    return tuple(cfg.PROHIBITED_NAME_TOKENS)
+
+
+# --------------------------------------------------------------------------
+# halo arithmetic
+# --------------------------------------------------------------------------
+
+def halo_base_z_m():
+    """Height at which the halo legs meet the survival cell."""
+    return _d("chassis_top_m")
+
+
+def halo_tube_radius_m():
+    """Radius of the halo tube, half of its configured thickness."""
+    return _d("halo_thickness_m") / 2.0
+
+
+def halo_apex_z_m():
+    """Height of the halo tube centre line at its apex.
+
+    The envelope limit applies to the outer surface, so the centre line is
+    the limit minus the clearance; the tube radius is taken off separately
+    when the arc height is solved.
+    """
+    return _d("overall_height_m") - HALO_APEX_CLEARANCE_M
+
+
+def halo_thetas():
+    """Sweep angles of the halo stations, apex sampled exactly."""
+    return tuple(i * math.pi / 12.0 for i in range(HALO_TUBE_STATIONS))
+
+
+def halo_arc_height_m():
+    """Arc height that puts the top of the tube on the clearance line.
+
+    Solved rather than guessed: this is the defect the earlier draft had,
+    where the apex ignored the tube radius and overran the envelope.
+    """
+    peak = max(math.sin(t) for t in halo_thetas())
+    span = halo_apex_z_m() - halo_tube_radius_m() - halo_base_z_m()
+    return span / (0.5 + peak)
+
+
+# --------------------------------------------------------------------------
+# longitudinal stations
+# --------------------------------------------------------------------------
+
+def nose_tip_x():
+    """Front face of the length envelope."""
+    return _d("overall_length_m") / 2.0
+
+
+def tail_x():
+    """Rear face of the length envelope."""
+    return -_d("overall_length_m") / 2.0
+
+
+def chassis_span_x():
+    """Rear and front stations of the survival cell, in that order."""
+    return (-0.75, 1.65)
+
+
+# --------------------------------------------------------------------------
+# ring helpers
+# --------------------------------------------------------------------------
+
+def _ring_yz(count, half_width, half_height, exponent, centre_y, centre_z, x):
+    """Ring in the Y/Z plane at a longitudinal station."""
+    ring = superellipse_ring(count, half_width, half_height, exponent)
+    return [(x, centre_y + a, centre_z + b) for (a, b) in ring]
+
+
+def _ring_xz(count, half_chord, half_thick, exponent, centre_x, centre_z, y):
+    """Ring in the X/Z plane at a lateral station, used by the aerofoils."""
+    ring = superellipse_ring(count, half_chord, half_thick, exponent)
+    return [(centre_x + a, y, centre_z + b) for (a, b) in ring]
+
+
+def _mirror_y(verts):
+    """Mirror a vertex list across the centre line. Winding is repaired by
+    loft, and negation is exact in binary floating point, so the mirrored
+    part matches the original as a set of positions."""
+    return [(x, -y, z) for (x, y, z) in verts]
+
+
+def _swept_solid(rings):
+    """Loft a list of rings and hand back verts and faces."""
+    return loft(rings)
+
+
+# --------------------------------------------------------------------------
+# the twelve surface parts
+# --------------------------------------------------------------------------
+
+def _nose():
+    stations = (
+        (1.65, 0.30, 0.18),
+        (2.10, 0.22, 0.14),
+        (2.50, 0.12, 0.09),
+        (nose_tip_x(), 0.04, 0.03),
+    )
+    rings = [_ring_yz(_BODY_RING_POINTS, hw, hh, _EXP_SHELL, 0.0, 0.20, x)
+             for (x, hw, hh) in stations]
+    return _swept_solid(rings)
+
+
+def _monocoque():
+    rear_x, front_x = chassis_span_x()
+    stations = (
+        (rear_x, 0.36, 0.27),
+        (0.10, 0.36, 0.27),
+        (0.90, 0.34, 0.26),
+        (front_x, 0.30, 0.18),
+    )
+    rings = [_ring_yz(_BODY_RING_POINTS, hw, hh, _EXP_SHELL, 0.0, 0.29, x)
+             for (x, hw, hh) in stations]
+    return _swept_solid(rings)
+
+
+def _tail():
+    rear_x = chassis_span_x()[0]
+    stations = (
+        (-2.10, 0.14, 0.14),
+        (-1.50, 0.26, 0.22),
+        (rear_x, 0.36, 0.27),
+    )
+    rings = [_ring_yz(_BODY_RING_POINTS, hw, hh, _EXP_SHELL, 0.0, 0.29, x)
+             for (x, hw, hh) in stations]
+    return _swept_solid(rings)
+
+
+def _sidepod(side):
+    stations = (
+        (-0.30, 0.21, 0.20),
+        (0.40, 0.21, 0.20),
+        (1.10, 0.12, 0.14),
+    )
+    rings = [_ring_yz(_BODY_RING_POINTS, hw, hh, _EXP_POD, 0.62, 0.28, x)
+             for (x, hw, hh) in stations]
+    verts, faces = _swept_solid(rings)
+    if side < 0:
+        verts, faces = _swept_solid([_mirror_y(r) for r in rings])
+    return verts, faces
+
+
+def _front_wing():
+    half_span = _d("front_wing_span_m") / 2.0
+    half_chord = _d("front_wing_chord_m") / 2.0
+    half_thick = _d("front_wing_thickness_m") / 2.0
+    ys = (-half_span, -0.45, 0.0, 0.45, half_span)
+    rings = [_ring_xz(_WING_RING_POINTS, half_chord, half_thick, _EXP_WING,
+                      2.30, 0.06, y) for y in ys]
+    return _swept_solid(rings)
+
+
+def _rear_wing():
+    half_span = _d("rear_wing_span_m") / 2.0
+    half_chord = _d("rear_wing_chord_m") / 2.0
+    half_thick = _d("rear_wing_thickness_m") / 2.0
+    centre_x = tail_x() + half_chord
+    ys = (-half_span, 0.0, half_span)
+    rings = [_ring_xz(_WING_RING_POINTS, half_chord, half_thick, _EXP_WING,
+                      centre_x, _d("rear_wing_height_m"), y) for y in ys]
+    return _swept_solid(rings)
+
+
+def _front_endplate(side):
+    half_span = _d("front_wing_span_m") / 2.0
+    ys = (half_span - 0.05, half_span + 0.03)
+    rings = [_ring_xz(_WING_RING_POINTS, 0.24, 0.12, _EXP_WING, 2.30, 0.14, y)
+             for y in ys]
+    if side < 0:
+        rings = [_mirror_y(r) for r in rings]
+    return _swept_solid(rings)
+
+
+def _rear_endplate(side):
+    half_span = _d("rear_wing_span_m") / 2.0
+    half_chord = _d("rear_wing_chord_m") / 2.0
+    centre_x = tail_x() + half_chord
+    ys = (half_span, half_span + 0.06)
+    rings = [_ring_xz(_WING_RING_POINTS, half_chord, 0.12, _EXP_WING,
+                      centre_x, _d("rear_wing_height_m"), y) for y in ys]
+    if side < 0:
+        rings = [_mirror_y(r) for r in rings]
+    return _swept_solid(rings)
+
+
+def _halo():
+    """Tube swept along a raised arc over the cockpit opening."""
+    radius = halo_tube_radius_m()
+    arc = halo_arc_height_m()
+    base = halo_base_z_m()
+    hoop = _d("halo_radius_m")
+
+    path = []
+    for t in halo_thetas():
+        path.append((0.30 + hoop * math.cos(t),
+                     base + arc * (0.5 + math.sin(t))))
+
+    section = superellipse_ring(_HALO_RING_POINTS, radius, radius, _EXP_TUBE)
+
+    rings = []
+    for i, (px, pz) in enumerate(path):
+        if i == 0:
+            ax, az = path[1][0] - px, path[1][1] - pz
+        elif i == len(path) - 1:
+            ax, az = px - path[i - 1][0], pz - path[i - 1][1]
+        else:
+            ax = path[i + 1][0] - path[i - 1][0]
+            az = path[i + 1][1] - path[i - 1][1]
+        length = math.sqrt(ax * ax + az * az)
+        tx, tz = ax / length, az / length
+        # Normal in the sweep plane; the binormal is the lateral axis.
+        nx, nz = -tz, tx
+        # The first section coordinate rides the in plane normal, the
+        # second rides the lateral axis.
+        ring = [(px + nx * a, b, pz + nz * a) for (a, b) in section]
+        rings.append(ring)
+    return _swept_solid(rings)
+
+
+def build_parts():
+    """Every bodywork surface, as (name, verts, faces) tuples."""
+    parts = [
+        ("AF_Surface_Nose",) + _nose(),
+        ("AF_Surface_Monocoque",) + _monocoque(),
+        ("AF_Surface_Tail",) + _tail(),
+        ("AF_Surface_Sidepod_L",) + _sidepod(1),
+        ("AF_Surface_Sidepod_R",) + _sidepod(-1),
+        ("AF_Surface_FrontWing",) + _front_wing(),
+        ("AF_Surface_RearWing",) + _rear_wing(),
+        ("AF_Surface_EndplateFront_L",) + _front_endplate(1),
+        ("AF_Surface_EndplateFront_R",) + _front_endplate(-1),
+        ("AF_Surface_EndplateRear_L",) + _rear_endplate(1),
+        ("AF_Surface_EndplateRear_R",) + _rear_endplate(-1),
+        ("AF_Surface_Halo",) + _halo(),
+    ]
+    return parts
+
+
+# --------------------------------------------------------------------------
+# collision proxies
+# --------------------------------------------------------------------------
+
+def _box(centre, half_extent):
+    """Axis aligned box, wound outward, in the convention of _unit_box."""
+    cx, cy, cz = centre
+    hx, hy, hz = half_extent
+    verts = [
+        (cx - hx, cy - hy, cz - hz),
+        (cx + hx, cy - hy, cz - hz),
+        (cx + hx, cy + hy, cz - hz),
+        (cx - hx, cy + hy, cz - hz),
+        (cx - hx, cy - hy, cz + hz),
+        (cx + hx, cy - hy, cz + hz),
+        (cx + hx, cy + hy, cz + hz),
+        (cx - hx, cy + hy, cz + hz),
+    ]
+    faces = [
+        (0, 3, 2, 1),
+        (4, 5, 6, 7),
+        (0, 1, 5, 4),
+        (1, 2, 6, 5),
+        (2, 3, 7, 6),
+        (3, 0, 4, 7),
+    ]
+    return verts, faces
+
+
+def collision_proxies():
+    """Convex boxes that stand in for the body during physics queries."""
+    proxies = []
+    for index, piece in enumerate(cfg.COLLISION_PIECES, start=1):
+        _target, _piece_index, centre, half_extent = piece
+        verts, faces = _box(centre, half_extent)
+        proxies.append(("UCX_%s_%02d" % (COLLISION_BASE_NAME, index),
+                        verts, faces))
+    return proxies
+
+
+# --------------------------------------------------------------------------
+# reports
+# --------------------------------------------------------------------------
+
+def _bounds(parts):
+    xs, ys, zs = [], [], []
+    for (_name, verts, _faces) in parts:
+        for (x, y, z) in verts:
+            xs.append(x)
+            ys.append(y)
+            zs.append(z)
+    return {
+        "length": max(xs) - min(xs),
+        "width": max(ys) - min(ys),
+        "max_x": max(xs),
+        "min_x": min(xs),
+        "max_z": max(zs),
+        "min_z": min(zs),
+    }
+
+
+def _check(name, passed, measured, limit):
+    return {"name": name, "passed": bool(passed),
+            "measured": measured, "limit": limit}
+
+
+def envelope_report(parts):
+    """Measured extents against the design envelope."""
+    bounds = _bounds(parts)
+    checks = [
+        _check("length", abs(bounds["length"] - _d("overall_length_m")) <= 1e-6,
+               bounds["length"], _d("overall_length_m")),
+        _check("width", bounds["width"] <= _d("overall_width_m") + 1e-9,
+               bounds["width"], _d("overall_width_m")),
+        _check("height", bounds["max_z"] <= _d("overall_height_m") + 1e-9,
+               bounds["max_z"], _d("overall_height_m")),
+        _check("ground", bounds["min_z"] >= 0.0, bounds["min_z"], 0.0),
+    ]
+    return {"bounds": bounds, "checks": checks,
+            "passed": all(c["passed"] for c in checks)}
+
+
+def budget_report(parts):
+    """Face and vertex counts against the pipeline budget."""
+    total_faces = sum(len(f) for (_n, _v, f) in parts)
+    total_verts = sum(len(v) for (_n, v, _f) in parts)
+    worst = max(len(f) for (_n, _v, f) in parts)
+    checks = [
+        _check("part_faces", worst <= BUDGET["part_faces_max"],
+               worst, BUDGET["part_faces_max"]),
+        _check("body_faces", total_faces <= BUDGET["body_faces_max"],
+               total_faces, BUDGET["body_faces_max"]),
+        _check("body_verts", total_verts <= BUDGET["body_verts_max"],
+               total_verts, BUDGET["body_verts_max"]),
+    ]
+    return {"total_faces": total_faces, "total_verts": total_verts,
+            "checks": checks, "passed": all(c["passed"] for c in checks)}
+
+
+def lod_plan(parts):
+    """One reduction row per part per level of detail."""
+    plan = []
+    for (name, _verts, _faces) in parts:
+        for level in sorted(cfg.LOD_RATIOS):
+            plan.append((name, cfg.lod_name(name, level),
+                         float(cfg.LOD_RATIOS[level])))
+    return plan
+
+
+def diagnostics_report(parts, proxies):
+    """A JSON friendly summary of the whole bodywork stage."""
+    envelope = envelope_report(parts)
+    budget = budget_report(parts)
+
+    part_rows = []
+    all_manifold = True
+    for (name, verts, faces) in parts:
+        diag = mesh_diagnostics(verts, faces)
+        closed = is_closed_manifold(diag)
+        all_manifold = all_manifold and closed
+        part_rows.append({
+            "name": name,
+            "vertices": diag["vertices"],
+            "faces": diag["faces"],
+            "euler": diag["euler"],
+            "closed_manifold": bool(closed),
+        })
+
+    proxy_rows = []
+    all_convex = True
+    for (name, verts, faces) in proxies:
+        convex = is_convex(verts, faces)
+        all_convex = all_convex and convex
+        proxy_rows.append({
+            "name": name,
+            "vertices": len(verts),
+            "faces": len(faces),
+            "convex": bool(convex),
+        })
+
+    summary = {
+        "part_count": len(part_rows),
+        "proxy_count": len(proxy_rows),
+        "all_parts_closed_manifold": bool(all_manifold),
+        "all_proxies_convex": bool(all_convex),
+    }
+    passed = bool(all_manifold and all_convex
+                  and envelope["passed"] and budget["passed"])
+    return {
+        "module": "af_bodywork_profile",
+        "variant": cfg.VEHICLE_VARIANT,
+        "parts": part_rows,
+        "collision": proxy_rows,
+        "envelope": envelope,
+        "budget": budget,
+        "summary": summary,
+        "passed": passed,
+    }
+
+
+# --------------------------------------------------------------------------
 # self test
 # --------------------------------------------------------------------------
 
@@ -668,15 +1115,35 @@ class _SliceOneSelfTest(object):
 
 
 def _self_test():
+    status = 0
+
     runner = _SliceOneSelfTest()
     passed, failed, cases = runner.run()
     for message in failed:
         sys.stderr.write("FAIL: %s\n" % message)
     sys.stdout.write(
-        "af_bodywork_profile slice 1: %d cases, %d assertions, %d failures\n"
+        "af_bodywork_profile core: %d cases, %d assertions, %d failures\n"
         % (cases, passed, len(failed)))
     sys.stdout.write("thickness peak: %.12f\n" % _THICKNESS_PEAK)
-    return 0 if not failed else 1
+    if failed:
+        status = 1
+
+    # The acceptance suite lives in its own module so that a change to the
+    # tests can never be mistaken for a change to the car. It is a hard
+    # import on purpose: a gate that can silently skip itself is not a gate.
+    import af_bodywork_selftest
+
+    suite = af_bodywork_selftest.BodyworkSelfTest()
+    passed, failed, cases = suite.run()
+    for message in failed:
+        sys.stderr.write("FAIL: %s\n" % message)
+    sys.stdout.write(
+        "af_bodywork_selftest: %d cases, %d assertions, %d failures\n"
+        % (cases, passed, len(failed)))
+    if failed:
+        status = 1
+
+    return status
 
 
 def main(argv):
