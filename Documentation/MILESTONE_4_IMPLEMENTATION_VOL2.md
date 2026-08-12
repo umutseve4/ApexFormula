@@ -3,9 +3,9 @@
 Volume 1, `MILESTONE_4_IMPLEMENTATION.md`, is 23,694 bytes and is closed by
 size under D-057. It carries D-046, D-047 and D-048, and its section 2
 still reads "next free decision identifier: **D-049**". The decision log
-has since reached D-060.
+has since reached D-061.
 
-That gap is the reason this volume exists. Twelve decisions have landed
+That gap is the reason this volume exists. Thirteen decisions have landed
 since volume 1 was last written, and the milestone's own implementation
 record has not reflected any of them. Retranscribing 23,694 bytes to
 append to it would put the entire file at risk to gain a few sections, in
@@ -24,29 +24,44 @@ verification`, `requires Blender execution`, `requires visual inspection`,
 ## 1. Scope of this volume, and what it deliberately does not contain
 
 This volume records only what has been read from the live repository and
-verified against it. It does **not** reconstruct D-049 through D-058 from
-memory.
+verified against it. It does **not** reconstruct decisions from memory.
 
 | Decisions | Where the authoritative record lives | Transcribed here |
 | --- | --- | --- |
 | D-046 .. D-048 | `MILESTONE_4_IMPLEMENTATION.md` (volume 1) | closed, do not edit |
-| D-049 .. D-055 | `DECISION_LOG_VOL3.md`, `DECISION_LOG_VOL4.md` | **no** |
-| D-056 .. D-058 | `DECISION_LOG_VOL5.md` | **no** |
+| D-049, D-050 | `DECISION_LOG_VOL2.md` | **no** — file unread, see OPEN-061-A |
+| D-051, D-052 | `DECISION_LOG_VOL3.md` | yes, section 7 below |
+| D-053 .. D-055 | `DECISION_LOG_VOL4.md` | yes, section 7 below |
+| D-056 .. D-058 | `DECISION_LOG_VOL5.md` | yes, section 7 below |
 | D-059, D-060 | `DECISION_LOG_VOL6.md` | yes, sections 3 and 4 below |
+| D-061 | `DECISION_LOG_VOL6.md` | yes, section 1.1 below |
 
-The middle two rows are a known and disclosed gap, not an omission
-discovered later. Writing a milestone record for a decision without
-re-reading that decision's log entry in full would produce a plausible
-summary rather than a record, and a plausible summary is precisely the
-artefact this repository's evidence rules exist to forbid. Those rows are
-filled in when their volumes are re-read, and not before.
+When this volume was created the gap ran from D-049 to D-058. Volumes 3, 4
+and 5 have since been read end to end and section 7 discharges that range.
+The residue is **two decisions**, D-049 and D-050, which live in
+`DECISION_LOG_VOL2.md`. That file is frozen at 20,441 bytes and has not
+been read. Summarising it from surrounding context would produce a
+plausible account rather than a record, which D-053.6 already ruled out in
+a more consequential setting: evidence about a file must be produced by
+that file. The residue is therefore left explicitly empty and tracked as
+OPEN-061-A.
 
-What is already known and requires no re-reading: OPEN-M4-01, the
-collision proxy datum defect opened during D-047 and recorded in volume 1
-section 5, was **closed by D-056**. Volume 1 describes it as open. That
-statement is stale rather than wrong — it was true when volume 1 was
-written — and volume 1 is closed, so it is corrected here by erratum in
-the manner D-057 prescribes, not by editing the closed file.
+### 1.1 Two errata against closed files
+
+**OPEN-M4-01**, the collision proxy datum defect opened during D-047 and
+recorded in volume 1 section 5, was **closed by D-056**. Volume 1
+describes it as open. That statement is stale rather than wrong — it was
+true when volume 1 was written — and volume 1 is closed, so it is
+corrected here by erratum in the manner D-057 prescribes, not by editing
+the closed file.
+
+**The decision log volume history** carried in `DECISION_LOG_VOL6.md`
+section 0 was wrong in four of its five rows, in both the decision ranges
+and the recorded sizes. D-061 corrected it in place, which was permitted
+because volume 6 is the open volume. The corrected partition is the one
+used in the table above. Any volume history table in a *closed* decision
+log volume that disagrees with volume 6 is superseded on sight and must
+not be edited.
 
 ---
 
@@ -233,6 +248,7 @@ make the whole exercise decorative.
 | OPEN-052-C | `VERSION_MATRIX.md` section 5.28 "2300 checks" | open, never to be silently refreshed |
 | OPEN-053-A | local rehearsal gate for `af_mesh_quality.py` | open, declared not met rather than faked |
 | OPEN-060-A | 936 historical faces vs 798 serialised faces in the export plan | open, not to be reconciled by adjusting either number |
+| OPEN-061-A | `DECISION_LOG_VOL2.md` unread, so D-049 and D-050 are unsummarised | open, closes by reading that file, which would also settle OPEN-051-D |
 
 Closed and not to be reopened: OPEN-051-A, OPEN-051-C, OPEN-051-E,
 OPEN-052-A, OPEN-052-B, **OPEN-M4-01** (closed by D-056; volume 1 section
@@ -245,9 +261,156 @@ OPEN-052-A, OPEN-052-B, **OPEN-M4-01** (closed by D-056; volume 1 section
    nothing to disk, so continuous integration cannot currently regress on
    it. A determinism check that dumps to a temporary directory twice and
    compares would close this, and would owe a CI batch.
-2. **Volume 1 rows for D-049 to D-058.** Disclosed in section 1 above.
-3. **The rename waves 2 onward** from D-048 section 4.6 remain planned and
-   not implemented. Six module directories, six `.Build.cs` files, two
-   `.Target.cs` files, the `.uproject`, the export macros, the copyright
-   line in 65 C++ files, and the lockstep rewrite of
-   `af_static_validate.py`. None of this is started. *not claimed.*
+2. **D-049 and D-050 are unsummarised.** Now tracked as OPEN-061-A.
+3. **The rename is finished, not pending.** This item previously said the
+   rename waves from D-048 section 4.6 remained planned and not
+   implemented, listing six module directories, six `.Build.cs` files, two
+   `.Target.cs` files, the `.uproject` and 65 copyright lines as
+   outstanding work. **That was wrong.** D-055 measured the cost of that
+   ladder and refused it, and D-055.8 cancelled wave 2A and wave 2C,
+   closed OPEN-052-B and OPEN-051-E, and declared the rename effort
+   **complete**. The six module identifiers, the `.uproject` name, the
+   `AF_` / `af_` symbol prefixes and the `Unreal/Source` directory names
+   are **frozen permanently** and reclassified as an internal code name.
+   There is no outstanding rename work and nothing here is owed.
+
+---
+
+## 7. D-051 to D-058, from volumes read in full
+
+Summarised from `DECISION_LOG_VOL3.md` (25,950 bytes),
+`DECISION_LOG_VOL4.md` (27,898 bytes) and `DECISION_LOG_VOL5.md` (20,132
+bytes), each read end to end. All three are frozen. Where a figure appears
+below it was read from those files, not recalled. This section is a
+navigation aid; the log entries remain authoritative.
+
+### D-051 — the rename scope, and the lockstep rule
+
+Restated D-048 option 2: the product identity is renamed, and the
+`AF_` / `af_` / `UAF*` / `FAF*` / `AAF*` / `IAF*` / `LogAF*` symbol
+prefixes are **not**, being reclassified as a permanent internal code
+name. `Uludağ` is legal in ini display strings and in Markdown and
+**illegal in a module name**, because Unreal Build Tool requires the module
+name, its directory, its `.Build.cs` filename and its C# class to be the
+same ASCII token. `ğ` is two bytes in UTF-8, so all size arithmetic in
+this repository is done in bytes rather than characters.
+
+Findings recorded against `Tools/af_static_validate.py`, then **52,702
+bytes and 1,382 lines**: the copyright line is asserted only over C++ under
+`Unreal/Source`, so Python headers are cosmetic; the pinned config hash is
+computed over a canonical JSON dump whose members do not include the
+project name or the asset and script prefixes, so a rename cannot move it;
+one check's self-file tuple names a path the check can never yield, which
+is dead code and was **deliberately left uncorrected**; and the prohibited
+token list matches neither "Uludağ Formula" nor "UludagFormula".
+
+**The lockstep rule (051.2), still in force:** any commit that renames a
+module directory, a `.Build.cs`, a `.Target.cs`, the `.uproject` or a
+project ini **must patch `af_static_validate.py` in the same commit**.
+There is no rename API here — every move is create-then-delete and every
+edit is a full retranscription.
+
+### D-052 — wave 1.5 closed, and the byte-delta safeguard
+
+Seven items in three batches, all ten check runs green, evidence pull
+requests closed unmerged.
+
+The durable output is the **byte-delta safeguard (052.3)**: predict the
+size change of a write before making it, then compare against the size the
+write API returns. `ApexFormula` to `UludagFormula` is plus two bytes; the
+display form is plus four. Seven of eight predictions matched exactly.
+This matters because **Markdown has no compile gate (052.5)** — byte-delta
+prediction is the only automated truncation detector documentation has.
+Note the limit stated in 052.6: the returned size proves *length*, not
+*fidelity*.
+
+Also closed here: a syntax check is not a self-test, and continuous
+integration never invokes `--self-test` on the guards, which is why
+OPEN-051-B could not be settled as a side effect and remains open.
+
+### D-053 — timing discipline and a rehearsal that failed
+
+A batch is not complete until all ten runs report a terminal status;
+**nine of ten with any run still in progress must be rejected, never
+rounded up**. The local file-creation tool does not behave like `mkdir -p`
+— creating under a missing parent fails and the content is discarded.
+
+**OPEN-053-A** was opened here and is still open: a roughly 13 KB
+reconstruction of `af_mesh_quality.py` was deleted without ever being
+executed, so it proved nothing. The rule it produced is quoted throughout
+this repository — *evidence about a file must be produced by that file,
+byte for byte*.
+
+D-053.8 is the honest ceiling on all of it: the green batches prove that
+the Python compiles under 3.9 and 3.12, that the static entry point exits
+zero, and that a headless Blender smoke test completes. Nothing more.
+
+### D-054 — gate-scoped coverage
+
+Total coverage has no fixpoint, because the file that measures coverage
+cannot be inside its own measurement. Coverage is therefore scoped to
+gates: **a commit owes a CI batch if and only if it touches `.py`, `.cpp`,
+`.h`, `.cs`, `.ini`, `.uproject`, `.yml` or `.yaml`.** Markdown owes
+nothing and is *permanently uncovered by design* — no step in either
+workflow parses, lints or compiles it. This is the rule under which every
+documentation commit in this milestone, including this one, owes no batch.
+
+### D-055 — the module names are frozen
+
+The rename ladder was costed and refused: 61 file recreations, 122 write
+calls and five full retranscriptions of a 52,702-byte guard, none of it
+compile-verifiable in this environment, with every intermediate state
+strictly worse than either endpoint. `ApexFormulaCore`, `…Vehicle`,
+`…Race`, `…UI`, `…Editor`, `…Tests`, the `.uproject`, the `.Target.cs`
+files and the `Unreal/Source` directory names **will not be renamed**.
+
+Two findings worth carrying forward. The guard has exactly three directory
+enumeration sites and **no check asserts that every directory under
+`Unreal/Source` appears in the module list**, so a stray module directory
+is not caught. And D-055.6 records the technique used repeatedly since: a
+directory listing requesting only name, size and blob hash returns every
+blob hash and byte count **without downloading any body**, which combined
+with computing the git blob hash locally proves a cached copy is byte
+identical to the repository copy for a few hundred bytes of traffic.
+
+### D-056 — the pull request that could not have worked
+
+Pull request 9 was closed unmerged. The acceptance suite imported roughly
+thirty-five names from a module that had **never been pushed**, so it
+would have failed on line 1 with `ModuleNotFoundError`. Continuous
+integration would **not** have caught it, because `compileall` compiles
+without importing. This is the direct ancestor of the D-058 sub-ruling
+that the import must be hard and unguarded.
+
+The bodywork document landed on `main` carrying a section 0 absence banner
+and preserving four geometry defects rather than hiding them: inward-wound
+lofts, endplates breaching the 5.600 m envelope, a halo apex without tube
+radius, and non-monotone convergence.
+
+### D-057 — erratum discipline
+
+`MILESTONE_PLAN.md`, 24,860 bytes, carries three statements falsified by
+D-055. The corrections were published **in the decision log** and the file
+was left byte identical. This is the rule invoked twice in section 1.1
+above and it is the reason no closed file in this repository is ever
+edited.
+
+### D-058 — the bodywork re-authored in two slices
+
+Slice 1, the profile core: `af_bodywork_profile core: 22 cases, 72
+assertions, 0 failures`, with the thickness peak located at
+`0.545590827299` — the argmax of `sqrt(s)*(1-s)*(1+0.6*(1-s))` over
+200,001 samples, reported to twelve places. The loft convergence ladder
+runs 6 → 0.04212, 12 → 0.04910, 24 → 0.04995, 40 → 0.04990, 400 →
+0.05000, which is **not monotone** and is recorded as such.
+
+Slice 2, the acceptance suite: `af_bodywork_selftest: 42 cases, 376
+assertions, 0 failures`. **The 376 replaces the historical 514 and the two
+must never be reconciled** — they count different things in different
+modules, and adjusting either to match the other would destroy the record.
+
+Four sub-rulings still in force: one merged 42,219-byte geometry module
+rather than a split; a hard import with no guard, because *a gate that can
+silently skip itself is not a gate*; the suite is committed before the
+module it tests; and the 2,662-byte stand-in configuration **must never be
+pushed**.
