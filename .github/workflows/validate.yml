@@ -200,14 +200,111 @@ jobs:
       # vertex by vertex, face by face, and by signed volume. Coordinates
       # are emitted with %.17g precisely so those comparisons can demand
       # equality rather than tolerance. A failure means the serialisation
-      # loses or corrupts geometry - fix the module, never the cases, and
-      # never add continue-on-error to this step.
+      # loses or corrupts geometry - fix the module, never the cases,
+      # and never add continue-on-error to this step.
       #
       # It writes no file to disk, does not start Blender, and does not
       # prove the exported mesh looks correct. Only a human opening
       # AF_Bodywork_Combined.obj can do that.
       - name: Bodywork mesh export self-test
         run: python3 BlenderPipeline/scripts/af_mesh_export.py --self-test
+
+      # Milestone 4, decision D-064. The self-test above round-trips the
+      # geometry IN MEMORY. It never writes a file, so it cannot see the
+      # one property the asset pipeline actually depends on: that two
+      # separate runs of --dump produce byte-identical files.
+      #
+      # That property has been measured exactly once, by hand, on one
+      # machine - 26 files, 112123 bytes, identical across two runs. A
+      # measurement taken once on one machine is not a gate, which is the
+      # same objection that put the two steps above into this file.
+      #
+      # This step re-runs the exporter twice into two scratch directories
+      # and compares them recursively. Any difference - a set iterated in
+      # a new order, a dict that stopped being insertion-ordered, a float
+      # formatted differently, a timestamp or a path leaking into a
+      # header - turns the check red. The comparison also fails when one
+      # side is missing a file, so a dump that silently stops writing a
+      # part is caught as well, and it fails on an empty tree, because
+      # two empty directories compare equal and would make the whole
+      # step vacuous.
+      #
+      # The comparison is done in python3 rather than with `diff -r` on
+      # purpose. `if ! diff` cannot tell exit 1 (files differ) from exit
+      # 127 (diff not installed), so a missing tool would be reported as
+      # a determinism failure. That is not hypothetical: it is exactly
+      # what happened when this step was rehearsed. python3 is already a
+      # hard requirement of the two steps above, so this adds no new
+      # dependency and removes one.
+      #
+      # Scope, stated honestly: this proves reproducibility of one
+      # interpreter on one runner within one workflow run. It does NOT
+      # prove determinism across Python versions, across platforms, or
+      # over time, and it does not prove the bytes are CORRECT - only
+      # that they are stable. Correctness of the exported surface is
+      # still `requires visual inspection` and still unsatisfied.
+      #
+      # Fix the exporter, never the check, and never add continue-on-error
+      # to this step. Neither directory is ever committed.
+      - name: Bodywork export determinism (double dump, byte comparison)
+        run: |
+          set -uo pipefail
+          dump_a="${RUNNER_TEMP}/af_dump_a"
+          dump_b="${RUNNER_TEMP}/af_dump_b"
+          rm -rf "${dump_a}" "${dump_b}"
+          mkdir -p "${dump_a}" "${dump_b}"
+          if ! python3 BlenderPipeline/scripts/af_mesh_export.py --dump "${dump_a}"; then
+            echo "::error::First --dump run failed. The exporter cannot write its own output, so determinism is not the question yet."
+            exit 1
+          fi
+          if ! python3 BlenderPipeline/scripts/af_mesh_export.py --dump "${dump_b}"; then
+            echo "::error::Second --dump run failed after the first succeeded. That is worse than a mismatch: the exporter is not even repeatable."
+            exit 1
+          fi
+          python3 - "${dump_a}" "${dump_b}" <<'PY'
+          import hashlib, os, sys
+
+          def tree(root):
+              out = {}
+              for dirpath, dirnames, filenames in os.walk(root):
+                  dirnames.sort()
+                  for name in sorted(filenames):
+                      full = os.path.join(dirpath, name)
+                      rel = os.path.relpath(full, root)
+                      with open(full, "rb") as handle:
+                          blob = handle.read()
+                      out[rel] = (len(blob), hashlib.sha256(blob).hexdigest())
+              return out
+
+          a_root, b_root = sys.argv[1], sys.argv[2]
+          a, b = tree(a_root), tree(b_root)
+
+          only_a = sorted(set(a) - set(b))
+          only_b = sorted(set(b) - set(a))
+          differ = sorted(k for k in set(a) & set(b) if a[k] != b[k])
+
+          if only_a or only_b or differ:
+              for rel in only_a:
+                  print("::error::present in run A but not run B: %s" % rel)
+              for rel in only_b:
+                  print("::error::present in run B but not run A: %s" % rel)
+              for rel in differ:
+                  print("::error::bytes differ between runs: %s (A=%d B=%d)" % (rel, a[rel][0], b[rel][0]))
+              print("::error::af_mesh_export.py --dump is not reproducible. Two runs of the "
+                    "same code on the same commit produced different output. Do not relax "
+                    "this check - find the unordered iteration, the unstable float format "
+                    "or the leaked environment value that caused it.")
+              raise SystemExit(1)
+
+          if not a:
+              print("::error::--dump produced no files at all. An empty tree compares equal "
+                    "to an empty tree, which would make this check vacuous.")
+              raise SystemExit(1)
+
+          total = sum(size for size, _ in a.values())
+          print("export determinism: %d files, %d bytes, byte-identical across two runs"
+                % (len(a), total))
+          PY
 
       - name: Byte-compile every script
         run: python3 -m compileall -q BlenderPipeline/scripts Tools
