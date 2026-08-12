@@ -218,6 +218,113 @@ debt and not an inconsistency someone discovers later.
 
 ---
 
+# D-066 — `SCRIPT_INVENTORY.md`: the nineteen scripts and what actually runs
+
+**Date:** 2026-08-12
+**Type:** documentation. No source file changed, no behaviour changed.
+**Artefact:** `Documentation/SCRIPT_INVENTORY.md`, commit
+`618811c6b7eee016906c1e6071b8556a7644222c`, 18,276 B.
+**Status label:** *statically inspected.* Nothing was executed, compiled,
+imported, or opened in Blender or Unreal to produce it.
+
+## D-066.1 — Why it was written
+
+D-065.4 closed OPEN-063-A as to cause and named the repair: a record of the
+current script set and *what has actually been executed against it*. That was
+carried as OPEN-065-B. Its literal form — a new subsection inside
+`VERSION_MATRIX.md` — is not safely reachable from this environment, because
+that file is 40,439 B and the write interface has no patch mode, so amending it
+means retranscribing all of it (D-053.6). The substance was therefore delivered
+as a new file, which carries no retranscription risk at all.
+
+This is a deliberate deviation from the literal wording of OPEN-065-B and is
+recorded as such rather than presented as full satisfaction of it. See D-066.5.
+
+## D-066.2 — Method and its limits
+
+The inventory's central column is not "what this script is for" — that can be
+read off a docstring and proves nothing. It is **what has actually been executed
+against it**, which can only be established from the files that do the
+executing. Three sources were read in full for this purpose:
+
+| Source | Size | What it establishes |
+|---|---|---|
+| `.github/workflows/validate.yml` | 19,229 B | The sixteen ordered static steps, and the headless `blender-pipeline` job |
+| `.github/workflows/static-validation.yml` | 2,386 B | The 3.9/3.12 matrix job, the sole place `af_validate_interfaces.py` runs |
+| `BlenderPipeline/scripts/af_smoke_test.py` | 10,774 B | The seven-stage `STAGES` tuple, which names the six scripts CI drives *indirectly* |
+
+The third was decisive. Six pipeline scripts are named by no workflow step at
+all; they are reached only as function calls on imported modules inside a single
+Blender session, orchestrated by the smoke test. Without reading it, those six
+would have been mislabelled as unexercised.
+
+Limits, stated plainly:
+
+- The inventory records what CI is *configured* to run. It does not assert that
+  any given run passed. Whether the `blender-pipeline` job has ever gone green
+  is **not known** from this evidence and is recorded as an open finding rather
+  than assumed either way.
+- `search_code` was attempted and returned zero items with
+  `incomplete_results: true` for a string that demonstrably exists in the
+  repository. It was discarded as non-evidence; nothing in the inventory rests
+  on it. Absence of a search hit is never treated here as absence of a fact.
+
+## D-066.3 — The execution map, as recorded
+
+Nineteen `af_*` scripts exist: seven in `Tools/`, twelve in
+`BlenderPipeline/scripts/`.
+
+| Class | Count | Meaning |
+|---|---|---|
+| Invoked directly by a workflow step | 12 | Named on a `python3 ...` line in one of the two workflows |
+| Driven under Blender by `af_smoke_test.py` | 6 | Reached as imported-module calls in stages 1–7, never named by a workflow |
+| Exercised by nothing | 1 | `af_bodywork_selftest.py`, 22,078 B — reached only by `compileall` |
+
+The seven smoke-test stages, in order, are: `af_scene_setup.setup_scene()`;
+`af_vehicle_generate.generate_all()`; `af_vehicle_rig.rig_all()`;
+`af_materials.apply_all()`; `af_validate.validate()`; `af_export.export_all()`;
+`af_validate.validate()` again post-export. The run stops at the first failing
+stage. `af_vehicle_generate` is the one script reached by both routes — it is
+also imported by `af_mesh_quality.py` under plain CPython.
+
+## D-066.4 — Three new debts
+
+| Id | Finding |
+|---|---|
+| OPEN-066-A | `af_static_validate.py` (52,702 B, the largest tool) is invoked in CI **without** a `--self-test` step, unlike the four later guards (`af_drift_guard`, `af_track_drift_guard`, `af_config_hash_guard`, `af_mesh_quality`), each of which self-tests before it validates. The checker is trusted but its checker is not checked. |
+| OPEN-066-B | `af_bodywork_selftest.py` is executed by nothing. It is byte-compiled and never run. Either it is wired into CI, folded into `af_bodywork_profile --self-test`, or deleted — but it must not remain as an acceptance suite that never asserts anything. |
+| OPEN-066-C | `af_smoke_test.py` still emits the literal string `ApexFormula`, in its module docstring and in `write_report`'s output header. This is **outside** D-051.2's lockstep exclusion, which covers only the `Unreal/Source/ApexFormulaCore` and `ApexFormulaRace` module paths. It is a missed occurrence from rename wave 1.5, not a permitted one. |
+
+OPEN-066-B and OPEN-066-C are code changes. Under D-054 they carry a CI batch
+obligation and must follow the D-064.9 draft-PR evidence route. Neither is
+performed here.
+
+## D-066.5 — Disposition of OPEN-065-B
+
+**Partially discharged, not closed.** The substance OPEN-065-B asked for — a
+record of the current script set and what has actually been executed against it
+— now exists, and in more detail than a `VERSION_MATRIX.md` subsection would
+have carried. What remains is one pointer from `VERSION_MATRIX.md` §5.20 to this
+inventory, so that a reader arriving at the stale "eight scripts" sentence is
+directed to the current record instead of being left with it.
+
+OPEN-065-B is therefore **narrowed**, not closed, and its remaining scope is
+stated in the table below. §5.20's count is still not to be edited in place, for
+the reasons given in D-065.4.
+
+## D-066.6 — What this entry does not claim
+
+- No script was executed, and no self-test count in the inventory was
+  re-measured. Every such figure is quoted from a commit message or a workflow
+  comment as a historical record.
+- No claim is made that CI is currently green, on any job.
+- Nothing here moves Milestone 4. Milestone 4 remains **not accepted**, blocked
+  solely on OPEN-051-F. Partial pass is failure.
+- This is a markdown-only commit. Per D-054 it creates no CI batch obligation,
+  and none is claimed.
+
+---
+
 ## Open questions — authoritative table
 
 | Id | Subject | State |
@@ -229,7 +336,10 @@ debt and not an inconsistency someone discovers later.
 | OPEN-063-A | `VERSION_MATRIX.md` §5.20 says eight `af_*.py`; the tree holds twelve. | **closed by D-065.4** — stale scope; §5.20 predates four later scripts. Count deliberately not refreshed in place; repair tracked as OPEN-065-B |
 | OPEN-064-A | Two file sizes disagree with D-046 and D-047/D-053.6. | **closed by D-065.2 and D-065.3** — row 1 is a documented +2 B rename, D-046 was correct; row 2 is a wrong byte figure in D-053.6, the file was never 13 KB |
 | OPEN-065-A | Volume 8's header still reads "open" after volume 9 opened. Deferred, not overlooked. | open |
-| OPEN-065-B | `VERSION_MATRIX.md` needs a new subsection recording the current twelve-script set and what has actually been executed against it. §5.20 is not to be edited in place. | open |
+| OPEN-065-B | Record of the current script set and what has actually been executed against it. | **partially discharged by D-066** — delivered as `SCRIPT_INVENTORY.md`. Remaining scope: one pointer from `VERSION_MATRIX.md` §5.20 to that file. §5.20's count still not to be edited in place |
+| OPEN-066-A | `af_static_validate.py` is invoked in CI with no `--self-test` step, unlike the four later guards. | open |
+| OPEN-066-B | `af_bodywork_selftest.py` (22,078 B) is exercised by nothing but `compileall`. Wire it, fold it, or delete it. | open |
+| OPEN-066-C | `af_smoke_test.py` still emits the literal `ApexFormula` in its docstring and report header; outside D-051.2's lockstep exclusion. | open |
 
 Closed and not to be reopened: OPEN-051-A, OPEN-051-C, OPEN-051-D, OPEN-051-E,
 OPEN-052-A, OPEN-052-B, OPEN-052-C, OPEN-M4-01, OPEN-056-A, OPEN-056-B,
@@ -237,4 +347,4 @@ OPEN-061-A, OPEN-062-A, OPEN-063-A, OPEN-064-A.
 
 ## Next decision id
 
-**D-066.**
+**D-067.**
