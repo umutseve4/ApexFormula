@@ -16,7 +16,7 @@ closed by size at roughly 20 KB and continued in a new volume.
 | `DECISION_LOG_VOL2.md` | 20,441 B | closed | D-031 .. D-042 |
 | `DECISION_LOG_VOL3.md` | 25,950 B | closed | D-043 .. D-052 |
 | `DECISION_LOG_VOL4.md` | 27,898 B | closed, over threshold | D-053, D-054, D-055 |
-| `DECISION_LOG_VOL5.md` | this file | **active** | D-056, D-057 |
+| `DECISION_LOG_VOL5.md` | this file | **active** | D-056, D-057, D-058 |
 
 Do not append to VOL4. It is already past the size at which retranscription
 is safe.
@@ -207,6 +207,185 @@ rewritten file can see neither.
 
 ---
 
+## D-058 - The bodywork module is re-authored in two verified slices
+
+**Status:** decided, executed, and verified in continuous integration.
+**Closes:** OPEN-056-B, all five requirements.
+
+D-056 left the repository in a deliberately coherent state: no bodywork
+module, and a 505-line acceptance suite preserved on a closed branch as the
+specification to build against. This decision records how that module was
+re-authored, what was measured at each step, and the four sub-rulings taken
+along the way.
+
+### The method: slices, not a single push
+
+The module was written in two slices, each authored locally, each executed
+locally before any byte reached GitHub, and each landed separately with a
+blob-hash identity check on arrival.
+
+**Slice 1 - geometry core.** Section mathematics, superellipse rings, lofting,
+mesh diagnostics, convexity, unit fixtures and planar UVs. Measured on
+execution:
+
+```
+af_bodywork_profile core: 22 cases, 72 assertions, 0 failures
+thickness peak: 0.545590827299
+```
+
+`_THICKNESS_PEAK` is solved numerically at import over 200,001 samples of
+`sqrt(s) * (1 - s) * (1 + 0.6 * (1 - s))`; `0.545590827299` is the measured
+argmax, printed to twelve places by the self-test so it can never be quietly
+adjusted. The peak half-thickness convergence ladder was re-measured, not
+copied from `MILESTONE_4_BODYWORK.md` as requirement 5 demands:
+
+| Samples | Peak half-thickness |
+| ---: | ---: |
+| 6 | 0.04212 |
+| 12 | 0.04910 |
+| 24 | 0.04995 |
+| 40 | 0.04990 |
+| 400 | 0.05000 |
+
+The non-monotone step from 24 to 40 is real and is the same behaviour D-056
+recorded: cosine-spaced sampling does not straddle the analytic peak
+monotonically. A backward loft was measured at signed volume
+`+0.19952084794791036`, confirming that winding is detected rather than
+assumed. Landed in commit `a09728e8`, blob
+`57a3d74e5ca06169982597be2744403cd8351183`.
+
+**Slice 2 - parts, envelope, collision, LOD.** The twelve parts, halo
+arithmetic, station layout, envelope and budget reports, collision proxies and
+the LOD plan. Measured on execution, against the full surviving suite:
+
+```
+af_bodywork_selftest: 42 cases, 376 assertions, 0 failures
+```
+
+**376 assertions is a newly measured figure and is not the 514 asserted by
+`MILESTONE_4_BODYWORK.md`.** This is expected and is not a defect. The lost
+module and this one are different code; only the public surface and the
+invariants are shared, because only the suite survived. Under requirement 5,
+the measured number wins and the historical number stays historical. Nobody
+should ever reconcile them.
+
+### Sub-ruling A - one merged module, not a split
+
+Slice 2 was written as a second file and spliced into slice 1 to form a single
+`af_bodywork_profile.py` of 42,219 bytes across 1,157 lines. Splitting it into
+`af_bodywork_core.py` and `af_bodywork_parts.py` was considered and rejected.
+The surviving suite imports thirty-eight names from one module name. Splitting
+would have forced an edit to the acceptance suite purely for packaging
+convenience, and requirement 1 permits changing that suite only deliberately
+and for a recorded reason. Packaging convenience is not such a reason.
+
+### Sub-ruling B - the acceptance-suite import is hard, never guarded
+
+`_self_test()` imports `af_bodywork_selftest` with a bare `import`. No `try`,
+no `except ImportError`, no skip path. If the suite is missing the module
+crashes and the job goes red.
+
+This was a deliberate choice against the more forgiving pattern, and the
+reason is D-056 itself. A guarded import would mean that deleting or renaming
+the suite silently reduces the gate to the 22-case core while still printing a
+green banner. **A gate that can silently skip itself is not a gate.** That
+sentence is in the module docstring so the next reader inherits the reasoning
+along with the code.
+
+### Sub-ruling C - commit order is suite first, module second
+
+Two commits were required and the order was not arbitrary. The module hard
+imports the suite, so landing the module first would have left `main` in a
+state where the self-test entry point crashes on a missing import - a real
+red-CI window between two commits, for no benefit. The suite alone is inert:
+it defines a class and does nothing at import time.
+
+Executed in that order:
+
+| Order | Commit | File | Blob | Bytes |
+| ---: | --- | --- | --- | ---: |
+| 1 | `456031ca1c8ee05f627e2067b7c0c92b2c4824a4` | `af_bodywork_selftest.py` | `71bce5fb9df1bcff19e01c09f69c4c906f341364` | 22,078 |
+| 2 | `f95301c3871d1a4ef971ff3e2a7049ff406f41cf` | `af_bodywork_profile.py` | `aa990fd150d51ed0b647ddd99fd6d5e2244a774d` | 42,219 |
+
+Both blob hashes and both byte counts were read back from the API response and
+matched the local files exactly, on the first attempt in each case. The
+42,219-byte module was retranscribed by hand in a single call after being read
+in three chunks; byte identity is what proves no line was dropped.
+
+### Sub-ruling D - the local stand-in config is never committed
+
+Slice 2 reads design constants from `af_pipeline_config`. That module is
+30,922 bytes and could not be exercised offline, so a 2,662-byte hand-written
+stand-in was created in the sandbox to iterate against. It reproduced only the
+values the two suites touch: the `DESIGN` dictionary, `TOLERANCE`,
+`LOD_LEVELS` and `LOD_RATIOS`, `FACE_BUDGET`, `MAX_COLLISION_PIECES`,
+`PROHIBITED_NAME_TOKENS`, `PROJECT_NAME`, `ASSET_PREFIX`, the axle constants
+and the `collision_name` / `lod_name` helpers.
+
+**That file is a test fixture and must never be pushed.** Committing it would
+overwrite the real 30,922-byte configuration with a 2,662-byte skeleton and
+break every other pipeline script in the directory. It stays in the sandbox.
+
+The honest consequence, stated plainly at the time rather than discovered
+later: until the module ran in continuous integration, every constant it read
+from `cfg` was unverified in its true form. The green local banner proved the
+geometry, not the configuration coupling.
+
+### How the caveat was discharged
+
+Requirement 3 was satisfied first, deliberately before the module was
+complete: `.github/workflows/validate.yml` was retranscribed to add a step
+named `Bodywork geometry core self-test` running
+`python BlenderPipeline/scripts/af_bodywork_profile.py --self-test`. That
+landed in commit `c6b1013e`, workflow blob `11ba317f...`, 12,999 bytes, and
+was proven live by continuous-integration batch 7, recorded in
+`CI_EVIDENCE_VOL4.md` section 2.7.
+
+Requirement 4 followed from D-054: the workflow edit and both source commits
+touch gated extensions, so they owe a batch. **Batch 8 is that batch**, and it
+is the first execution of slice 2 against the real configuration. Recorded in
+full in the new `Documentation/CI_EVIDENCE_VOL5.md`: pull request 26, marker
+commit `236dcf74d07d6184545ac0ef8792784b8f7eb751`, ten check runs, ten
+`success`, every `started_at` after the marker, earliest at
+`2026-08-12T00:25:43Z`. Closed unmerged.
+
+The module exits `1` if either suite reports a single failure. The job is
+green, so both suites passed with the real `af_pipeline_config` imported. The
+stand-in did not diverge. That is the finding, and it is what discharges
+sub-ruling D's caveat.
+
+### Requirement ledger
+
+| # | Requirement | Status |
+| ---: | --- | --- |
+| 1 | Satisfy the surviving self-test, or change it deliberately | **met** - suite unmodified, 42 cases / 376 assertions / 0 failures |
+| 2 | Pure standard library, no `bpy` at module scope | **met** - `math`, `os`, `sys` only; green on py3.9 and py3.12 |
+| 3 | `validate.yml` gains a self-test step | **met** - commit `c6b1013e`, proven by batch 7 |
+| 4 | The landing commit owes a CI batch | **met** - batch 8, 10/10, pull request 26 |
+| 5 | No figure copied from `MILESTONE_4_BODYWORK.md` section 4 | **met** - every figure re-measured; 376 replaces 514 |
+
+**OPEN-056-B is closed.**
+
+### What this does not mean
+
+It does not advance Milestone 4. D-056 set Milestone 4 to not started for
+acceptance purposes, and that stands. What exists now is a standard-library
+geometry module that computes vertices, faces, envelopes and budgets, and
+proves its own arithmetic on every push. Nothing has been generated in
+Blender, no mesh has been looked at by a human, no FBX or GLB has been
+imported, no C++ has been compiled and no lap has been driven. The module
+produces numbers that are internally consistent; whether the car they describe
+looks like a car is unknown and cannot be known here. That is OPEN-051-F, and
+it needs Umut's machine.
+
+One known cosmetic inefficiency is recorded rather than fixed: `_sidepod(-1)`
+lofts once and then re-lofts from mirrored rings, doing the first loft's work
+for nothing. It is harmless, the output is correct, and it is left alone
+because changing green code without a reason is how green code stops being
+green.
+
+---
+
 ## Open questions after this volume
 
 | ID | Question | Status |
@@ -218,15 +397,14 @@ rewritten file can see neither.
 | OPEN-053-A | Local rehearsal gate for `af_mesh_quality.py` | open, declared not met |
 | OPEN-M4-01 | Merge or close pull request 9 | **closed by D-056** |
 | OPEN-056-A | Three stale rename statements in `MILESTONE_PLAN.md` | **closed by D-057** |
-| OPEN-056-B | Re-author `af_bodywork_profile.py` against the surviving self-test | **new** |
+| OPEN-056-B | Re-author `af_bodywork_profile.py` against the surviving self-test | **closed by D-058** |
 
-### OPEN-056-B in detail
+### OPEN-056-B in detail, retained for the record
 
-The re-authoring is the natural next tranche of real work, and it is one of
-the very few tranches that can be genuinely advanced in this environment,
-because it needs neither Unreal nor Blender to be gated.
-
-Requirements, fixed now so they cannot drift later:
+The requirements below were fixed when the question was opened, before any of
+the work was done, so that they could not drift to fit whatever was
+eventually produced. All five are discharged by D-058; the text is kept
+unchanged so the target can be compared against the result.
 
 1. The module must satisfy the surviving self-test on branch
    `milestone-4-bodywork` - or the self-test must be changed deliberately,
