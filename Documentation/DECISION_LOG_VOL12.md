@@ -15,7 +15,7 @@ this volume and any earlier volume disagree, this volume is current and the
 earlier volume is history. Errata are recorded here; frozen volumes are
 never retro-edited.
 
-Next decision id: **D-073**.
+Next decision id: **D-074**.
 
 ---
 
@@ -226,6 +226,69 @@ comparison figures for that run.
 
 ---
 
+## D-073 - The gate was re-run a third time on the thirteen-part geometry and passed on all fifteen rows. OPEN-071-A closes.
+
+**Status: verified.** The D-060 gate was executed end to end a third
+time after the D-072 pylon merged to main via PR #31 (merge commit
+`e2cf23d`). Every row carries a pass or a finding. No row carries a fail.
+
+**Date:** 2026-08-13
+**Run by:** umutseve4
+**Geometry under test:** main at `e2cf23d`
+**Artefact:** `Documentation/MILESTONE_4_VISUAL_ACCEPTANCE.md` section 7,
+third run record
+**Evidence commit:** screenshots at `a311571` in
+`Documentation/acceptance/`
+
+### D-073.1 - G-1 results, measured on the Codespace
+
+| Row | Result | Measured |
+|---|---|---|
+| G-1.1 | pass | exit `0`; `af_mesh_export: 21 cases, 241 assertions, 0 failures`; `export plan: 15 files, 946 serialised faces` - matches D-072.3 exactly |
+| G-1.2 | pass | 28 files, 130,794 bytes - matches D-072.3 exactly |
+| G-1.3 | pass | `diff -r out out2` silent, all 28 files byte identical |
+| G-1.4 | finding | 13 groups; the thirteenth is `AF_Surface_RearWingPylon` per D-072; same 3-name delta against the historical set; OPEN-060-A |
+| G-1.5 | finding | 5.600 m long, 1.960 m wide, Z extent 0.920 m, Zmax 0.940 m - envelope unchanged by the pylon, as D-072.3 predicted; OPEN-060-A |
+| G-1.6 | finding | 580 vertices, 458 faces in `AF_Bodywork_Combined.obj`; +48/+42 against D-071.2, exactly the pylon part; OPEN-060-A |
+| G-1.7 | pass | zero matches against `cfg.PROHIBITED_NAME_TOKENS` |
+
+Every measured figure matches the baselines D-072.3 filed in advance.
+Nothing shifted that was not predicted, and nothing predicted failed to
+shift.
+
+### D-073.2 - G-2 results, observed in Blender 5.2.0 LTS
+
+| Row | Result | Observed |
+|---|---|---|
+| G-2.1 | pass | thirteen `AF_Surface_*` objects in the outliner, none empty. The criterion was written for twelve; the thirteenth is the D-072 pylon and its presence is the point |
+| G-2.2 | pass | face orientation overlay, front alpha 0.25; zero exterior faces read red |
+| G-2.3 | pass | top view: sidepods and endplate pairs mirror across the centreline; the pylon sits on the centreline (Y ±0.030) |
+| G-2.4 | pass | halo unchanged: closed loop, legs on the monocoque deck at Z 0.560, apex Z 0.940 |
+| G-2.5 | **pass, finding resolved** | wings flush with endplates at both ends, and the D-071.6 observation is gone: the swan-neck pylon spans the former 0.250 m gap, lower end buried in the tail, upper end buried in the wing (part bounds X `[-2.601833 .. -2.019728]`, Z `[0.337885 .. 0.878335]`), verified in the top view and the pylon detail close-up |
+| G-2.6 | pass, judgement | reads as a low, long, open-wheel single seater with a supported rear wing |
+| G-2.7 | pass | the pylon's interpenetration with tail and wing is the same deliberate closed-manifold pattern the halo uses; nothing reads as broken |
+| G-2.8 | pass, judgement | no resemblance to an identifiable real-world team's car |
+
+Screenshot evidence, `Documentation/acceptance/` at `a311571`:
+`side.PNG`, `front.PNG`, `top.PNG`, `pylon_detail.PNG` (blob hashes
+`3d869f58…`, `c1cc8b92…`, `2a88413c…`, `08c50d6d…`). The four second-run
+images were deleted in the same commit, so no stale image can be mistaken
+for current evidence - the D-071.4 freshness check applied by
+construction.
+
+### D-073.3 - What closes and what holds
+
+* **OPEN-071-A closes.** The fix (D-072) merged, and the full fifteen-row
+  re-run that D-072.4 made the closure condition has passed.
+* Milestone 4 remains accepted (D-071); this run re-validates the gate on
+  the thirteen-part geometry.
+* Everything in D-071.7 still holds: no C++ compiled, no Unreal import,
+  no playtesting. `requires visual inspection` is now satisfied for the
+  mesh at `e2cf23d` and for nothing else; the next geometry change resets
+  it again.
+
+---
+
 ## Open questions, authoritative table
 
 | Id | Subject | Status |
@@ -233,7 +296,7 @@ comparison figures for that run.
 | OPEN-051-B | Drift guard banner announces 27 entries; the counterparty count has never been identified | open |
 | OPEN-051-F | Milestone 4 visual acceptance, 15 criteria | **closed by D-071.** Second gate run 2026-08-13, fifteen of fifteen rows |
 | OPEN-053-A | Local rehearsal gate for `af_mesh_quality.py` | open |
-| OPEN-060-A | Historical versus measured mesh figures. D-071.2 adds the second-run actuals: 862 plan faces, 120,108 bytes, 532/416 combined. Neither side is to be adjusted | open, widened |
+| OPEN-060-A | Historical versus measured mesh figures. D-073.1 adds the third-run actuals: 946 plan faces, 130,794 bytes, 580/458 combined, 13 groups. Neither side is to be adjusted | open, widened |
 | OPEN-065-A | Frozen volume headers still read "open": VOL8, VOL10, now VOL11 | open, widened |
 | OPEN-065-B | Cross-reference from `VERSION_MATRIX.md` section 5.20 to `SCRIPT_INVENTORY.md` | narrowed to one pointer |
 | OPEN-066-A | `af_static_validate.py` has no `--self-test` step in either workflow | open |
@@ -243,7 +306,7 @@ comparison figures for that run.
 | OPEN-068-C | Propagate Blender 5.2.0 into `VERSION_MATRIX.md` section 5 | open |
 | OPEN-069-A | Halo detached and not a loop | **closed by D-071** |
 | OPEN-069-B | G-2 screenshots not committed | **closed by D-071** (commit `5ba919a`) |
-| OPEN-071-A | Rear wing assembly floats 0.250 m behind the tail with no connecting structure | **open, fix implemented (D-072).** Pylon on `fix/open-071-a-rear-wing-pylon` at `707d7f8`, locally verified; closes only after the full fifteen-row gate re-run passes on this geometry |
+| OPEN-071-A | Rear wing assembly floats 0.250 m behind the tail with no connecting structure | **closed by D-073.** Pylon merged via PR #31 (`e2cf23d`); third gate run passed fifteen of fifteen, evidence at `a311571` |
 
 Closed in earlier volumes and not reopened: OPEN-051-A, OPEN-051-C,
 OPEN-051-D, OPEN-051-E, OPEN-052-A, OPEN-052-B, OPEN-052-C, OPEN-063-A,
@@ -266,4 +329,4 @@ They should be done in a single pass.
 | `CI_EVIDENCE.md` ... `CI_EVIDENCE_VOL6.md` | - | frozen |
 | `CI_EVIDENCE_VOL7.md` | 11,984 B | **open** |
 
-Next decision id: **D-073**.
+Next decision id: **D-074**.
