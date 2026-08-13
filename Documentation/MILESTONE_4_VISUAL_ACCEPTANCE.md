@@ -2,7 +2,11 @@
 
 ## 0. What this document is
 
-**Label: planned. Nothing in this document has been executed.**
+**Label: executed. The gate was run on 2026-08-13 and the result is in
+section 7. The result is a fail: G-2.4 did not pass, and under section 7 a
+partial pass is a fail. OPEN-051-F stays open and Milestone 4 does not
+move. The outcome is recorded as D-069 in
+`Documentation/DECISION_LOG_VOL11.md`.**
 
 This is a gate definition, not a result. It converts the single remaining
 deliverable of Milestone 4 slice 3 - "open the mesh in Blender and look at
@@ -16,7 +20,11 @@ named date, is an acceptance record.
 
 This document does not itself close anything. It defines what closing
 OPEN-051-F requires. The result is recorded in section 7 and the closure is
-recorded as a decision in `Documentation/DECISION_LOG_VOL6.md`.
+recorded as a decision in the open decision volume. Section 0 of this
+document originally named `Documentation/DECISION_LOG_VOL6.md` as that
+volume. Volume 6 was frozen long before the gate was run; the decision is
+in `Documentation/DECISION_LOG_VOL11.md`, and under D-061.2 the open volume
+is the authoritative one.
 
 Prerequisite labels for the work this gate governs:
 
@@ -217,6 +225,15 @@ run against `AF_Bodywork_Combined.obj`, because that file cannot be
 generated in the authoring environment. That gap is exactly what this gate
 exists to close.
 
+As run on 2026-08-13 the helper was saved as `measure_local.py` in the
+repository root, which is an ignored path, and was additionally run against
+individual part files - `out/AF_Surface_Halo.obj` and
+`out/AF_Surface_Monocoque.obj` - to produce the per-part extents that decide
+G-2.4. Running it against a part file is outside the method as written in
+this section, and the two per-part measurements are therefore recorded in
+section 7 as supporting evidence for a visual criterion rather than as G-1
+results.
+
 ## 7. Recording the result
 
 Fill this in on the machine that runs the gate. Do not fill it in from
@@ -224,35 +241,61 @@ expectation.
 
 | Id | Result | Measured or observed | Notes |
 |---|---|---|---|
-| G-1.1 | | | |
-| G-1.2 | | | |
-| G-1.3 | | | |
-| G-1.4 | | | |
-| G-1.5 | | | |
-| G-1.6 | | | |
-| G-1.7 | | | |
-| G-2.1 | | | |
-| G-2.2 | | | |
-| G-2.3 | | | |
-| G-2.4 | | | |
-| G-2.5 | | | |
-| G-2.6 | | | |
-| G-2.7 | | | |
-| G-2.8 | | | |
+| G-1.1 | pass | exit `0`; `af_mesh_export: 21 cases, 227 assertions, 0 failures`; `export plan: 14 files, 798 serialised faces` | matches the verified target exactly |
+| G-1.2 | pass | 26 files, 112,123 bytes | matches the verified target exactly |
+| G-1.3 | pass | two dumps compared with `diff -r`, no differences reported | all 26 files byte identical |
+| G-1.4 | finding | 12 groups present; 3 names differ from section 4: `AF_Surface_Tail`, `AF_Surface_FrontWing`, `AF_Surface_RearWing` against historical `AF_Surface_Cover`, `AF_Surface_WingFront`, `AF_Surface_WingRear` | count matches. Target is unverified historical, so this is a finding, not a failure. Filed under OPEN-060-A. Not to be resolved by editing either name set |
+| G-1.5 | finding | 5.600 m long, **1.960 m** wide, Z extent 0.920 m with Zmax 0.940 m | length matches; width differs from the historical 1.918 m by 0.042 m. Target is unverified historical. Filed under OPEN-060-A |
+| G-1.6 | finding | **500 vertices, 384 faces** in `AF_Bodywork_Combined.obj` | historical record says 1068 vertices, 936 faces. Target is unverified historical. This is the largest of the three discrepancies and it is not understood. Filed under OPEN-060-A. Neither number is to be adjusted |
+| G-1.7 | pass | zero matches against `cfg.PROHIBITED_NAME_TOKENS` | |
+| G-2.1 | pass | outliner lists twelve `AF_Surface_*` objects, none empty, none degenerate | see the outliner panel in every screenshot |
+| G-2.2 | pass | face orientation overlay enabled; every exterior face reads blue at all three angles | the overlay initially appeared to do nothing because the front-face alpha in the Blender theme defaults to 0. Set Preferences, Themes, 3D Viewport, face orientation front to 0.25 before judging this row |
+| G-2.3 | pass | top view: sidepods and both endplate pairs mirror across the centreline | `M4_G2_top_orthographic.png` |
+| G-2.4 | **fail** | `AF_Surface_Halo` occupies Z `[0.672646 .. 0.940000]`. `AF_Surface_Monocoque` reaches Z `0.560000`. **Vertical gap 0.112646 m.** Halo Y extent is `0.050000` against a cockpit width of `0.720000` | the halo is detached from the monocoque and floats above it, and at 0.050 m wide it is a flat strip in the XZ plane rather than a loop enclosing the cockpit. Both stated failure conditions of G-2.4 are met: open, and floating. Object transforms are identity and scale is 1.0 on all axes, so this is authored geometry in `af_mesh_export.py`, not an import artefact. Raised as OPEN-069-A |
+| G-2.5 | pass | top view: both wings terminate flush against their endplates, no gap at either end | `M4_G2_top_orthographic.png` |
+| G-2.6 | pass, judgement | side view reads as a low, long, open-wheel single seater with a distinct nose, cockpit bulge and tail taper. Not a box, not a wedge, not unidentifiable | judgement call, recorded as one under section 5. The floating halo is the failure of G-2.4 and is deliberately not re-judged here |
+| G-2.7 | pass | no surface passes through another in a way a viewer would call broken | the halo does not intersect anything, which is exactly why G-2.4 fails |
+| G-2.8 | pass, judgement | proportions and surfacing do not resemble any identifiable real-world team's car | judgement call, recorded as one under section 5 |
 
-Run by: _____________  Date: _____________
+Run by: umutseve4  Date: 2026-08-13
 
-Blender version as reported by the application: _____________
+Blender version as reported by the application: Blender 5.2.0 LTS, matching
+the version CI resolves per D-068.1.
 
-Screenshot files: _____________
+Screenshot files, under `Documentation/acceptance/`:
+
+```
+M4_G2_side_orthographic.png
+M4_G2_front_orthographic.png
+M4_G2_top_orthographic.png
+M4_G2_halo_detail.png
+```
+
+The image files are added by Umut in a separate commit, because the
+authoring environment writes text and cannot commit binary content. Until
+that commit lands the four filenames above are a dangling pointer, and that
+is recorded as OPEN-069-B rather than left implicit.
+
+One viewport caption is misleading and is recorded so nobody re-derives it.
+The car's length runs along X, so Blender's `Front Orthographic` caption
+appears on the anatomical side view and `Right Orthographic` on the
+anatomical head-on view. The captions are correct for the axes; they do not
+match the anatomical names used in section 5. No criterion depends on the
+caption.
 
 **Definition of done for OPEN-051-F:** every row above carries a result, no
-row is blank, the screenshots exist, and a decision entry in
-`Documentation/DECISION_LOG_VOL6.md` records the outcome. If every criterion
-passes, that decision closes OPEN-051-F and Milestone 4 moves off "not
-started for acceptance purposes". If any criterion fails, OPEN-051-F stays
-open, the failure becomes its own numbered open question, and Milestone 4
-does not move. A partial pass is a fail.
+row is blank, the screenshots exist, and a decision entry in the open
+decision volume records the outcome. If every criterion passes, that
+decision closes OPEN-051-F and Milestone 4 moves off "not started for
+acceptance purposes". If any criterion fails, OPEN-051-F stays open, the
+failure becomes its own numbered open question, and Milestone 4 does not
+move. A partial pass is a fail.
+
+**Outcome, 2026-08-13.** Fourteen rows carry a pass or a finding and one row,
+G-2.4, carries a fail. That is a partial pass, and a partial pass is a fail.
+OPEN-051-F **stays open**. The failure is numbered OPEN-069-A. Milestone 4
+remains at not started for acceptance purposes. Recorded as D-069 in
+`Documentation/DECISION_LOG_VOL11.md`.
 
 ## 8. What this gate still does not cover
 
