@@ -314,7 +314,7 @@ class BodyworkSelfTest(object):
     def check_part_names_are_unique(self):
         names = [name for (name, _v, _f) in build_parts()]
         self.ok(len(names) == len(set(names)), "part names are unique")
-        self.ok(len(names) == 12, "the body is built from twelve parts")
+        self.ok(len(names) == 13, "the body is built from thirteen parts")
 
     def check_every_part_is_a_closed_manifold(self):
         for (name, verts, faces) in build_parts():

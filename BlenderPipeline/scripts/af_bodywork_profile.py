@@ -675,6 +675,53 @@ def _halo():
     return _swept_solid(rings)
 
 
+def _rear_wing_pylon():
+    """Central swan-neck pylon joining the tail to the rear wing.
+
+    The rear wing used to float 0.250 m behind the tail with nothing
+    holding it up (OPEN-071-A). Real cars hang the wing from a single
+    central swan-neck pylon that rises out of the engine cover and
+    curls back to meet the wing from above; that is what is swept here.
+    The path lives in the X/Z plane on the centre line, one end buried
+    inside the tail solid and the other buried inside the wing solid,
+    so the assembled body reads as one connected object from every
+    camera angle while each part stays an independent closed manifold,
+    exactly as the halo already interpenetrates the monocoque.
+    """
+    half_chord = _d("rear_wing_chord_m") / 2.0
+    wing_x = tail_x() + half_chord
+    wing_z = _d("rear_wing_height_m")
+    radius = 0.030
+
+    path = [
+        (-2.04, 0.36),
+        (-2.16, 0.47),
+        (-2.30, 0.62),
+        (-2.46, 0.78),
+        (-2.56, 0.85),
+        (wing_x, wing_z),
+    ]
+
+    section = superellipse_ring(_HALO_RING_POINTS, radius, radius, _EXP_TUBE)
+
+    rings = []
+    for i, (px, pz) in enumerate(path):
+        if i == 0:
+            ax, az = path[1][0] - px, path[1][1] - pz
+        elif i == len(path) - 1:
+            ax, az = px - path[i - 1][0], pz - path[i - 1][1]
+        else:
+            ax = path[i + 1][0] - path[i - 1][0]
+            az = path[i + 1][1] - path[i - 1][1]
+        length = math.sqrt(ax * ax + az * az)
+        tx, tz = ax / length, az / length
+        # Normal in the sweep plane; the binormal is the lateral axis.
+        nx, nz = -tz, tx
+        ring = [(px + nx * a, b, pz + nz * a) for (a, b) in section]
+        rings.append(ring)
+    return _swept_solid(rings)
+
+
 def build_parts():
     """Every bodywork surface, as (name, verts, faces) tuples."""
     parts = [
@@ -690,6 +737,7 @@ def build_parts():
         ("AF_Surface_EndplateRear_L",) + _rear_endplate(1),
         ("AF_Surface_EndplateRear_R",) + _rear_endplate(-1),
         ("AF_Surface_Halo",) + _halo(),
+        ("AF_Surface_RearWingPylon",) + _rear_wing_pylon(),
     ]
     return parts
 
