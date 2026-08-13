@@ -631,35 +631,46 @@ def _rear_endplate(side):
 
 
 def _halo():
-    """Tube swept along a raised arc over the cockpit opening."""
+    """Tube swept along an arch over the cockpit, legs down to the cell.
+
+    The path lives in the Y/Z plane at the cockpit station: two vertical
+    legs rise from the survival cell top at the cockpit sides, and an
+    elliptical arch closes over the opening. The apex keeps the solved
+    clearance under the height envelope; the legs land on halo_base_z_m().
+    """
     radius = halo_tube_radius_m()
     arc = halo_arc_height_m()
     base = halo_base_z_m()
-    hoop = _d("halo_radius_m")
+    half_span = _d("cockpit_width_m") / 2.0
+    centre_x = 0.30
 
-    path = []
+    path = [
+        (half_span, base),
+        (half_span, base + 0.25 * arc),
+    ]
     for t in halo_thetas():
-        path.append((0.30 + hoop * math.cos(t),
+        path.append((half_span * math.cos(t),
                      base + arc * (0.5 + math.sin(t))))
+    path.append((-half_span, base + 0.25 * arc))
+    path.append((-half_span, base))
 
     section = superellipse_ring(_HALO_RING_POINTS, radius, radius, _EXP_TUBE)
 
     rings = []
-    for i, (px, pz) in enumerate(path):
+    for i, (py, pz) in enumerate(path):
         if i == 0:
-            ax, az = path[1][0] - px, path[1][1] - pz
+            ay, az = path[1][0] - py, path[1][1] - pz
         elif i == len(path) - 1:
-            ax, az = px - path[i - 1][0], pz - path[i - 1][1]
+            ay, az = py - path[i - 1][0], pz - path[i - 1][1]
         else:
-            ax = path[i + 1][0] - path[i - 1][0]
+            ay = path[i + 1][0] - path[i - 1][0]
             az = path[i + 1][1] - path[i - 1][1]
-        length = math.sqrt(ax * ax + az * az)
-        tx, tz = ax / length, az / length
-        # Normal in the sweep plane; the binormal is the lateral axis.
-        nx, nz = -tz, tx
-        # The first section coordinate rides the in plane normal, the
-        # second rides the lateral axis.
-        ring = [(px + nx * a, b, pz + nz * a) for (a, b) in section]
+        length = math.sqrt(ay * ay + az * az)
+        ty, tz = ay / length, az / length
+        # Normal in the sweep plane; the binormal is the longitudinal axis.
+        ny, nz = -tz, ty
+        ring = [(centre_x + b, py + ny * a, pz + nz * a)
+                for (a, b) in section]
         rings.append(ring)
     return _swept_solid(rings)
 
