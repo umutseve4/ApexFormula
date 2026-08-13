@@ -56,9 +56,39 @@ or a broken project. Bring-up first makes every later failure diagnosable.
 (`requires local compilation`, `requires Unreal Editor verification`,
 `requires playtesting`). OPEN-074-A can be fixed from any clone.
 
+---
+
+## D-075 — OPEN-074-A resolved: out/ and out2/ untracked, .gitignore updated (2026-08-13)
+
+**Context.** D-074 recorded that the export scratch directories `out/`
+(26 files) and `out2/` (26 files) were tracked on `main`, violating D-069.4.
+
+**Action taken.** On branch `fix/open-074-a-untrack-out` (from `main`
+@ `c5d870c`), executed remotely via the GitHub API (no local clone):
+
+1. Deleted all 52 tracked files — 26 in `out/`, 26 in `out2/` — one commit
+   per file (`chore(OPEN-074-A): untrack <path> (D-069.4)`). The API has no
+   equivalent of `git rm -r --cached`, so blob deletion is the remote path;
+   local working copies keep their untracked `out*/` contents untouched.
+2. Appended `out/` and `out2/` to `.gitignore` with a comment referencing
+   D-069.4 / D-074 (commit `455ce8e`).
+3. Verified the branch root tree no longer contains `out/` or `out2/`.
+
+Branch merged to `main` as a single squash commit so `main` history carries
+one hygiene change instead of ~53 commits. No geometry, pipeline, or gate
+artefacts were modified — per D-074, no gate re-run is triggered.
+
+**Verification.** `verified (remote)`: root tree listing on the merged
+commit shows no `out/`/`out2/`; `.gitignore` contains both entries.
+Local check for the developer: `git pull` then `git status` must show
+`out/` and `out2/` as ignored, not untracked-and-listed.
+
+**Status.** OPEN-074-A → RESOLVED. Bring-up phase B-1/B-2 (D-074) is now
+the sole blocking work item.
+
 ### Open questions carried into this volume
 
 | ID | Summary | Status |
 | --- | --- | --- |
 | OPEN-051-B, 053-A, 060-A, 065-A, 065-B, 066-A, 066-B, 068-A, 068-B, 068-C | Documentation/CI hygiene items carried from VOL12 | OPEN |
-| OPEN-074-A | `out/` and `out2/` tracked on `main` despite D-069.4 | OPEN |
+| OPEN-074-A | `out/` and `out2/` tracked on `main` despite D-069.4 | RESOLVED (D-075) |
