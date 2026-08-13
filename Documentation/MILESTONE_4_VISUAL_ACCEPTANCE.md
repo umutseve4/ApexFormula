@@ -2,11 +2,14 @@
 
 ## 0. What this document is
 
-**Label: executed. The gate was run on 2026-08-13 and the result is in
-section 7. The result is a fail: G-2.4 did not pass, and under section 7 a
-partial pass is a fail. OPEN-051-F stays open and Milestone 4 does not
-move. The outcome is recorded as D-069 in
-`Documentation/DECISION_LOG_VOL11.md`.**
+**Label: executed twice. The gate was first run on 2026-08-13 and failed on
+G-2.4; that outcome is recorded as D-069 in
+`Documentation/DECISION_LOG_VOL11.md` and the halo fix as D-070. After the
+fix merged to main (`44a7ab3`), the full fifteen-row gate was re-run on
+2026-08-13 and passed on all fifteen rows. OPEN-051-F is closed and
+Milestone 4 is accepted. The second-run outcome is recorded as D-071 in
+`Documentation/DECISION_LOG_VOL12.md`. Both run records are in section 7;
+the second is authoritative.**
 
 This is a gate definition, not a result. It converts the single remaining
 deliverable of Milestone 4 slice 3 - "open the mesh in Blender and look at
@@ -22,9 +25,10 @@ This document does not itself close anything. It defines what closing
 OPEN-051-F requires. The result is recorded in section 7 and the closure is
 recorded as a decision in the open decision volume. Section 0 of this
 document originally named `Documentation/DECISION_LOG_VOL6.md` as that
-volume. Volume 6 was frozen long before the gate was run; the decision is
-in `Documentation/DECISION_LOG_VOL11.md`, and under D-061.2 the open volume
-is the authoritative one.
+volume. Volume 6 was frozen long before the gate was run; the first-run
+decision is in `Documentation/DECISION_LOG_VOL11.md`, the second-run
+decision in `Documentation/DECISION_LOG_VOL12.md`, and under D-061.2 the
+open volume is the authoritative one.
 
 Prerequisite labels for the work this gate governs:
 
@@ -98,6 +102,12 @@ anything. Do not reconcile them by adjusting either number. Record what the
 tool prints and let the discrepancy stand as OPEN-060-A until someone works
 out what each figure actually counts. This is the same failure mode
 OPEN-052-C exists to prevent.
+
+The G-1.1 and G-1.2 targets above date from before the D-070 halo fix.
+D-070.4 filed in advance that the fix would shift them; the second run in
+section 7 records the post-fix figures (862 faces, 120,108 bytes) as
+findings under OPEN-060-A. The targets in this table are deliberately not
+retro-edited.
 
 ## 4. Expected surface names
 
@@ -239,6 +249,13 @@ results.
 Fill this in on the machine that runs the gate. Do not fill it in from
 expectation.
 
+The gate has been run twice. The first run failed and is preserved below
+unedited, because an acceptance record that erases its own failure is not a
+record. The second run, after the D-070 halo fix, is the authoritative
+result.
+
+### 7.1 First run, 2026-08-13, against main at `f676a51` - FAILED
+
 | Id | Result | Measured or observed | Notes |
 |---|---|---|---|
 | G-1.1 | pass | exit `0`; `af_mesh_export: 21 cases, 227 assertions, 0 failures`; `export plan: 14 files, 798 serialised faces` | matches the verified target exactly |
@@ -259,22 +276,51 @@ expectation.
 
 Run by: umutseve4  Date: 2026-08-13
 
+**Outcome of the first run.** Fourteen rows carried a pass or a finding and
+one row, G-2.4, carried a fail. A partial pass is a fail. OPEN-051-F stayed
+open, the failure was numbered OPEN-069-A, and the fix was implemented as
+D-070. Recorded as D-069 in `Documentation/DECISION_LOG_VOL11.md`.
+
+### 7.2 Second run, 2026-08-13, against main at `44a7ab3` (post D-070 halo fix) - PASSED
+
+| Id | Result | Measured or observed | Notes |
+|---|---|---|---|
+| G-1.1 | pass | exit `0`; `af_mesh_export: 21 cases, 227 assertions, 0 failures`; `export plan: 14 files, 862 serialised faces` | case and assertion counts match the verified target. The face count moved from 798 to 862; D-070.4 filed this shift in advance (halo +32 faces plus its cap and leg geometry). Recorded under OPEN-060-A, target not adjusted |
+| G-1.2 | pass | 26 files, 120,108 bytes | file count matches; byte count moved from 112,123 with the geometry change, as D-070.4 predicted. Recorded under OPEN-060-A |
+| G-1.3 | pass | two dumps to `out/` and `out2/` compared with `diff -r`, silent | all 26 files byte identical |
+| G-1.4 | finding | 12 groups present; same 3-name delta as the first run | unchanged from the first run. OPEN-060-A |
+| G-1.5 | finding | 5.600 m long, 1.960 m wide, Z extent 0.920 m with Zmax 0.940 m | unchanged from the first run. OPEN-060-A |
+| G-1.6 | finding | **532 vertices, 416 faces** in `AF_Bodywork_Combined.obj` | +32/+32 against the first run, exactly the halo's growth from 104/98 to 136/130 per D-070.2. Historical 1068/936 target still unexplained. OPEN-060-A |
+| G-1.7 | pass | zero matches against `cfg.PROHIBITED_NAME_TOKENS` | |
+| G-2.1 | pass | outliner lists twelve `AF_Surface_*` objects, none empty | fresh import of the post-fix export |
+| G-2.2 | pass | face orientation overlay enabled with front alpha 0.25 per the first-run note; zero exterior faces read red | |
+| G-2.3 | pass | top view: sidepods and both endplate pairs mirror across the centreline | `M4_G2_top_orthographic.PNG` |
+| G-2.4 | **pass** | `AF_Surface_Halo`: 136 vertices, 130 faces, Z `[0.560000 .. 0.940000]`, Y `[-0.385000 .. 0.385000]`. `AF_Surface_Monocoque` reaches Z `0.560000` | the halo's legs land exactly on the monocoque deck - the 0.112646 m gap of the first run is zero - and the hoop spans 0.770 m in Y around the 0.720 m cockpit. It is a closed loop above the cockpit. `M4_G2_halo_detail.PNG` |
+| G-2.5 | pass, with a finding | side and top view: both wings terminate flush against their endplates at both ends | neither stated failure condition is met. Separately observed: the rear wing assembly (X `[-2.800 .. -2.350]`) has no connecting structure to the tail (X `[-2.100 .. -0.750]`), a 0.250 m longitudinal gap. Pre-existing, outside this criterion as written, filed as OPEN-071-A in D-071.6 |
+| G-2.6 | pass, judgement | side view reads as a low, long, open-wheel single seater, now with a visible halo hoop over the cockpit | judgement call, recorded as one under section 5 |
+| G-2.7 | pass | no surface passes through another in a way a viewer would call broken | the halo legs meet the monocoque at its top surface without penetrating it |
+| G-2.8 | pass, judgement | proportions and surfacing do not resemble any identifiable real-world team's car | judgement call, recorded as one under section 5 |
+
+Run by: umutseve4  Date: 2026-08-13
+
 Blender version as reported by the application: Blender 5.2.0 LTS, matching
 the version CI resolves per D-068.1.
 
-Screenshot files, under `Documentation/acceptance/`:
+Screenshot files, under `Documentation/acceptance/`, committed at
+`5ba919a`:
 
 ```
-M4_G2_side_orthographic.png
-M4_G2_front_orthographic.png
-M4_G2_top_orthographic.png
-M4_G2_halo_detail.png
+M4_G2_side_orthographic.PNG
+M4_G2_front_orthographic.PNG
+M4_G2_top_orthographic.PNG
+M4_G2_halo_detail.PNG
 ```
 
-The image files are added by Umut in a separate commit, because the
-authoring environment writes text and cannot commit binary content. Until
-that commit lands the four filenames above are a dangling pointer, and that
-is recorded as OPEN-069-B rather than left implicit.
+The first evidence commit attempt pointed at stale pre-fix images from
+`f676a51`; this was caught by comparing blob hashes and the four files were
+replaced at `5ba919a`, where all four hashes differ from the stale set. The
+committed extensions are uppercase `.PNG` where this document historically
+spelt `.png`; recorded, not churned.
 
 One viewport caption is misleading and is recorded so nobody re-derives it.
 The car's length runs along X, so Blender's `Front Orthographic` caption
@@ -291,11 +337,12 @@ acceptance purposes". If any criterion fails, OPEN-051-F stays open, the
 failure becomes its own numbered open question, and Milestone 4 does not
 move. A partial pass is a fail.
 
-**Outcome, 2026-08-13.** Fourteen rows carry a pass or a finding and one row,
-G-2.4, carries a fail. That is a partial pass, and a partial pass is a fail.
-OPEN-051-F **stays open**. The failure is numbered OPEN-069-A. Milestone 4
-remains at not started for acceptance purposes. Recorded as D-069 in
-`Documentation/DECISION_LOG_VOL11.md`.
+**Outcome, 2026-08-13, second run.** All fifteen rows carry a pass or a
+finding and no row carries a fail. OPEN-051-F **closes**, along with
+OPEN-069-A and OPEN-069-B. **Milestone 4 is accepted.** One new open
+question, OPEN-071-A (the rear wing assembly has no connecting structure to
+the tail), is opened as post-milestone geometry work. Recorded as D-071 in
+`Documentation/DECISION_LOG_VOL12.md`.
 
 ## 8. What this gate still does not cover
 
