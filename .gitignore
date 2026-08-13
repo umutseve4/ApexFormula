@@ -20,6 +20,14 @@ BlenderPipeline/local/
 *.blend@
 
 # ------------------------------------------------------------
+# Scratch export directories — machine-local pipeline output
+# Untracked under OPEN-074-A (D-069.4, D-074). Canonical mesh
+# exports live in the committed pipeline output paths only.
+# ------------------------------------------------------------
+out/
+out2/
+
+# ------------------------------------------------------------
 # Unreal Engine build output and caches
 # ------------------------------------------------------------
 Binaries/
