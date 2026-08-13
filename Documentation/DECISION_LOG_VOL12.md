@@ -15,7 +15,7 @@ this volume and any earlier volume disagree, this volume is current and the
 earlier volume is history. Errata are recorded here; frozen volumes are
 never retro-edited.
 
-Next decision id: **D-072**.
+Next decision id: **D-073**.
 
 ---
 
@@ -155,6 +155,77 @@ screenshot is the rationalisation section 5 warns against.
 
 ---
 
+## D-072 - A thirteenth part, `AF_Surface_RearWingPylon`, connects the tail to the rear wing. Implemented and locally verified; the gate re-run is owed.
+
+**Status: implemented, locally verified. NOT accepted.** Under the
+D-069.4 rule this geometry change invalidates every row of the D-060 gate;
+OPEN-071-A stays open until a full fifteen-row re-run passes.
+
+**Date:** 2026-08-13
+**Branch:** `fix/open-071-a-rear-wing-pylon`
+**Implementation commit:** `707d7f8` (files verified by blob sha:
+`af_bodywork_profile.py` `8e427f45a83c8fb8e590b11a812d32907cde2c40`,
+`af_bodywork_selftest.py` `3614b4cdd179fc4c38e0539e1fefbfb5248f4025`)
+**Patch tooling:** `tools/apply_open071a.py` at `6c7105c`, a self-verifying
+script that refuses to touch non-pristine files and checks the resulting
+blob shas before reporting success. It was used once to apply the patch on
+the Codespace and is kept as the audit trail of exactly what changed.
+
+### D-072.1 - The decision
+
+Of the two candidate fixes D-071.6 filed, the thirteenth-part option is
+taken: a single centreline swan-neck pylon, `_rear_wing_pylon()`, swept as
+a closed manifold tube and registered in `build_parts()` immediately after
+the halo. Extending `_tail()` rearward was rejected because it would
+reshape an already-accepted surface and move G-1.5/G-1.6 baselines for a
+purely structural need; the pylon adds structure without touching any
+existing part, the same pattern the halo already uses (interpenetrating
+solids, each an independent closed manifold).
+
+### D-072.2 - The geometry, measured
+
+* Path: six stations in the X/Z plane on the centreline, from
+  `(-2.04, 0.36)` inside the tail solid, rising through the engine-cover
+  region, to `(tail_x() + rear_wing_chord/2, rear_wing_height)` inside the
+  wing solid. Circular section, radius 0.030 m, `_HALO_RING_POINTS`
+  vertices per ring, swept with per-station central-difference tangents.
+* Part: `AF_Surface_RearWingPylon`, 48 vertices, 42 faces, closed
+  manifold. Bounds: X `[-2.601833 .. -2.019728]`,
+  Y `[-0.030000 .. 0.030000]`, Z `[0.337885 .. 0.878335]`.
+* Both ends are buried: X min sits inside the wing chord and X max inside
+  the tail, so the 0.250 m gap of D-071.6 is now spanned by structure.
+
+### D-072.3 - Local verification, all green
+
+Run on the Codespace at `707d7f8` (and independently reproduced in the
+agent sandbox before push):
+
+* `af_bodywork_profile core: 22 cases, 72 assertions, 0 failures`
+* `af_bodywork_selftest: 42 cases, 394 assertions, 0 failures`
+* `af_mesh_export: 21 cases, 241 assertions, 0 failures`
+* `export plan: 15 files, 946 serialised faces`
+* Dump: `wrote 28 files` twice; `diff -r out out2` silent - byte
+  identical, determinism holds. Sandbox-measured dump size: 130,794
+  bytes.
+* `AF_Bodywork_Combined.obj`: 580 vertices, 458 faces, 13 named groups.
+  Envelope unchanged against D-071.2: X 5.600 `[-2.800 .. 2.800]`,
+  Y 1.960 `[-0.980 .. 0.980]`, Z `[0.020 .. 0.940]`.
+* Baseline deltas against the twelve-part figures, filed here in advance
+  of the gate re-run exactly as D-070.4 did: plan 14→15 files, 862→946
+  faces (+84); dump 26→28 files, 120,108→130,794 bytes; combined
+  532/416→580/458 (+48 vertices, +42 faces - exactly the pylon part).
+  The selftest assertion moved from twelve to thirteen parts.
+
+### D-072.4 - What this does not claim
+
+Implemented and locally verified only. Not accepted, not merged to main,
+no screenshot judged. The full fifteen-row gate (seven G-1 headless rows,
+eight G-2 Blender rows with fresh screenshots) is owed on this geometry
+before OPEN-071-A can close, and G-1 measured baselines above will be the
+comparison figures for that run.
+
+---
+
 ## Open questions, authoritative table
 
 | Id | Subject | Status |
@@ -172,7 +243,7 @@ screenshot is the rationalisation section 5 warns against.
 | OPEN-068-C | Propagate Blender 5.2.0 into `VERSION_MATRIX.md` section 5 | open |
 | OPEN-069-A | Halo detached and not a loop | **closed by D-071** |
 | OPEN-069-B | G-2 screenshots not committed | **closed by D-071** (commit `5ba919a`) |
-| OPEN-071-A | Rear wing assembly floats 0.250 m behind the tail with no connecting structure | **open - new.** Post-M4 geometry work; full gate re-run owed on any fix |
+| OPEN-071-A | Rear wing assembly floats 0.250 m behind the tail with no connecting structure | **open, fix implemented (D-072).** Pylon on `fix/open-071-a-rear-wing-pylon` at `707d7f8`, locally verified; closes only after the full fifteen-row gate re-run passes on this geometry |
 
 Closed in earlier volumes and not reopened: OPEN-051-A, OPEN-051-C,
 OPEN-051-D, OPEN-051-E, OPEN-052-A, OPEN-052-B, OPEN-052-C, OPEN-063-A,
@@ -195,4 +266,4 @@ They should be done in a single pass.
 | `CI_EVIDENCE.md` ... `CI_EVIDENCE_VOL6.md` | - | frozen |
 | `CI_EVIDENCE_VOL7.md` | 11,984 B | **open** |
 
-Next decision id: **D-072**.
+Next decision id: **D-073**.
