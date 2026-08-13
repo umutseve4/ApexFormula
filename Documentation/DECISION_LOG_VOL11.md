@@ -16,7 +16,7 @@ this volume and any earlier volume disagree, this volume is current and the
 earlier volume is history. Errata are recorded here; frozen volumes are
 never retro-edited.
 
-Next decision id: **D-070**.
+Next decision id: **D-071**.
 
 ---
 
@@ -221,14 +221,111 @@ fail:
 
 ---
 
+## D-070 - The OPEN-069-A halo geometry is fixed, self-tested, and awaiting the gate re-run
+
+**Status: implemented and self-tested. Not gate-verified.** The distinction
+matters: the self-test gate has passed on the patched module, but under
+D-069.4 the fifteen-row visual gate must be re-run in full before OPEN-069-A
+or OPEN-051-F can close, and that re-run has not happened yet.
+
+**Date:** 2026-08-13
+**Milestone:** 4, defect fix
+**Branch:** `fix/open-069-a-halo-geometry`
+**Artefact:** `BlenderPipeline/scripts/af_bodywork_profile.py`, commit
+`ec12d397b9e5db630afafdf382bf05c95925c3ff`
+
+### D-070.1 - The defect and the cause
+
+D-069.3 measured the defect: `AF_Surface_Halo` spanned 0.050 m in Y against
+a 0.720 m cockpit and floated 0.112646 m above the monocoque. The cause was
+the sweep plane. The old `_halo()` swept its tube along a path in the X/Z
+plane - longitudinally, along the car - so the "halo" was a flat strip in
+the centreline plane, and its arc arithmetic left the base above the deck.
+
+D-069.4 located the fix in `af_mesh_export.py` and its upstream in
+`af_bodywork_profile.py`. The upstream turned out to be the whole story:
+`af_mesh_export.py` serialises whatever `build_parts()` hands it, so the fix
+is confined to `_halo()` in the profile module. No other function changed.
+
+### D-070.2 - The fix
+
+The sweep path now lives in the Y/Z plane at the cockpit station
+(x = 0.30). Two vertical legs rise from `halo_base_z_m()` - the chassis top,
+0.560 m - at y = +/- `cockpit_width_m` / 2, one intermediate station at a
+quarter of the arc height stiffens each leg, and an elliptical arch sampled
+at the existing thirteen `halo_thetas()` stations closes over the opening.
+The tube section is the same eight-point superellipse ring; each ring is
+oriented by the path tangent in the sweep plane, with the longitudinal axis
+as the binormal.
+
+Consequences, measured on the patched module:
+
+* The legs land exactly on Z 0.560, the monocoque's highest point. The
+  0.112646 m gap is gone.
+* The Y span is 0.770 m, symmetric about the centreline: 0.720 m of cockpit
+  plus one tube radius each side. The hoop encloses the cockpit.
+* The apex keeps the solved clearance: Zmax 0.940 m, unchanged, still under
+  the 0.950 m envelope row.
+* `halo_arc_height_m()` solves to 0.236666667 m. `halo_radius_m` (0.420) no
+  longer drives the sweep; it survives only as the cap that
+  `check_halo_arc_is_capped` enforces, and 0.2367 <= 0.420 still passes.
+* The part grows from 104 vertices / 98 faces to 136 vertices / 130 faces
+  (+32 faces): seventeen path stations by eight ring points, plus two caps.
+
+### D-070.3 - The evidence
+
+`python3 af_bodywork_profile.py --self-test` on the patched module, exit
+code 0:
+
+```
+af_bodywork_profile core: 22 cases, 72 assertions, 0 failures
+thickness peak: 0.545590827299
+af_bodywork_selftest: 42 cases, 376 assertions, 0 failures
+```
+
+The four halo acceptance cases - `check_halo_apex_respects_the_envelope`,
+`check_halo_arc_includes_tube_thickness`, `check_halo_theta_sweep`,
+`check_halo_arc_is_capped` - all pass unmodified. Not one line of
+`af_bodywork_selftest.py` or `af_pipeline_config.py` changed; a fix that had
+to edit its own gate would not be a fix.
+
+The patched part was additionally checked standalone before splicing:
+closed manifold (Euler 2, zero boundary edges, zero non-manifold edges,
+zero coincident vertices), positive signed volume (+0.002075), and inside
+the envelope on all axes.
+
+### D-070.4 - Expected downstream shifts, filed in advance
+
+The halo gained 32 faces, so the whole-body figures will shift and the gate
+re-run will find them shifted. Filed here so nobody chases them as new
+defects:
+
+* The export plan's "798 serialised faces" becomes approximately 830.
+* The 26-file, 112,123-byte dump figure changes. The determinism row
+  (G-1.2) compares run against run, so a byte shift is safe; the new byte
+  count is to be recorded, not chased.
+* These join the figures already held under OPEN-060-A, with the same
+  instruction: record the measured numbers, adjust nothing historical.
+
+### D-070.5 - What this entry does not do
+
+It does not close OPEN-069-A, and it does not touch OPEN-051-F. Under
+D-069.4 the whole fifteen-row gate re-runs: G-1 headless, G-2 visual in
+Blender 5.2.0 LTS, screenshots to `Documentation/acceptance/` (which also
+services OPEN-069-B). A partial pass is a fail. Only a 15-of-15 result
+closes OPEN-069-A, and only that closure releases OPEN-051-F and accepts
+Milestone 4.
+
+---
+
 ## Open questions, authoritative table
 
 | Id | Subject | Status |
 |---|---|---|
 | OPEN-051-B | Drift guard banner announces 27 entries; the counterparty count has never been identified | open |
-| OPEN-051-F | Milestone 4 visual acceptance, 15 criteria | **open - M4 blocker.** Gate run 2026-08-13, failed on G-2.4. Now blocked on OPEN-069-A, not on execution |
+| OPEN-051-F | Milestone 4 visual acceptance, 15 criteria | **open - M4 blocker.** Gate run 2026-08-13, failed on G-2.4. Blocked on OPEN-069-A; fix committed under D-070, full gate re-run owed |
 | OPEN-053-A | Local rehearsal gate for `af_mesh_quality.py` | open |
-| OPEN-060-A | Historical versus measured mesh figures. Extended by D-069.6 to cover the G-1.4 name set, the G-1.5 width and the G-1.6 vertex and face counts. Neither side is to be adjusted | open, widened |
+| OPEN-060-A | Historical versus measured mesh figures. Extended by D-069.6 to cover the G-1.4 name set, the G-1.5 width and the G-1.6 vertex and face counts. D-070.4 adds the post-fix face and byte shifts. Neither side is to be adjusted | open, widened |
 | OPEN-065-A | VOL8 header still reads "open" although VOL9 superseded it. Volume 10 now has the same condition | open |
 | OPEN-065-B | Cross-reference from `VERSION_MATRIX.md` section 5.20 to `SCRIPT_INVENTORY.md` | narrowed to one pointer |
 | OPEN-066-A | `af_static_validate.py` has no `--self-test` step in either workflow | open |
@@ -236,7 +333,7 @@ fail:
 | OPEN-068-A | Should the Blender patch be pinned as `BLENDER_VERSION: '5.2.0'` rather than floating on the series. D-069 raises the stakes: the visual gate has now been run on 5.2.0 by hand | open |
 | OPEN-068-B | Bump `actions/checkout` and `actions/upload-artifact` from `@v4` to `@v5` | open |
 | OPEN-068-C | Propagate Blender 5.2.0 into `VERSION_MATRIX.md` section 5 | open |
-| OPEN-069-A | `AF_Surface_Halo` is detached from the monocoque by 0.112646 m and is a 0.050 m strip rather than a closed loop | **open - new, M4 blocker** |
+| OPEN-069-A | `AF_Surface_Halo` is detached from the monocoque by 0.112646 m and is a 0.050 m strip rather than a closed loop | **open - fix implemented and self-tested (D-070); closes only on a 15-of-15 gate re-run** |
 | OPEN-069-B | The four G-2 screenshots are named in the gate but not yet committed to `Documentation/acceptance/` | **open - new** |
 
 Closed in earlier volumes and not reopened: OPEN-051-A, OPEN-051-C,
@@ -260,4 +357,4 @@ They should be done in a single pass.
 | `CI_EVIDENCE.md` ... `CI_EVIDENCE_VOL6.md` | - | frozen |
 | `CI_EVIDENCE_VOL7.md` | 11,984 B | **open** |
 
-Next decision id: **D-070**.
+Next decision id: **D-071**.
