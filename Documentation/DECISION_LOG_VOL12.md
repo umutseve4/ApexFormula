@@ -270,10 +270,11 @@ shift.
 | G-2.8 | pass, judgement | no resemblance to an identifiable real-world team's car |
 
 Screenshot evidence, `Documentation/acceptance/` at `a311571`:
-`side.PNG`, `front.PNG`, `top.PNG`, `pylon_detail.PNG` (blob hashes
-`3d869f58…`, `c1cc8b92…`, `2a88413c…`, `08c50d6d…`). The four second-run
-images were deleted in the same commit, so no stale image can be mistaken
-for current evidence - the D-071.4 freshness check applied by
+`side.PNG` (blob `c1cc8b92…`), `front.PNG` (blob `3d869f58…`),
+`top.PNG` (blob `2a88413c…`), `pylon_detail.PNG` (blob `08c50d6d…`),
+each verified against the GitHub contents API after the push. The four
+second-run images were deleted in the same commit, so no stale image can
+be mistaken for current evidence - the D-071.4 freshness check applied by
 construction.
 
 ### D-073.3 - What closes and what holds
