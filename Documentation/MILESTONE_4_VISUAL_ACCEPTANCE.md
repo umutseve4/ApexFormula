@@ -2,14 +2,17 @@
 
 ## 0. What this document is
 
-**Label: executed twice. The gate was first run on 2026-08-13 and failed on
-G-2.4; that outcome is recorded as D-069 in
+**Label: executed three times. The gate was first run on 2026-08-13 and
+failed on G-2.4; that outcome is recorded as D-069 in
 `Documentation/DECISION_LOG_VOL11.md` and the halo fix as D-070. After the
 fix merged to main (`44a7ab3`), the full fifteen-row gate was re-run on
 2026-08-13 and passed on all fifteen rows. OPEN-051-F is closed and
 Milestone 4 is accepted. The second-run outcome is recorded as D-071 in
-`Documentation/DECISION_LOG_VOL12.md`. Both run records are in section 7;
-the second is authoritative.**
+`Documentation/DECISION_LOG_VOL12.md`. A third full run followed on
+2026-08-13 after the OPEN-071-A rear-wing pylon (D-072) merged to main
+(`e2cf23d`); it also passed on all fifteen rows and is recorded as D-073.
+All run records are in section 7; the third is authoritative for the
+current thirteen-part geometry.**
 
 This is a gate definition, not a result. It converts the single remaining
 deliverable of Milestone 4 slice 3 - "open the mesh in Blender and look at
@@ -107,7 +110,9 @@ The G-1.1 and G-1.2 targets above date from before the D-070 halo fix.
 D-070.4 filed in advance that the fix would shift them; the second run in
 section 7 records the post-fix figures (862 faces, 120,108 bytes) as
 findings under OPEN-060-A. The targets in this table are deliberately not
-retro-edited.
+retro-edited. The same applies to the D-072 pylon: the third run records
+946 faces, 130,794 bytes, 28 files and 13 groups, all filed in advance by
+D-072.3, and the targets are again not retro-edited.
 
 ## 4. Expected surface names
 
@@ -249,10 +254,11 @@ results.
 Fill this in on the machine that runs the gate. Do not fill it in from
 expectation.
 
-The gate has been run twice. The first run failed and is preserved below
-unedited, because an acceptance record that erases its own failure is not a
-record. The second run, after the D-070 halo fix, is the authoritative
-result.
+The gate has been run three times. The first run failed and is preserved
+below unedited, because an acceptance record that erases its own failure is
+not a record. The second run, after the D-070 halo fix, accepted Milestone
+4. The third run, after the D-072 rear-wing pylon, closed OPEN-071-A and is
+authoritative for the current thirteen-part geometry.
 
 ### 7.1 First run, 2026-08-13, against main at `f676a51` - FAILED
 
@@ -320,7 +326,9 @@ The first evidence commit attempt pointed at stale pre-fix images from
 `f676a51`; this was caught by comparing blob hashes and the four files were
 replaced at `5ba919a`, where all four hashes differ from the stale set. The
 committed extensions are uppercase `.PNG` where this document historically
-spelt `.png`; recorded, not churned.
+spelt `.png`; recorded, not churned. These four files were later deleted at
+`a311571` when the third-run evidence replaced them; they remain
+retrievable at `5ba919a`.
 
 One viewport caption is misleading and is recorded so nobody re-derives it.
 The car's length runs along X, so Blender's `Front Orthographic` caption
@@ -342,6 +350,56 @@ finding and no row carries a fail. OPEN-051-F **closes**, along with
 OPEN-069-A and OPEN-069-B. **Milestone 4 is accepted.** One new open
 question, OPEN-071-A (the rear wing assembly has no connecting structure to
 the tail), is opened as post-milestone geometry work. Recorded as D-071 in
+`Documentation/DECISION_LOG_VOL12.md`.
+
+### 7.3 Third run, 2026-08-13, against main at `e2cf23d` (post D-072 rear-wing pylon) - PASSED
+
+Run because the D-072 pylon is a geometry change, and under D-069.4 a
+geometry change invalidates every row. Milestone 4 was already accepted by
+D-071; what this run decides is OPEN-071-A.
+
+| Id | Result | Measured or observed | Notes |
+|---|---|---|---|
+| G-1.1 | pass | exit `0`; `af_mesh_export: 21 cases, 241 assertions, 0 failures`; `export plan: 15 files, 946 serialised faces` | matches the D-072.3 baselines exactly. Assertion count moved 227→241 with the pylon's test coverage; recorded under OPEN-060-A, target not adjusted |
+| G-1.2 | pass | 28 files, 130,794 bytes | matches D-072.3 exactly; +2 files and +10,686 bytes against the second run, filed in advance |
+| G-1.3 | pass | two dumps to `out/` and `out2/` compared with `diff -r`, silent | all 28 files byte identical |
+| G-1.4 | finding | **13 groups** present; the thirteenth is `AF_Surface_RearWingPylon` per D-072; same 3-name delta as earlier runs | the section 3 target says twelve; the thirteenth part is the deliberate D-072 addition, not a drift. OPEN-060-A |
+| G-1.5 | finding | 5.600 m long, 1.960 m wide, Z extent 0.920 m with Zmax 0.940 m | envelope unchanged by the pylon, exactly as D-072.3 predicted (the pylon lies inside the existing bounds). OPEN-060-A |
+| G-1.6 | finding | **580 vertices, 458 faces** in `AF_Bodywork_Combined.obj` | +48/+42 against the second run, exactly the pylon part (48 vertices, 42 faces). Historical 1068/936 target still unexplained. OPEN-060-A |
+| G-1.7 | pass | zero matches against `cfg.PROHIBITED_NAME_TOKENS` | |
+| G-2.1 | pass | outliner lists thirteen `AF_Surface_*` objects, none empty | fresh import of the thirteen-part export; the criterion was written for twelve and the thirteenth is the point of this run |
+| G-2.2 | pass | face orientation overlay with front alpha 0.25; zero exterior faces read red | |
+| G-2.3 | pass | top view: sidepods and both endplate pairs mirror across the centreline; the pylon sits on the centreline, Y `[-0.030 .. 0.030]` | `top.PNG` |
+| G-2.4 | pass | halo unchanged from the second run: closed loop, legs on the monocoque deck at Z 0.560, apex at Z 0.940 | `front.PNG` |
+| G-2.5 | **pass, D-071.6 finding resolved** | both wings flush against their endplates at both ends, and the rear wing assembly is now connected to the body: `AF_Surface_RearWingPylon` spans X `[-2.601833 .. -2.019728]`, Z `[0.337885 .. 0.878335]`, lower end buried in the tail solid, upper end buried in the wing solid. The 0.250 m gap of D-071.6 contains structure | `pylon_detail.PNG`, `side.PNG` |
+| G-2.6 | pass, judgement | side view reads as a low, long, open-wheel single seater with a visible halo and a supported rear wing | judgement call, recorded as one under section 5 |
+| G-2.7 | pass | the pylon interpenetrates the tail and the wing by design, the same closed-manifold pattern the halo uses against the monocoque; nothing reads as broken | |
+| G-2.8 | pass, judgement | proportions and surfacing do not resemble any identifiable real-world team's car | judgement call, recorded as one under section 5 |
+
+Run by: umutseve4  Date: 2026-08-13
+
+Blender version as reported by the application: Blender 5.2.0 LTS.
+
+Screenshot files, under `Documentation/acceptance/`, committed at
+`a311571` (blob hashes `c1cc8b92…`, `3d869f58…`, `2a88413c…`,
+`08c50d6d…`):
+
+```
+side.PNG
+front.PNG
+top.PNG
+pylon_detail.PNG
+```
+
+The four second-run images were deleted in the same commit, so no stale
+image can be mistaken for current evidence - the D-071.4 freshness check
+holds by construction. The file names are shorter than the second-run
+convention; the binding between file and criterion is recorded in the table
+above, not in the names.
+
+**Outcome, 2026-08-13, third run.** All fifteen rows carry a pass or a
+finding and no row carries a fail. **OPEN-071-A closes.** Milestone 4
+remains accepted. Recorded as D-073 in
 `Documentation/DECISION_LOG_VOL12.md`.
 
 ## 8. What this gate still does not cover
