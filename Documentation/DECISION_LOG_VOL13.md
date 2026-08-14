@@ -145,6 +145,57 @@ fix options (migrate to real LFS objects, or drop the LFS pattern for
 editor opens `Unreal/ApexFormula.uproject` with no module errors →
 Session Frontend automation tests green → screenshots = M1 acceptance.
 
+---
+
+## D-077 — Milestone 1 ACCEPTED: editor opens clean, 37/37 automation tests green after SectorTimer guard reorder (2026-08-14)
+
+**Context.** Continuing the D-074 B-2 acceptance run on the developer's
+machine. The editor opened `Unreal/ApexFormula.uproject` with no module
+load errors. The Session Frontend automation run initially reported
+**36/37 green with one failure**: `ApexFormula.Race.SectorTimer.Rejection`
+expected a suppressed warning matching `after all` that never occurred.
+
+**Root cause.** In `UAFSectorTimer::RecordSectorBoundary`
+(`Unreal/Source/ApexFormulaRace/Private/AFSectorTimer.cpp`) the
+`!bLapOpen` guard ran **before** the "all sectors already closed" guard.
+When a lap completes, the timer closes the lap (`bLapOpen = false`), so a
+boundary arriving after the final sector hit the `no lap open` branch and
+the `after all %d sectors were closed` log line was unreachable dead code.
+The test encodes the intended semantics: a boundary after a completed lap
+should be diagnosed as "after all sectors", not as a generic "no lap open".
+
+**Fix (commit `dbfb5d4`, originally authored as `25aa048` before rebase).**
+Reordered the guards so the completed-lap check runs first, and hardened
+its condition to `SectorCount > 0 && Splits.Num() >= SectorCount` so an
+unconfigured timer (SectorCount == 0) still falls through to the
+`no lap open` diagnostic. One file changed, 6 insertions, 6 deletions.
+
+**Verification.** `verified (local automation run)`: full suite re-run in
+Session Frontend — **37/37 Success**, including
+`ApexFormula.Race.SectorTimer.Rejection` with all three expected
+suppressions observed (`no lap open` 1×, `rejected time` 2×, `after all` 1×).
+Live Coding note: `Build.bat` refuses to run while the editor's Live Coding
+is active; rebuilds were done with the editor closed (or Ctrl+Alt+F11).
+
+**Milestone 1 acceptance.** All three B-2 criteria are now met with
+evidence: (1) clean compile (D-076), (2) editor opens without module
+errors, (3) automation tests discovered and 37/37 green. **M1 is accepted
+and closed.** Per D-074, Milestone 5 planning may begin (B-3 sweep remains
+open and non-blocking).
+
+**Process note — remote/local write ordering.** This log is maintained via
+the GitHub API directly on `main` while the developer pushes from a local
+clone. That caused one rejected push and one rebase during this decision
+(local `25aa048` replayed onto remote `9a5d889` → `dbfb5d4`). Rule going
+forward: after any API-side commit to `main`, the developer must
+`git pull --rebase` before the next push. The OPEN-076-A PNG anomaly blocks
+plain rebases; workaround is disabling LFS filters for the single command
+(`git -c filter.lfs.smudge= -c filter.lfs.clean= -c filter.lfs.process=
+-c filter.lfs.required=false rebase origin/main`).
+
+**Status.** M1 CLOSED (verified). Next: B-3 M2 criteria sweep in the open
+editor, then M5 planning (D-074 step 4).
+
 ### Open questions carried into this volume
 
 | ID | Summary | Status |
