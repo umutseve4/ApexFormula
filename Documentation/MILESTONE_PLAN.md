@@ -398,11 +398,11 @@ This table records what has been *authored* and what has been *verified*. Author
 | --- | --- | --- | --- |
 | 0A | Yes | Yes — `statically inspected` | Documentation set exists and is cross-consistent. |
 | 0B | Yes | Yes — `automatically validated` | Blender 5.2.0 LTS runs `af_smoke_test.py` headless in CI on every push. All seven stages pass, the harness exits 0, and the pre-export validator reports 19 passed / 0 failed / 1 skipped of 21 checks against measured values. `requires visual inspection` remains open for whether the geometry looks right. |
-| 1 | Yes | Not confirmed — `requires local compilation`, `requires Unreal Editor verification` | Six modules and their base classes exist as source; the project has never been compiled here and the editor has never been opened here. |
-| 2 | Yes | 1 of 4 — see below | Implementation files, automation tests and a dedicated static checker landed; behaviour unverified. |
+| 1 | Yes | **Yes — `verified (local build + editor + automation run)`** | Accepted 2026-08-14 (D-076, D-077): clean compile on the developer's machine after a 9-file UE 5.8 API fix (`a5ca90c`); editor opens `Unreal/ApexFormula.uproject` with no module load errors; 37/37 automation tests green after the SectorTimer guard reorder (`dbfb5d4`). |
+| 2 | Yes | 1 of 4 — see below | Implementation files, automation tests and a dedicated static checker landed; behaviour unverified. Execution protocol for the three open criteria: D-078 (B-3 sweep). |
 | 3–12 | No | Not started | Not begun. |
 
-The 0B row previously read "Not confirmed — no script has been run". That was true when written and is no longer true. It was corrected rather than quietly deleted, because a status table that silently improves is indistinguishable from one that is being flattered.
+The 0B row previously read "Not confirmed — no script has been run". That was true when written and is no longer true. It was corrected rather than quietly deleted, because a status table that silently improves is indistinguishable from one that is being flattered. The Milestone 1 row was updated the same way on 2026-08-14: it previously read "Not confirmed", which stopped being true when D-076/D-077 recorded the acceptance evidence.
 
 **Milestone 2 acceptance criteria, individually:**
 
@@ -429,10 +429,11 @@ Criterion 4 now has partial evidence, which is not the same as being met. The na
 | Milestone 0A acceptance criteria are met | statically inspected |
 | Milestone 0B acceptance criteria are met | automatically validated — headless Blender in CI, exit 0, 19/21 passed with 1 permanent skip |
 | The 0B geometry looks correct in a viewport | not claimed — `requires visual inspection` |
-| Milestone 1 and 2 acceptance criteria are met | not claimed — see the Milestone Status table for the per-criterion position |
+| Milestone 1 acceptance criteria are met | verified (local build + editor + automation run) — D-076/D-077 |
+| Milestone 2 acceptance criteria are met | not claimed — see the Milestone Status table for the per-criterion position |
 | Milestone 2 criterion 3 is met | automatically validated |
 | Milestone 2 criterion 4 has partial (producing-side) evidence in CI | automatically validated |
 | Milestone 2 criterion 4 is met | not claimed — `requires Unreal Editor verification` |
 | The product name "Uludağ Formula" matches none of the prohibited identifier patterns in `af_static_validate.py` | automatically validated |
 | The six module identifiers still carry the previous product name and are queued for wave 2 | statically inspected |
-| Any milestone beyond 0A and 0B is complete | not claimed |
+| Any milestone beyond 0A, 0B and 1 is complete | not claimed |
