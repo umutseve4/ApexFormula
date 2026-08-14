@@ -86,9 +86,69 @@ Local check for the developer: `git pull` then `git status` must show
 **Status.** OPEN-074-A → RESOLVED. Bring-up phase B-1/B-2 (D-074) is now
 the sole blocking work item.
 
+---
+
+## D-076 — B-1 passed; first successful compile with a 9-file UE 5.8 API compatibility fix; LFS PNG anomaly recorded (2026-08-14)
+
+**Context.** The repository was cloned to the developer's Windows machine
+(`C:\Users\umuts\Documents\UludagFormula`, HEAD `f68df52`). The D-074 B-2
+acceptance run began with the first-ever compile attempt
+(`Build.bat ApexFormulaEditor Win64 Development`).
+
+**B-1 result — toolchain verified.** Visual Studio 2022 toolchain
+14.44.35228, Windows SDK 10.0.26100.0, UE 5.8 bundled .NET SDK 10.0,
+ISPC 1.24.0. 4 physical cores / 7.93 GB RAM (UBT limited itself to 1–2
+parallel actions).
+
+**Compile findings and fixes (commit `a5ca90c`).** The first build failed
+with three classes of UE 5.8 API incompatibilities, all authored before the
+project had ever seen a real engine:
+
+1. **7× test files** (`ApexFormulaTests/Private/*Tests.cpp`):
+   `static const int32 <X>TestFlags` — `EAutomationTestFlags` is an
+   `enum class` in modern UE; the constants no longer implicitly convert
+   to `int32`. Fix: declare the flag constants as
+   `static const EAutomationTestFlags`.
+2. **`AFVehicleCompatibilityLayer.cpp`:** `UChaosVehicleWheel` in UE 5.8 has
+   no `SuspensionNaturalFrequency` member. The assignment was removed; the
+   natural-frequency → spring-rate conversion is deferred to M10 (physics
+   tuning), where the equivalent `WheelSetup`/spring parameters are decided.
+3. **`AFVehiclePawn.cpp`:** one `AF_LOG_RULE(LogAFVehicle, Log, ...)` call
+   did not match the macro signature
+   `(Category, ParticipantId, SessionTime, Format, ...)`. Fixed by passing
+   `ParticipantId` and `GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0`.
+
+Second build: **Result: Succeeded** — all six modules compiled and linked
+(ApexFormulaCore/Vehicle/Race/UI, ApexFormulaEditor, ApexFormulaTests).
+Verification label: `verified (local build log)`. This satisfies the
+"project compiles from clean" line of B-2; the editor-open and
+automation-test lines remain open.
+
+**Hygiene — git identity and credentials (one-time setup).** The developer
+machine had no git identity and no working browser association for Git
+Credential Manager (GCM crashed with "Uygulama bulunamadı" and fell back to
+dead password auth). Resolved with: `user.name`/`user.email` set to the
+GitHub noreply address, `credential.guiPrompt false`, and
+`credential.gitHubAuthModes device` — device-code flow completed at
+`github.com/login/device`. No tokens or secrets stored in the repository.
+
+**Also recorded — OPEN-076-A (LFS pointer anomaly).** The four acceptance
+screenshots `Documentation/acceptance/{front,pylon_detail,side,top}.PNG`
+are tracked by an LFS pattern in `.gitattributes` but were committed as
+normal blobs. Every local git operation warns "should have been pointers,
+but weren't", and the files sit permanently modified in the working tree
+(checkout cannot clean them). Harmless as long as they are never staged;
+fix options (migrate to real LFS objects, or drop the LFS pattern for
+`Documentation/acceptance/`) are a post-M1 hygiene decision.
+
+**Status.** B-1 verified. B-2 partially verified (compile only). Next:
+editor opens `Unreal/ApexFormula.uproject` with no module errors →
+Session Frontend automation tests green → screenshots = M1 acceptance.
+
 ### Open questions carried into this volume
 
 | ID | Summary | Status |
 | --- | --- | --- |
 | OPEN-051-B, 053-A, 060-A, 065-A, 065-B, 066-A, 066-B, 068-A, 068-B, 068-C | Documentation/CI hygiene items carried from VOL12 | OPEN |
 | OPEN-074-A | `out/` and `out2/` tracked on `main` despite D-069.4 | RESOLVED (D-075) |
+| OPEN-076-A | 4 acceptance PNGs tracked by LFS pattern but committed as normal blobs | OPEN |
