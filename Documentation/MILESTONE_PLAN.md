@@ -399,10 +399,10 @@ This table records what has been *authored* and what has been *verified*. Author
 | 0A | Yes | Yes — `statically inspected` | Documentation set exists and is cross-consistent. |
 | 0B | Yes | Yes — `automatically validated` | Blender 5.2.0 LTS runs `af_smoke_test.py` headless in CI on every push. All seven stages pass, the harness exits 0, and the pre-export validator reports 19 passed / 0 failed / 1 skipped of 21 checks against measured values. `requires visual inspection` remains open for whether the geometry looks right. |
 | 1 | Yes | **Yes — `verified (local build + editor + automation run)`** | Accepted 2026-08-14 (D-076, D-077): clean compile on the developer's machine after a 9-file UE 5.8 API fix (`a5ca90c`); editor opens `Unreal/ApexFormula.uproject` with no module load errors; 37/37 automation tests green after the SectorTimer guard reorder (`dbfb5d4`). |
-| 2 | Yes | 1 of 4 — see below | Implementation files, automation tests and a dedicated static checker landed; behaviour unverified. Execution protocol for the three open criteria: D-078 (B-3 sweep). |
+| 2 | Yes | 2 of 4 — see below | Criteria 3 (compatibility layer, CI) and 4 (skeleton import, D-079/D-080) are met; the two playtesting criteria await M5 content (D-079). Execution protocol: D-078 (B-3 sweep). |
 | 3–12 | No | Not started | Not begun. |
 
-The 0B row previously read "Not confirmed — no script has been run". That was true when written and is no longer true. It was corrected rather than quietly deleted, because a status table that silently improves is indistinguishable from one that is being flattered. The Milestone 1 row was updated the same way on 2026-08-14: it previously read "Not confirmed", which stopped being true when D-076/D-077 recorded the acceptance evidence.
+The 0B row previously read "Not confirmed — no script has been run". That was true when written and is no longer true. It was corrected rather than quietly deleted, because a status table that silently improves is indistinguishable from one that is being flattered. The Milestone 1 row was updated the same way on 2026-08-14: it previously read "Not confirmed", which stopped being true when D-076/D-077 recorded the acceptance evidence. The Milestone 2 row moved from "1 of 4" to "2 of 4" on 2026-08-14 when D-080 recorded the skeleton-import evidence.
 
 **Milestone 2 acceptance criteria, individually:**
 
@@ -411,9 +411,9 @@ The 0B row previously read "Not confirmed — no script has been run". That was 
 | Vehicle accelerates, brakes and steers | Not met — not demonstrated | `requires playtesting` |
 | Vehicle does not fall through the ground, oscillate, or invert at rest | Not met — not demonstrated | `requires playtesting` |
 | All engine vehicle access goes through `UAFVehicleCompatibilityLayer` | **Met** | `automatically validated` — enforced by `Tools/af_static_validate.py` in CI |
-| Imported skeleton bone names match `UAFBoneNameMap` | Not met — no asset has been imported | `requires Unreal Editor verification` |
+| Imported skeleton bone names match `UAFBoneNameMap` | **Met** — verified 2026-08-14 (D-079, D-080) | `requires Unreal Editor verification` — performed |
 
-Criterion 4 now has partial evidence, which is not the same as being met. The naming *convention* is agreed between `af_pipeline_config.py` and `UAFBoneNameMap`, and that agreement is `automatically validated` by emulation (D-029). The Blender rig stage is *executed* in CI and prints all eleven bones with parent and head position in metres and centimetres, asserting `bone_count == 11`, `bone_order_matches_config == True` and nine bound meshes — so the producing side of the contract is continuously verified. What is unverified is the consuming side: no FBX has been imported into an Unreal editor, because no Unreal editor exists in this environment. The criterion closes when someone imports the exported asset and reads the resulting skeleton.
+Criterion 4 closed on 2026-08-14. The producing side was already continuously verified in CI (the rig stage asserts `bone_count == 11` and `bone_order_matches_config == True`, per D-029 emulation). The consuming side is now verified too: `AF_Vehicle_Proto.fbx` (pipeline v0B.1.1, config hash `6486736f83b6fb7f`) was imported into UE 5.8 via Interchange on the developer's machine and the Skeleton Tree read back all 11 contract bones with exact names in `BONE_ORDER`, including the wheel bones `AF_Wheel_FL/FR/RL/RR` after the D-079 mesh/bone collision fix. The imported skeleton carries one additional accepted root node, `AF_Armature_Proto` — the FBX armature container that UE Interchange promotes to a root bone. D-080 records why this is inherent behaviour, why it is accepted rather than worked around, and how the C-3 acceptance criteria were amended (12 nodes: accepted root + 11 contract bones).
 
 **Rename status.** The product rename is a documentation-and-identity change, not a milestone. It does not appear as a row above and does not alter any status in the table. Wave 1 (display identity and prose) is in progress; wave 2 (module identifiers, `.uproject`, target files, project ini and the matching guard edits) has not started. Nothing in the rename has been compiled or executed in an engine.
 
@@ -433,7 +433,7 @@ Criterion 4 now has partial evidence, which is not the same as being met. The na
 | Milestone 2 acceptance criteria are met | not claimed — see the Milestone Status table for the per-criterion position |
 | Milestone 2 criterion 3 is met | automatically validated |
 | Milestone 2 criterion 4 has partial (producing-side) evidence in CI | automatically validated |
-| Milestone 2 criterion 4 is met | not claimed — `requires Unreal Editor verification` |
+| Milestone 2 criterion 4 is met | verified (Unreal Editor import + Skeleton Tree read-back) — D-079/D-080 |
 | The product name "Uludağ Formula" matches none of the prohibited identifier patterns in `af_static_validate.py` | automatically validated |
 | The six module identifiers still carry the previous product name and are queued for wave 2 | statically inspected |
 | Any milestone beyond 0A, 0B and 1 is complete | not claimed |
