@@ -196,6 +196,82 @@ plain rebases; workaround is disabling LFS filters for the single command
 **Status.** M1 CLOSED (verified). Next: B-3 M2 criteria sweep in the open
 editor, then M5 planning (D-074 step 4).
 
+---
+
+## D-078 — B-3 static pre-sweep done; execution protocol for the 3 unverified M2 criteria; M5 plan draft (2026-08-14)
+
+**Context.** D-074 step 3 (B-3) covers the three unverified M2 criteria.
+All three carry labels (`requires playtesting`, `requires Unreal Editor
+verification`) that can only be executed on the developer's machine. The
+assistant's contribution is therefore (a) a static pre-sweep of both sides
+of the bone contract, (b) a precise, evidence-defined execution protocol,
+and (c) the M5 plan draft that D-074 deferred.
+
+**(a) Static pre-sweep — `statically inspected`, found no contract drift.**
+
+- Producing side (`BlenderPipeline/scripts/af_pipeline_config.py`):
+  `BONE_ORDER` = 11 bones (AF_Root, AF_Chassis, AF_Steering, then
+  Suspension/Wheel pairs FL,FR,RL,RR); `add_leaf_bones=False`;
+  `primary_bone_axis=Y`, `secondary_bone_axis=X`; FBX `axis_forward=X`,
+  `axis_up=Z`, `global_scale=1.0`, `apply_scale_options=FBX_SCALE_ALL`,
+  `armature_nodetype=NULL`. Config `self_check()` enforces 11 bones,
+  parenting, and the m→cm mapping (X, -Y, Z) × 100.
+- Consuming side (`Unreal/Source/ApexFormulaCore/Public/AFBoneNameMap.h`,
+  referenced by `UAFVehicleDefinition.BoneNameMap`): `UAFVehicleDefinition`
+  expects exactly four `FAFWheelSetup` entries whose `BoneName` is one of
+  the four D-012 wheel bones; axle assignment derives from
+  `bAffectedBySteering`, not array order; `ValidateSelf()` returns a
+  problem list (empty = valid).
+
+No naming or convention mismatch was found between the two sides. This
+does NOT verify the FBX importer preserves the names — that is criterion
+C-3 below.
+
+**(b) B-3 execution protocol (developer's machine, editor open).**
+Per D-074, any failure becomes an OPEN item; none blocks anything.
+
+- **C-1 Drive test — `requires playtesting`.** PIE with the AFVehiclePawn
+  possessed. Throttle → measurable forward acceleration; brake → decel to
+  full stop; steer both directions → yaw response. PASS = all three
+  observed without physics blow-up. Evidence: short screen recording OR
+  Output Log telemetry lines + one screenshot.
+- **C-2 Rest stability — `requires playtesting`.** Spawn the vehicle,
+  PIE, no input for 60 s. PASS = no fall-through, no growing oscillation,
+  no inversion. Evidence: screenshot at t≈60 s + one-line observation.
+- **C-3 Bone contract — `requires Unreal Editor verification`.** Export
+  `AF_Vehicle_Proto.fbx` via the pipeline; import as Skeletal Mesh; open
+  the Skeleton asset; compare the bone tree to `UAFBoneNameMap` /
+  `BONE_ORDER`. PASS = exactly 11 bones, exact names, exact hierarchy,
+  no importer-injected extra root (watch for a spurious `Armature` node —
+  `armature_nodetype=NULL` was chosen to prevent it). Evidence: screenshot
+  of the Skeleton tree panel.
+
+**(c) M5 plan draft (final scoping happens at M5 kickoff).**
+
+- **M5.1 Format decision — FBX, OBJ rejected.** OBJ carries no armature or
+  skin weights; the M2/M5 vehicle is skeletal. FBX settings already exist
+  as the pipeline contract (section 9 of the config). GLB stays
+  preview-only (`GLB_EXPORT_ENABLED=False`).
+- **M5.2 Collision packaging — open decision.** The `UCX_{target}_{NN}`
+  convention (≤16 pieces, budget 200 faces each) is consumed by Unreal's
+  STATIC mesh importer. A Skeletal Mesh gets collision from a Physics
+  Asset instead. M5 must decide: (i) skeletal mesh + generated/authored
+  Physics Asset, or (ii) a static-mesh collision companion. Do not assume
+  UCX "just works" on the skeletal path.
+- **M5.3 Units/axis acceptance (quantified).** After import, measured in
+  the editor: wheelbase 360 cm ± 1 cm, overall length 560 cm ± 1 cm,
+  vehicle forward = +X, up = +Z. Any deviation = import-settings defect,
+  not a mesh defect (Blender-side dimensions are gate-verified per D-073).
+- **M5.4 Asset binding.** `UAFVehicleDefinition` authored with
+  `VehicleMesh` + `BoneNameMap` set and 4 wheel entries;
+  `ValidateSelf()` returns empty. 13 parts present; material slot order
+  preserved (Body: Bodywork, Detail, Cockpit; Wheel: Tyre, Rim;
+  Suspension: Detail).
+
+**Status.** Pre-sweep `statically inspected` (done). C-1..C-3 open,
+awaiting the developer's editor session. M5 plan draft recorded; M5.2 is
+the one genuine open technical decision.
+
 ### Open questions carried into this volume
 
 | ID | Summary | Status |
