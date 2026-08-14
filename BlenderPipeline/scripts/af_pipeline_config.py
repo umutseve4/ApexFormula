@@ -44,7 +44,14 @@ SCRIPT_PREFIX = "af_"
 #: 0B.1.1: wheel MESH objects renamed AF_Wheel_* -> AF_WheelMesh_* (D-079).
 #: Bone names are unchanged; previously exported FBX files carry colliding
 #: node names and must be re-exported.
-PIPELINE_VERSION = "0B.1.1"
+#: 0B.1.2: apply_scale_options FBX_SCALE_ALL -> FBX_SCALE_UNITS (D-083).
+#: FBX_SCALE_ALL baked the m->cm x100 unit factor into the armature OBJECT
+#: node transform, which Unreal Interchange folds into the skeleton root's
+#: reference-pose scale (observed as Scale (100,100,100) on
+#: AF_Armature_Proto, OPEN-080-A). FBX_SCALE_UNITS carries the conversion in
+#: FBX unit metadata instead, so bones import at scale (1,1,1). Previously
+#: exported FBX files carry the baked x100 and must be re-exported.
+PIPELINE_VERSION = "0B.1.2"
 
 #: The Blender version this pipeline targets. Checked at runtime by
 #: af_validate.py; a mismatch is reported, never silently accepted.
@@ -490,6 +497,14 @@ MAX_COLLISION_PIECES = 16
 # Expressed as data. af_export.py filters these against the exporter's ACTUAL
 # signature at runtime rather than assuming every key exists in Blender 5.2
 # LTS. Unknown keys are reported in the export report, never silently dropped.
+#
+# D-083: apply_scale_options MUST be FBX_SCALE_UNITS. With a metric 1 unit =
+# 1 m scene, FBX_SCALE_ALL bakes the m->cm x100 unit factor into the armature
+# OBJECT node transform inside the FBX; UE Interchange folds that node into
+# the skeleton root, producing reference-pose Scale (100,100,100) on
+# AF_Armature_Proto (OPEN-080-A evidence). FBX_SCALE_UNITS carries the
+# conversion in the FBX file's unit metadata instead, so bones arrive at
+# scale (1,1,1) while mesh dimensions stay correct.
 
 FBX_EXPORT_SETTINGS = {
     "use_selection": True,
@@ -497,7 +512,7 @@ FBX_EXPORT_SETTINGS = {
     "object_types": {"ARMATURE", "MESH"},
     "axis_forward": "X",
     "axis_up": "Z",
-    "apply_scale_options": "FBX_SCALE_ALL",
+    "apply_scale_options": "FBX_SCALE_UNITS",
     "global_scale": 1.0,
     "apply_unit_scale": True,
     "use_space_transform": True,
@@ -821,6 +836,11 @@ def self_check():
     if FBX_EXPORT_SETTINGS.get("global_scale") != 1.0:
         problems.append("global_scale must stay 1.0; unit conversion is carried by "
                         "apply_scale_options, not by scene scale")
+    if FBX_EXPORT_SETTINGS.get("apply_scale_options") != "FBX_SCALE_UNITS":
+        problems.append("apply_scale_options must be FBX_SCALE_UNITS (D-083): "
+                        "FBX_SCALE_ALL bakes the m->cm x100 into the armature "
+                        "object node, which Unreal imports as root-bone scale "
+                        "(100,100,100)")
     if FBX_EXPORT_SETTINGS.get("primary_bone_axis") != BONE_PRIMARY_AXIS:
         problems.append("FBX primary_bone_axis disagrees with BONE_PRIMARY_AXIS")
     if FBX_EXPORT_SETTINGS.get("secondary_bone_axis") != BONE_SECONDARY_AXIS:
