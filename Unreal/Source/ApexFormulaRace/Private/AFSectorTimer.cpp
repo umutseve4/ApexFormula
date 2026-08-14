@@ -1,4 +1,4 @@
-// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
+﻿// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
 
 #include "AFSectorTimer.h"
 #include "AFLog.h"
@@ -35,18 +35,18 @@ void UAFSectorTimer::BeginLap(const double SessionTime)
 
 bool UAFSectorTimer::RecordSectorBoundary(const double SessionTime)
 {
-	if (!bLapOpen)
-	{
-		UE_LOG(LogAFRace, Warning,
-			TEXT("UAFSectorTimer::RecordSectorBoundary called with no lap open; ignoring."));
-		return false;
-	}
-
-	if (Splits.Num() >= SectorCount)
+	if (SectorCount > 0 && Splits.Num() >= SectorCount)
 	{
 		UE_LOG(LogAFRace, Warning,
 			TEXT("UAFSectorTimer::RecordSectorBoundary called after all %d sectors were closed; ignoring."),
 			SectorCount);
+		return false;
+	}
+
+	if (!bLapOpen)
+	{
+		UE_LOG(LogAFRace, Warning,
+			TEXT("UAFSectorTimer::RecordSectorBoundary called with no lap open; ignoring."));
 		return false;
 	}
 
