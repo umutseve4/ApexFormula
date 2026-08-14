@@ -1,0 +1,132 @@
+{
+  "blender_runtime": [
+    5,
+    2,
+    0
+  ],
+  "config_hash": "6486736f83b6fb7f9c9cea6cf73c0454aab815339b285c4e796a80bbe3c27958",
+  "generated_utc": "2026-08-14T18:53:50Z",
+  "overall": "PASS",
+  "pipeline_version": "0B.1.1",
+  "project": "UludagFormula",
+  "script": "af_smoke_test.py",
+  "stages": [
+    {
+      "detail": {
+        "collections_created": [
+          "AF_Source",
+          "AF_Generated",
+          "AF_Rig",
+          "AF_Export",
+          "AF_Body",
+          "AF_Wheels",
+          "AF_Suspension",
+          "AF_Collision",
+          "AF_LOD"
+        ],
+        "objects_cleared": {
+          "AF_Export": 0,
+          "AF_Generated": 0,
+          "AF_Rig": 0
+        },
+        "orphans_purged": {
+          "armatures": 0,
+          "meshes": 0
+        },
+        "scale_length": 1.0,
+        "unit_system": "METRIC"
+      },
+      "error": null,
+      "seconds": 0.018,
+      "stage": "1. scene setup",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "body": "AF_Body_Proto",
+        "body_polygons": 132,
+        "collision": 5,
+        "lods": 3,
+        "suspension": 4,
+        "wheels": 4
+      },
+      "error": null,
+      "seconds": 0.065,
+      "stage": "2. generate geometry",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "armature": "AF_Armature_Proto",
+        "bone_count": 11,
+        "bone_order_matches_config": true,
+        "bound_meshes": 9,
+        "expected_bone_count": 11
+      },
+      "error": null,
+      "seconds": 0.074,
+      "stage": "3. rig",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "materials_in_file": 5,
+        "meshes_with_slots": 12,
+        "missing_objects": []
+      },
+      "error": null,
+      "seconds": 0.03,
+      "stage": "4. materials",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "failed": 0,
+        "failed_checks": [],
+        "passed": 20,
+        "phase": "pre-export",
+        "report": "BlenderPipeline\\reports\\af_report_validate.json",
+        "skipped": 1,
+        "total": 21
+      },
+      "error": null,
+      "seconds": 0.038,
+      "stage": "5. validate (pre-export)",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "bones_exported": 11,
+        "dropped_settings": [],
+        "fbx_bytes": 218236,
+        "fbx_path": "BlenderPipeline\\exports\\AF_Vehicle_Proto.fbx"
+      },
+      "error": null,
+      "seconds": 2.269,
+      "stage": "6. export FBX",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "failed": 0,
+        "failed_checks": [],
+        "passed": 20,
+        "phase": "post-export",
+        "report": "BlenderPipeline\\reports\\af_report_validate.json",
+        "skipped": 1,
+        "total": 21
+      },
+      "error": null,
+      "seconds": 0.033,
+      "stage": "7. validate (post-export)",
+      "status": "PASS"
+    }
+  ],
+  "stages_defined": 7,
+  "stages_run": 7,
+  "target_blender_version": [
+    5,
+    2
+  ],
+  "target_unreal_version": "5.8"
+}

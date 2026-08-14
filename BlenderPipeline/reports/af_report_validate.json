@@ -1,0 +1,749 @@
+{
+  "blender_runtime": [
+    5,
+    2,
+    0
+  ],
+  "checks": [
+    {
+      "detail": "",
+      "expected": "identity on every exported object",
+      "measured": "all identity",
+      "name": "identity object transforms",
+      "number": 1,
+      "status": "PASS",
+      "tolerance": 1e-05
+    },
+    {
+      "detail": "",
+      "expected": "uniform positive scale",
+      "measured": "clean",
+      "name": "no negative or accidental non-uniform scale",
+      "number": 2,
+      "status": "PASS",
+      "tolerance": null
+    },
+    {
+      "detail": "",
+      "expected": "0 of each",
+      "measured": "0 of each on every mesh",
+      "name": "no loose vertices, loose edges or zero-area faces",
+      "number": 3,
+      "status": "PASS",
+      "tolerance": null
+    },
+    {
+      "detail": "",
+      "expected": "every edge shared by exactly 2 faces",
+      "measured": "manifold",
+      "name": "collision meshes are manifold",
+      "number": 4,
+      "status": "PASS",
+      "tolerance": null
+    },
+    {
+      "detail": "",
+      "expected": {
+        "body": 60000,
+        "collision": 200,
+        "suspension": 2000,
+        "wheel": 6000
+      },
+      "measured": {
+        "AF_Body_Proto": {
+          "budget": 60000,
+          "class": "body",
+          "faces": 132
+        },
+        "AF_Body_Proto_LOD1": {
+          "budget": 60000,
+          "class": "body",
+          "faces": 132
+        },
+        "AF_Body_Proto_LOD2": {
+          "budget": 60000,
+          "class": "body",
+          "faces": 132
+        },
+        "AF_Body_Proto_LOD3": {
+          "budget": 60000,
+          "class": "body",
+          "faces": 132
+        },
+        "AF_Susp_FL": {
+          "budget": 2000,
+          "class": "suspension",
+          "faces": 6
+        },
+        "AF_Susp_FR": {
+          "budget": 2000,
+          "class": "suspension",
+          "faces": 6
+        },
+        "AF_Susp_RL": {
+          "budget": 2000,
+          "class": "suspension",
+          "faces": 6
+        },
+        "AF_Susp_RR": {
+          "budget": 2000,
+          "class": "suspension",
+          "faces": 6
+        },
+        "AF_WheelMesh_FL": {
+          "budget": 6000,
+          "class": "wheel",
+          "faces": 72
+        },
+        "AF_WheelMesh_FR": {
+          "budget": 6000,
+          "class": "wheel",
+          "faces": 72
+        },
+        "AF_WheelMesh_RL": {
+          "budget": 6000,
+          "class": "wheel",
+          "faces": 72
+        },
+        "AF_WheelMesh_RR": {
+          "budget": 6000,
+          "class": "wheel",
+          "faces": 72
+        },
+        "UCX_AF_Body_Proto_01": {
+          "budget": 200,
+          "class": "collision",
+          "faces": 6
+        },
+        "UCX_AF_Body_Proto_02": {
+          "budget": 200,
+          "class": "collision",
+          "faces": 6
+        },
+        "UCX_AF_Body_Proto_03": {
+          "budget": 200,
+          "class": "collision",
+          "faces": 6
+        },
+        "UCX_AF_Body_Proto_04": {
+          "budget": 200,
+          "class": "collision",
+          "faces": 6
+        },
+        "UCX_AF_Body_Proto_05": {
+          "budget": 200,
+          "class": "collision",
+          "faces": 6
+        }
+      },
+      "name": "face count within budget",
+      "number": 5,
+      "status": "PASS",
+      "tolerance": null
+    },
+    {
+      "detail": "",
+      "expected": "no duplicated directed edges",
+      "measured": "consistent",
+      "name": "consistent normals / no inverted islands",
+      "number": 6,
+      "status": "PASS",
+      "tolerance": null
+    },
+    {
+      "detail": "",
+      "expected": "0 n-gons",
+      "measured": "0 n-gons",
+      "name": "no n-gons on deformable meshes",
+      "number": 7,
+      "status": "PASS",
+      "tolerance": null
+    },
+    {
+      "detail": "",
+      "expected": "AF_UV0",
+      "measured": "correct",
+      "name": "UV map present and correctly named",
+      "number": 8,
+      "status": "PASS",
+      "tolerance": null
+    },
+    {
+      "detail": "No separate lightmap UV channel is declared for the 0B placeholder vehicle, so there is nothing to test. Reported as SKIP rather than PASS.",
+      "expected": "no overlap on a declared lightmap channel",
+      "measured": null,
+      "name": "no overlapping UVs on lightmap channel",
+      "number": 9,
+      "status": "SKIP",
+      "tolerance": null
+    },
+    {
+      "detail": "",
+      "expected": {
+        "AF_Body_Proto": [
+          "AF_M_Bodywork",
+          "AF_M_Detail",
+          "AF_M_Cockpit"
+        ],
+        "AF_Body_Proto_LOD1": [
+          "AF_M_Bodywork",
+          "AF_M_Detail",
+          "AF_M_Cockpit"
+        ],
+        "AF_Body_Proto_LOD2": [
+          "AF_M_Bodywork",
+          "AF_M_Detail",
+          "AF_M_Cockpit"
+        ],
+        "AF_Body_Proto_LOD3": [
+          "AF_M_Bodywork",
+          "AF_M_Detail",
+          "AF_M_Cockpit"
+        ],
+        "AF_Susp_FL": [
+          "AF_M_Detail"
+        ],
+        "AF_Susp_FR": [
+          "AF_M_Detail"
+        ],
+        "AF_Susp_RL": [
+          "AF_M_Detail"
+        ],
+        "AF_Susp_RR": [
+          "AF_M_Detail"
+        ],
+        "AF_WheelMesh_FL": [
+          "AF_M_Tyre",
+          "AF_M_Rim"
+        ],
+        "AF_WheelMesh_FR": [
+          "AF_M_Tyre",
+          "AF_M_Rim"
+        ],
+        "AF_WheelMesh_RL": [
+          "AF_M_Tyre",
+          "AF_M_Rim"
+        ],
+        "AF_WheelMesh_RR": [
+          "AF_M_Tyre",
+          "AF_M_Rim"
+        ]
+      },
+      "measured": {
+        "AF_Body_Proto": [
+          "AF_M_Bodywork",
+          "AF_M_Detail",
+          "AF_M_Cockpit"
+        ],
+        "AF_Body_Proto_LOD1": [
+          "AF_M_Bodywork",
+          "AF_M_Detail",
+          "AF_M_Cockpit"
+        ],
+        "AF_Body_Proto_LOD2": [
+          "AF_M_Bodywork",
+          "AF_M_Detail",
+          "AF_M_Cockpit"
+        ],
+        "AF_Body_Proto_LOD3": [
+          "AF_M_Bodywork",
+          "AF_M_Detail",
+          "AF_M_Cockpit"
+        ],
+        "AF_Susp_FL": [
+          "AF_M_Detail"
+        ],
+        "AF_Susp_FR": [
+          "AF_M_Detail"
+        ],
+        "AF_Susp_RL": [
+          "AF_M_Detail"
+        ],
+        "AF_Susp_RR": [
+          "AF_M_Detail"
+        ],
+        "AF_WheelMesh_FL": [
+          "AF_M_Tyre",
+          "AF_M_Rim"
+        ],
+        "AF_WheelMesh_FR": [
+          "AF_M_Tyre",
+          "AF_M_Rim"
+        ],
+        "AF_WheelMesh_RL": [
+          "AF_M_Tyre",
+          "AF_M_Rim"
+        ],
+        "AF_WheelMesh_RR": [
+          "AF_M_Tyre",
+          "AF_M_Rim"
+        ]
+      },
+      "name": "material slot count and order match",
+      "number": 10,
+      "status": "PASS",
+      "tolerance": null
+    },
+    {
+      "detail": "",
+      "expected": "every slot assigned",
+      "measured": "all assigned",
+      "name": "no empty material slots",
+      "number": 11,
+      "status": "PASS",
+      "tolerance": null
+    },
+    {
+      "detail": "extra=[] missing=[]",
+      "expected": [
+        "AF_Root",
+        "AF_Chassis",
+        "AF_Steering",
+        "AF_Suspension_FL",
+        "AF_Wheel_FL",
+        "AF_Suspension_FR",
+        "AF_Wheel_FR",
+        "AF_Suspension_RL",
+        "AF_Wheel_RL",
+        "AF_Suspension_RR",
+        "AF_Wheel_RR"
+      ],
+      "measured": [
+        "AF_Root",
+        "AF_Chassis",
+        "AF_Steering",
+        "AF_Suspension_FL",
+        "AF_Wheel_FL",
+        "AF_Suspension_FR",
+        "AF_Wheel_FR",
+        "AF_Suspension_RL",
+        "AF_Wheel_RL",
+        "AF_Suspension_RR",
+        "AF_Wheel_RR"
+      ],
+      "name": "bone list matches config",
+      "number": 12,
+      "status": "PASS",
+      "tolerance": null
+    },
+    {
+      "detail": "",
+      "expected": {
+        "AF_Chassis": "AF_Root",
+        "AF_Root": null,
+        "AF_Steering": "AF_Chassis",
+        "AF_Suspension_FL": "AF_Chassis",
+        "AF_Suspension_FR": "AF_Chassis",
+        "AF_Suspension_RL": "AF_Chassis",
+        "AF_Suspension_RR": "AF_Chassis",
+        "AF_Wheel_FL": "AF_Suspension_FL",
+        "AF_Wheel_FR": "AF_Suspension_FR",
+        "AF_Wheel_RL": "AF_Suspension_RL",
+        "AF_Wheel_RR": "AF_Suspension_RR"
+      },
+      "measured": {
+        "AF_Chassis": "AF_Root",
+        "AF_Root": null,
+        "AF_Steering": "AF_Chassis",
+        "AF_Suspension_FL": "AF_Chassis",
+        "AF_Suspension_FR": "AF_Chassis",
+        "AF_Suspension_RL": "AF_Chassis",
+        "AF_Suspension_RR": "AF_Chassis",
+        "AF_Wheel_FL": "AF_Suspension_FL",
+        "AF_Wheel_FR": "AF_Suspension_FR",
+        "AF_Wheel_RL": "AF_Suspension_RL",
+        "AF_Wheel_RR": "AF_Suspension_RR"
+      },
+      "name": "bone hierarchy matches config",
+      "number": 13,
+      "status": "PASS",
+      "tolerance": null
+    },
+    {
+      "detail": "",
+      "expected": "0 unweighted vertices",
+      "measured": "0 unweighted vertices",
+      "name": "every deformable vertex has a weight",
+      "number": 14,
+      "status": "PASS",
+      "tolerance": null
+    },
+    {
+      "detail": "",
+      "expected": 4,
+      "measured": "<= 4 everywhere",
+      "name": "weights per vertex within maximum",
+      "number": 15,
+      "status": "PASS",
+      "tolerance": 4
+    },
+    {
+      "detail": "",
+      "expected": "identity at (0, 0, 0)",
+      "measured": {
+        "location": {
+          "cm": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "m": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "rotation_euler": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "name": "armature transform is identity at world origin",
+      "number": 16,
+      "status": "PASS",
+      "tolerance": 1e-05
+    },
+    {
+      "detail": "deltas (measured - design) m: [-0.0, -0.06, -0.01]",
+      "expected": {
+        "height": {
+          "cm": 95.0,
+          "m": 0.95
+        },
+        "length": {
+          "cm": 560.0,
+          "m": 5.6
+        },
+        "width": {
+          "cm": 200.0,
+          "m": 2.0
+        }
+      },
+      "measured": {
+        "height": {
+          "cm": 94.0,
+          "m": 0.94
+        },
+        "length": {
+          "cm": 560.0,
+          "m": 5.6
+        },
+        "max": {
+          "cm": [
+            280.0,
+            97.0,
+            94.0
+          ],
+          "m": [
+            2.8,
+            0.97,
+            0.94
+          ]
+        },
+        "min": {
+          "cm": [
+            -280.0,
+            -97.0,
+            0.0
+          ],
+          "m": [
+            -2.8,
+            -0.97,
+            0.0
+          ]
+        },
+        "width": {
+          "cm": 194.0,
+          "m": 1.94
+        }
+      },
+      "name": "bounding box within design envelope",
+      "number": 17,
+      "status": "PASS",
+      "tolerance": {
+        "cm": 1.0,
+        "m": 0.01
+      }
+    },
+    {
+      "detail": "",
+      "expected": {
+        "cm": 0.0,
+        "m": 0.0
+      },
+      "measured": {
+        "FL": {
+          "cm": 0.0,
+          "m": 0.0
+        },
+        "FR": {
+          "cm": 0.0,
+          "m": 0.0
+        },
+        "RL": {
+          "cm": 0.0,
+          "m": 0.0
+        },
+        "RR": {
+          "cm": 0.0,
+          "m": 0.0
+        }
+      },
+      "name": "Z=0 is the tyre contact plane",
+      "number": 18,
+      "status": "PASS",
+      "tolerance": {
+        "cm": 0.2,
+        "m": 0.002
+      }
+    },
+    {
+      "detail": "",
+      "expected": {
+        "track_front": {
+          "cm": 160.0,
+          "m": 1.6
+        },
+        "track_rear": {
+          "cm": 154.0,
+          "m": 1.54
+        },
+        "wheelbase": {
+          "cm": 360.0,
+          "m": 3.6
+        }
+      },
+      "measured": {
+        "FL": {
+          "delta_m": [
+            0.0,
+            -0.0,
+            0.0
+          ],
+          "design": {
+            "cm": [
+              180.0,
+              80.0,
+              36.0
+            ],
+            "m": [
+              1.8,
+              0.8,
+              0.36
+            ]
+          },
+          "measured": {
+            "cm": [
+              180.0,
+              80.0,
+              36.0
+            ],
+            "m": [
+              1.8,
+              0.8,
+              0.36
+            ]
+          }
+        },
+        "FR": {
+          "delta_m": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "design": {
+            "cm": [
+              180.0,
+              -80.0,
+              36.0
+            ],
+            "m": [
+              1.8,
+              -0.8,
+              0.36
+            ]
+          },
+          "measured": {
+            "cm": [
+              180.0,
+              -80.0,
+              36.0
+            ],
+            "m": [
+              1.8,
+              -0.8,
+              0.36
+            ]
+          }
+        },
+        "RL": {
+          "delta_m": [
+            -0.0,
+            0.0,
+            -0.0
+          ],
+          "design": {
+            "cm": [
+              -180.0,
+              77.0,
+              38.0
+            ],
+            "m": [
+              -1.8,
+              0.77,
+              0.38
+            ]
+          },
+          "measured": {
+            "cm": [
+              -180.0,
+              77.0,
+              38.0
+            ],
+            "m": [
+              -1.8,
+              0.77,
+              0.38
+            ]
+          }
+        },
+        "RR": {
+          "delta_m": [
+            -0.0,
+            -0.0,
+            -0.0
+          ],
+          "design": {
+            "cm": [
+              -180.0,
+              -77.0,
+              38.0
+            ],
+            "m": [
+              -1.8,
+              -0.77,
+              0.38
+            ]
+          },
+          "measured": {
+            "cm": [
+              -180.0,
+              -77.0,
+              38.0
+            ],
+            "m": [
+              -1.8,
+              -0.77,
+              0.38
+            ]
+          }
+        }
+      },
+      "name": "wheel centres at configured wheelbase/track",
+      "number": 19,
+      "status": "PASS",
+      "tolerance": {
+        "cm": 0.5,
+        "m": 0.005
+      }
+    },
+    {
+      "detail": "unexpected=[] missing=[]",
+      "expected": [
+        "AF_Armature_Proto",
+        "AF_Body_Proto",
+        "AF_Body_Proto_LOD1",
+        "AF_Body_Proto_LOD2",
+        "AF_Body_Proto_LOD3",
+        "AF_Susp_FL",
+        "AF_Susp_FR",
+        "AF_Susp_RL",
+        "AF_Susp_RR",
+        "AF_WheelMesh_FL",
+        "AF_WheelMesh_FR",
+        "AF_WheelMesh_RL",
+        "AF_WheelMesh_RR",
+        "UCX_AF_Body_Proto_01",
+        "UCX_AF_Body_Proto_02",
+        "UCX_AF_Body_Proto_03",
+        "UCX_AF_Body_Proto_04",
+        "UCX_AF_Body_Proto_05"
+      ],
+      "measured": [
+        "AF_Armature_Proto",
+        "AF_Body_Proto",
+        "AF_Body_Proto_LOD1",
+        "AF_Body_Proto_LOD2",
+        "AF_Body_Proto_LOD3",
+        "AF_Susp_FL",
+        "AF_Susp_FR",
+        "AF_Susp_RL",
+        "AF_Susp_RR",
+        "AF_WheelMesh_FL",
+        "AF_WheelMesh_FR",
+        "AF_WheelMesh_RL",
+        "AF_WheelMesh_RR",
+        "UCX_AF_Body_Proto_01",
+        "UCX_AF_Body_Proto_02",
+        "UCX_AF_Body_Proto_03",
+        "UCX_AF_Body_Proto_04",
+        "UCX_AF_Body_Proto_05"
+      ],
+      "name": "object names match the declared patterns",
+      "number": 20,
+      "status": "PASS",
+      "tolerance": null
+    },
+    {
+      "detail": "",
+      "expected": "none of ('F1', 'f1', 'FIA', 'fia')",
+      "measured": "none found",
+      "name": "no prohibited tokens in any name",
+      "number": 21,
+      "status": "PASS",
+      "tolerance": null
+    }
+  ],
+  "config_hash": "6486736f83b6fb7f9c9cea6cf73c0454aab815339b285c4e796a80bbe3c27958",
+  "expected_bone_count": 11,
+  "expected_bone_list": [
+    "AF_Root",
+    "AF_Chassis",
+    "AF_Steering",
+    "AF_Suspension_FL",
+    "AF_Wheel_FL",
+    "AF_Suspension_FR",
+    "AF_Wheel_FR",
+    "AF_Suspension_RL",
+    "AF_Wheel_RL",
+    "AF_Suspension_RR",
+    "AF_Wheel_RR"
+  ],
+  "export": {},
+  "generated_utc": "2026-08-14T18:53:50Z",
+  "pipeline_version": "0B.1.1",
+  "project": "UludagFormula",
+  "script": "af_validate.py",
+  "summary": {
+    "failed": 0,
+    "passed": 20,
+    "skipped": 1,
+    "total": 21
+  },
+  "target_blender": [
+    5,
+    2
+  ],
+  "target_unreal": "5.8",
+  "units": {
+    "blender": "metres",
+    "cm_per_unit": 100.0,
+    "unreal": "centimetres"
+  }
+}

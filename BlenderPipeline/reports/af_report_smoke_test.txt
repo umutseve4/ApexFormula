@@ -1,0 +1,65 @@
+UludagFormula pipeline smoke test
+======================================================================
+pipeline version : 0B.1.1
+config hash      : 6486736f83b6fb7f9c9cea6cf73c0454aab815339b285c4e796a80bbe3c27958
+generated (UTC)  : 2026-08-14T18:53:50Z
+Blender runtime  : [5, 2, 0]
+target Blender   : [5, 2]
+overall          : PASS
+stages run       : 7 of 7
+
+1. scene setup               PASS    0.02s
+    collections_created      ['AF_Source', 'AF_Generated', 'AF_Rig', 'AF_Export', 'AF_Body', 'AF_Wheels', 'AF_Suspension', 'AF_Collision', 'AF_LOD']
+    objects_cleared          {'AF_Generated': 0, 'AF_Rig': 0, 'AF_Export': 0}
+    orphans_purged           {'meshes': 0, 'armatures': 0}
+    scale_length             1.0
+    unit_system              METRIC
+
+2. generate geometry         PASS    0.07s
+    body                     AF_Body_Proto
+    body_polygons            132
+    collision                5
+    lods                     3
+    suspension               4
+    wheels                   4
+
+3. rig                       PASS    0.07s
+    armature                 AF_Armature_Proto
+    bone_count               11
+    bone_order_matches_config True
+    bound_meshes             9
+    expected_bone_count      11
+
+4. materials                 PASS    0.03s
+    materials_in_file        5
+    meshes_with_slots        12
+    missing_objects          []
+
+5. validate (pre-export)     PASS    0.04s
+    failed                   0
+    failed_checks            []
+    passed                   20
+    phase                    pre-export
+    report                   BlenderPipeline\reports\af_report_validate.json
+    skipped                  1
+    total                    21
+
+6. export FBX                PASS    2.27s
+    bones_exported           11
+    dropped_settings         []
+    fbx_bytes                218236
+    fbx_path                 BlenderPipeline\exports\AF_Vehicle_Proto.fbx
+
+7. validate (post-export)    PASS    0.03s
+    failed                   0
+    failed_checks            []
+    passed                   20
+    phase                    post-export
+    report                   BlenderPipeline\reports\af_report_validate.json
+    skipped                  1
+    total                    21
+
+Honesty: results above are produced by an actual Blender run.
+If this file is absent from the repository, no such run has
+happened and every pipeline claim remains 'requires Blender
+execution'.
