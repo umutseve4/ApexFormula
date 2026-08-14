@@ -1,4 +1,4 @@
-// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
+﻿// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
 
 #include "AFLapValidator.h"
 #include "AFTypes.h"
@@ -21,7 +21,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-static const int32 AFLapTestFlags =
+static const EAutomationTestFlags AFLapTestFlags =
 	EAutomationTestFlags::EditorContext |
 	EAutomationTestFlags::CommandletContext |
 	EAutomationTestFlags::ClientContext |

@@ -1,4 +1,4 @@
-// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
+﻿// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
 
 #include "Misc/AutomationTest.h"
 #include "AFTypes.h"
@@ -14,7 +14,7 @@
  * the vehicle. These tests are pure value-type checks - no world, no actor,
  * no tick - which is why they belong in the fast tier.
  */
-static const int32 AFCoreTypesTestFlags =
+static const EAutomationTestFlags AFCoreTypesTestFlags =
 	EAutomationTestFlags::EditorContext
 	| EAutomationTestFlags::CommandletContext
 	| EAutomationTestFlags::ClientContext

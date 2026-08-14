@@ -1,4 +1,4 @@
-// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
+﻿// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
 
 #include "AFTelemetryBus.h"
 #include "AFTelemetryTypes.h"
@@ -18,7 +18,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-static const int32 AFBusTestFlags =
+static const EAutomationTestFlags AFBusTestFlags =
 	EAutomationTestFlags::EditorContext |
 	EAutomationTestFlags::CommandletContext |
 	EAutomationTestFlags::ClientContext |

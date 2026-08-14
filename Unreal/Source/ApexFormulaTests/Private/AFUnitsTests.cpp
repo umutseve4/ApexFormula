@@ -1,4 +1,4 @@
-// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
+﻿// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
 
 #include "AFUnits.h"
 #include "Misc/AutomationTest.h"
@@ -12,7 +12,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-static const int32 AFTestFlags =
+static const EAutomationTestFlags AFTestFlags =
 	EAutomationTestFlags::EditorContext |
 	EAutomationTestFlags::CommandletContext |
 	EAutomationTestFlags::ClientContext |

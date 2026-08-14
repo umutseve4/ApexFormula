@@ -1,4 +1,4 @@
-// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
+﻿// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
 
 #include "AFVehiclePawn.h"
 #include "AFVehicleCompatibilityLayer.h"
@@ -303,7 +303,7 @@ void AAFVehiclePawn::ResetVehicle()
 
 	// A reset is a rule-relevant decision, so it is logged with the rule
 	// macro. Silent rule decisions are prohibited.
-	AF_LOG_RULE(LogAFVehicle, Log,
+	AF_LOG_RULE(LogAFVehicle, ParticipantId, (GetWorld() != nullptr) ? GetWorld()->GetTimeSeconds() : 0.0,
 		TEXT("%s reset to the last good transform. Reset count %d. ")
 		TEXT("Lap invalidation reason for Milestone 3: VehicleReset."),
 		*GetName(), ResetCount);

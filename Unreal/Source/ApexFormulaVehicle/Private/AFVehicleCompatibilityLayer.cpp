@@ -1,4 +1,4 @@
-// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
+﻿// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
 
 #include "AFVehicleCompatibilityLayer.h"
 #include "AFLog.h"
@@ -278,8 +278,6 @@ bool UAFVehicleCompatibilityLayer::TryApplyWheelParameters()
 
 		Wheel->SuspensionMaxRaise = static_cast<float>(ToCm(Source.SuspensionMaxRaiseM));
 		Wheel->SuspensionMaxDrop = static_cast<float>(ToCm(Source.SuspensionMaxDropM));
-		Wheel->SuspensionNaturalFrequency =
-			static_cast<float>(Source.SuspensionNaturalFrequencyHz);
 		Wheel->SuspensionDampingRatio = static_cast<float>(Source.SuspensionDampingRatio);
 		Wheel->SpringPreload = static_cast<float>(ToCm(Source.SuspensionRestLengthM));
 	}

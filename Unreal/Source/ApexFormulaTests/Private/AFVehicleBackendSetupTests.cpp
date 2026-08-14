@@ -1,4 +1,4 @@
-// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
+﻿// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
 
 #include "AFVehicleCompatibilityLayer.h"
 #include "AFWheelSetup.h"
@@ -23,7 +23,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-static const int32 AFVehicleBackendSetupTestFlags =
+static const EAutomationTestFlags AFVehicleBackendSetupTestFlags =
 	EAutomationTestFlags::EditorContext
 	| EAutomationTestFlags::CommandletContext
 	| EAutomationTestFlags::ClientContext

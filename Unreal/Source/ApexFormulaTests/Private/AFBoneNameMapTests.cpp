@@ -1,4 +1,4 @@
-// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
+﻿// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
 
 #include "AFBoneNameMap.h"
 #include "Misc/AutomationTest.h"
@@ -22,7 +22,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-static const int32 AFBoneTestFlags =
+static const EAutomationTestFlags AFBoneTestFlags =
 	EAutomationTestFlags::EditorContext |
 	EAutomationTestFlags::CommandletContext |
 	EAutomationTestFlags::ClientContext |

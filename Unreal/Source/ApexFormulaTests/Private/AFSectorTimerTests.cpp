@@ -1,4 +1,4 @@
-// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
+﻿// Copyright ApexFormula. Original work. Not affiliated with any real motorsport series.
 
 #include "AFSectorTimer.h"
 #include "Misc/AutomationTest.h"
@@ -18,7 +18,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-static const int32 AFSectorTestFlags =
+static const EAutomationTestFlags AFSectorTestFlags =
 	EAutomationTestFlags::EditorContext |
 	EAutomationTestFlags::CommandletContext |
 	EAutomationTestFlags::ClientContext |
