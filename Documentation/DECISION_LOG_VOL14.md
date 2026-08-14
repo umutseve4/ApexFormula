@@ -145,6 +145,87 @@ shape authoring even though the render mesh looks right.
 
 **Status.** OPEN-079-A **CLOSED**. C-3 `verified (Unreal Editor)`.
 
+---
+
+## D-081 — Milestone 5 execution plan; M5.2 DECIDED: skeletal mesh + Physics Asset; LFS verification gate before any binary commit; working-tree disposition (2026-08-14)
+
+**Context.** M1 accepted (D-076/D-077); B-3 sweep closed (D-080): C-3
+`verified (Unreal Editor)`, C-1/C-2 blocked until M5 authors content. The
+developer's working tree holds untracked artefacts from the D-080 session:
+`Unreal/Content/` (the imported vehicle assets), 
+`BlenderPipeline/exports/AF_Vehicle_Proto.fbx`, seven
+`BlenderPipeline/reports/af_report_*` files, and a new
+`Unreal/Config/DefaultEditor.ini`. This decision plans M5 and disposes of
+those files. Nothing in this decision is executed yet.
+
+**M5.2 DECIDED — skeletal mesh + Physics Asset (static collision companion
+rejected).** Rationale:
+
+1. Chaos Vehicles consumes a `USkeletalMesh`; wheel setup binds to wheel
+   *bones*. A static companion mesh cannot feed that path at all.
+2. The Physics Asset authors collision bodies per bone — exactly the
+   granularity the vehicle needs (chassis body + four wheel bodies).
+3. A companion static mesh duplicates geometry that must be regenerated and
+   kept in sync with `af_vehicle_generate.py` by hand, and reintroduces the
+   flat-FBX-namespace collision class D-079 just eliminated.
+
+**LFS verification gate — OPEN-081-A (blocks every binary commit).**
+`.gitattributes` routes `*.uasset`, `*.umap` and `*.fbx` through Git LFS.
+OPEN-076-A proves this repository has already committed LFS-pattern files
+as normal blobs once. The D-080 session machine currently shows **no LFS
+filter activity** (the four acceptance PNGs no longer read "modified"),
+consistent with Git LFS being absent or uninitialized in that clone.
+Therefore, before ANY `.uasset`/`.umap`/`.fbx` is staged:
+
+1. `git lfs version` must succeed (install Git LFS if not);
+2. `git lfs install` must have been run in the clone;
+3. after staging the first binary, `git lfs status` must list it as an LFS
+   object, and the staged blob must be a pointer (text beginning
+   `version https://git-lfs.github.com/spec/v1`), verified with
+   `git show :path/to/file | Select-Object -First 3`.
+
+A binary committed while this gate fails is a repeat of OPEN-076-A and
+must be reverted before push.
+
+**Working-tree disposition.**
+
+| Path | Decision |
+| --- | --- |
+| `BlenderPipeline/reports/af_report_*` (7 files) | **Commit now** — plain-text validation evidence; committing reports is standing policy (D-017), which is why `.gitignore` deliberately does not ignore `BlenderPipeline/reports/`. |
+| `BlenderPipeline/exports/AF_Vehicle_Proto.fbx` | **Hold behind OPEN-081-A** — `*.fbx` is an LFS pattern. Whether the export FBX is committed at all is decided at M5.1 acceptance; the pipeline can always regenerate it (v0B.1.1, hash `6486736f83b6fb7f`). |
+| `Unreal/Content/` | **Hold behind OPEN-081-A + content audit** — must contain ONLY the vehicle assets (skeletal mesh, skeleton, physics asset when authored); no accidental untitled map (D-080 warned against File→Save All). First Content commit happens inside M5, deliberately. |
+| `Unreal/Config/DefaultEditor.ini` | **Inspect before deciding** — editor-generated; if it is churn of the OPEN-079-B class, it stays untracked pending that decision; if it carries project-relevant settings, commit as text. |
+
+**M5 execution steps (in order).**
+
+1. **M5.1 — FBX authoritative.** The sole import source is
+   `AF_Vehicle_Proto.fbx` produced by pipeline v0B.1.1
+   (config hash `6486736f83b6fb7f`). Any regeneration must reproduce that
+   hash or record a new decision.
+2. **M5.2 — Physics Asset authoring** on the imported skeleton, per the
+   decision above. During authoring, execute the **OPEN-080-A check**:
+   inspect the `AF_Armature_Proto` node transform in the editor; if a
+   non-identity Scale (100,100,100) is present, STOP, record findings, and
+   resolve before any collision body is authored.
+3. **M5.3 — numeric acceptance.** Measured in-editor, not assumed:
+   wheelbase 360 ± 1 cm; overall length 560 ± 1 cm; +X forward; +Z up;
+   vehicle not mirrored (verified via an asymmetric marker or bone
+   positions, not by eye alone).
+4. **M5.4 — `UAFVehicleDefinition` asset** authored in Content;
+   `ValidateSelf()` reports clean; all 13 vehicle parts represented;
+   material slot order preserved against the pipeline report.
+5. **M5.5 — C-1/C-2 unblock.** Author the minimal test map (floor + placed
+   `AAFVehiclePawn` wired to the definition asset), then execute M2
+   criteria 1–2 (`requires playtesting`): accelerates/brakes/steers; no
+   fall-through, oscillation, or inversion at rest.
+
+**Acceptance for this plan.** Each step carries its own verification label
+at execution time; no step is reported complete without evidence
+(Cross-Milestone Rule 1). M2 closes fully when M5.5 evidence lands.
+
+**Status.** Plan authored (`statically inspected`). Nothing executed.
+Next decision id: D-082.
+
 ### Open questions in this volume
 
 | ID | Summary | Status |
@@ -152,4 +233,5 @@ shape authoring even though the render mesh looks right.
 | OPEN-079-A | Extra `AF_Armature_Proto` skeleton root — importer option suspected; exporter-side investigation only if it survives re-import with the option off | **CLOSED by D-080** — inherent Interchange behaviour; root accepted, criteria amended |
 | OPEN-079-B | `AndroidFileServer` block auto-injected into `DefaultEngine.ini` by every editor launch — commit or ignore? | OPEN |
 | OPEN-076-A | 4 acceptance PNGs tracked by LFS pattern but committed as normal blobs | OPEN (carried) |
-| OPEN-080-A | Possible non-identity Scale (100,100,100) on the `AF_Armature_Proto` root node — verify at M5 Physics Asset authoring | OPEN |
+| OPEN-080-A | Possible non-identity Scale (100,100,100) on the `AF_Armature_Proto` root node — verify at M5 Physics Asset authoring (D-081 step 2) | OPEN |
+| OPEN-081-A | Git LFS not verified functional in the developer clone — gate blocking every `.uasset`/`.umap`/`.fbx` commit until `git lfs install` + pointer verification pass (D-081) | OPEN |
