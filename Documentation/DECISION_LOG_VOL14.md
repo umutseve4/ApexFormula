@@ -226,12 +226,65 @@ at execution time; no step is reported complete without evidence
 **Status.** Plan authored (`statically inspected`). Nothing executed.
 Next decision id: D-082.
 
+---
+
+## D-082 — OPEN-081-A CLOSED: LFS gate passed with pointer evidence; D-081 disposition executed (commits `28d3804`, `7225cf0`); `DefaultEditor.ini` audited as churn and gitignored (2026-08-14)
+
+**Execution record (developer's machine, terminal evidence captured).**
+The D-081 disposition was executed in order:
+
+1. **Reports committed** — `28d3804`
+   `docs(reports): commit B-3 pipeline evidence reports (D-081 disposition)`,
+   6 files, 1,275 insertions, pushed (`9aa48c2..28d3804`).
+2. **LFS gate steps 1–2** — `git lfs version` = git-lfs/3.7.1 (windows
+   amd64); `git lfs install` ran in the clone ("Updated Git hooks. Git LFS
+   initialized.").
+3. **`DefaultEditor.ini` audit** — file contains ONLY a
+   `[/Script/AdvancedPreviewScene.SharedProfiles]` block with
+   engine-default preview scene profiles ("Epic Headquarters" et al.):
+   editor churn of the OPEN-079-B class, zero project-relevant settings.
+   **Decision: never commit; appended to `.gitignore`.** (OPEN-079-B
+   itself — the `DefaultEngine.ini` `AndroidFileServer` churn — remains a
+   separate open question.)
+4. **`Unreal/Content/` audit** — exactly 8 `.uasset` files in
+   `Unreal/Content/Vehicle/`: 5 placeholder materials (`AF_M_Bodywork`,
+   `AF_M_Cockpit`, `AF_M_Detail`, `AF_M_Rim`, `AF_M_Tyre`),
+   `AF_Vehicle_Proto`, `AF_Vehicle_Proto_Skeleton`, and
+   `AF_Vehicle_Proto_PhysicsAsset`. **No accidental `.umap`.**
+   `Collections/` and `Developers/umuts/Collections/` are empty (git does
+   not track empty directories). Notable: the Physics Asset already exists
+   — UE auto-created it at import; M5.2 is therefore *configure and
+   verify*, not *create*.
+5. **LFS gate step 3 — pointer verification PASSED.**
+   `git show :Unreal/Content/Vehicle/AF_Vehicle_Proto.uasset` and
+   `git show :BlenderPipeline/exports/AF_Vehicle_Proto.fbx` both returned
+   first line `version https://git-lfs.github.com/spec/v1`.
+6. **Binary commit + push** — `7225cf0`
+   `feat(assets): M2 import kaniti - 8 Vehicle uasset + resmi FBX, LFS
+   uzerinden (OPEN-081-A)`, 10 files (8 uassets + FBX + `.gitignore`).
+   Push output shows `Uploading LFS objects: 100% (9/9), 931 KB` and
+   `28d3804..7225cf0  main -> main`. `git lfs ls-files` lists all
+   9 binaries as LFS objects.
+
+**Verdict.** OPEN-081-A **CLOSED** — all three gate conditions met with
+terminal evidence; the 9 binaries live in the repository as LFS pointers,
+not raw blobs. OPEN-076-A (4 historical PNG blobs) is unchanged by this
+work and remains carried.
+
+**Consequence.** M5.1 is satisfied in-repo: the authoritative FBX
+(v0B.1.1, hash `6486736f83b6fb7f`) and the imported M2 evidence assets are
+versioned. Next step is **M5.2** (Physics Asset configuration/verification
+on `AF_Vehicle_Proto_PhysicsAsset`), which MUST begin with the
+**OPEN-080-A scale check** on the `AF_Armature_Proto` node.
+
+**Status.** `verified (terminal evidence)`. Next decision id: D-083.
+
 ### Open questions in this volume
 
 | ID | Summary | Status |
 | --- | --- | --- |
 | OPEN-079-A | Extra `AF_Armature_Proto` skeleton root — importer option suspected; exporter-side investigation only if it survives re-import with the option off | **CLOSED by D-080** — inherent Interchange behaviour; root accepted, criteria amended |
-| OPEN-079-B | `AndroidFileServer` block auto-injected into `DefaultEngine.ini` by every editor launch — commit or ignore? | OPEN |
+| OPEN-079-B | `AndroidFileServer` block auto-injected into `DefaultEngine.ini` by every editor launch — commit or ignore? | OPEN (related: `DefaultEditor.ini` audited as same-class churn and gitignored per D-082) |
 | OPEN-076-A | 4 acceptance PNGs tracked by LFS pattern but committed as normal blobs | OPEN (carried) |
-| OPEN-080-A | Possible non-identity Scale (100,100,100) on the `AF_Armature_Proto` root node — verify at M5 Physics Asset authoring (D-081 step 2) | OPEN |
-| OPEN-081-A | Git LFS not verified functional in the developer clone — gate blocking every `.uasset`/`.umap`/`.fbx` commit until `git lfs install` + pointer verification pass (D-081) | OPEN |
+| OPEN-080-A | Possible non-identity Scale (100,100,100) on the `AF_Armature_Proto` root node — verify at M5 Physics Asset authoring (D-081 step 2) | OPEN — next up, first action of M5.2 |
+| OPEN-081-A | Git LFS not verified functional in the developer clone — gate blocking every `.uasset`/`.umap`/`.fbx` commit until `git lfs install` + pointer verification pass (D-081) | **CLOSED by D-082** — pointer evidence captured; 9 binaries pushed as LFS objects (`7225cf0`) |
