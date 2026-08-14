@@ -41,7 +41,10 @@ SCRIPT_PREFIX = "af_"
 
 #: Version of the pipeline contract. Bump when any convention below changes in
 #: a way that invalidates previously exported assets.
-PIPELINE_VERSION = "0B.1.0"
+#: 0B.1.1: wheel MESH objects renamed AF_Wheel_* -> AF_WheelMesh_* (D-079).
+#: Bone names are unchanged; previously exported FBX files carry colliding
+#: node names and must be re-exported.
+PIPELINE_VERSION = "0B.1.1"
 
 #: The Blender version this pipeline targets. Checked at runtime by
 #: af_validate.py; a mismatch is reported, never silently accepted.
@@ -316,9 +319,14 @@ def chassis_origin_m():
 # ---------------------------------------------------------------------------
 # 5. Naming patterns
 # ---------------------------------------------------------------------------
+# D-079: mesh OBJECT names must never equal BONE names. The FBX node namespace
+# is flat; when a wheel mesh was named AF_Wheel_FL (same as its bone), Unreal's
+# importer deduplicated by renaming the BONE to AF_Wheel_FL1, silently breaking
+# the bone-name contract with UAFBoneNameMap. Hence AF_WheelMesh_{corner}.
+# self_check() now enforces bone/object name disjointness.
 
 NAME_BODY = "AF_Body_{variant}"
-NAME_WHEEL = "AF_Wheel_{corner}"
+NAME_WHEEL = "AF_WheelMesh_{corner}"
 NAME_SUSPENSION = "AF_Susp_{corner}"
 NAME_COLLISION = "UCX_{target}_{index:02d}"
 NAME_LOD = "{base}_LOD{level}"
@@ -599,6 +607,18 @@ def effective_config():
         "design": dict(DESIGN),
         "variant": VEHICLE_VARIANT,
         "collections": list(OWNED_COLLECTIONS),
+        # D-079: naming templates are part of the output contract (node names
+        # inside the FBX), so they participate in the config hash.
+        "naming": {
+            "body": NAME_BODY,
+            "wheel": NAME_WHEEL,
+            "suspension": NAME_SUSPENSION,
+            "collision": NAME_COLLISION,
+            "lod": NAME_LOD,
+            "armature": NAME_ARMATURE,
+            "material": NAME_MATERIAL,
+            "uv_map": UV_MAP_NAME,
+        },
         "materials": {
             "body": list(MATERIAL_SLOTS_BODY),
             "wheel": list(MATERIAL_SLOTS_WHEEL),
@@ -666,6 +686,22 @@ def self_check():
     for bone in DEFORM_BONES:
         if bone not in BONE_PARENTS:
             problems.append("deform bone %s is not in the bone list" % bone)
+
+    # --- bone vs object name collisions (D-079) -----------------------------
+    # The FBX node namespace is flat. If a scene OBJECT shares a name with a
+    # BONE, importers (Unreal Interchange included) deduplicate by renaming
+    # one of them - observed as bone AF_Wheel_FL becoming AF_Wheel_FL1 in
+    # Unreal, which silently breaks the UAFBoneNameMap contract.
+    object_names = {body_name(), armature_name()}
+    object_names.update(all_wheel_names())
+    object_names.update(all_suspension_names())
+    object_names.update(lod_name(body_name(), lvl) for lvl in LOD_LEVELS)
+    object_names.update(collision_name(t, i) for (t, i, _c, _h) in COLLISION_PIECES)
+    name_collisions = sorted(object_names & set(BONE_ORDER))
+    if name_collisions:
+        problems.append(
+            "object names collide with bone names; FBX importers will rename "
+            "bones on import: %s" % ", ".join(name_collisions))
 
     # --- prohibited tokens -------------------------------------------------
     names = list(BONE_ORDER) + list(OWNED_COLLECTIONS) + [
