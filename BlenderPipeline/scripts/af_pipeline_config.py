@@ -61,7 +61,17 @@ SCRIPT_PREFIX = "af_"
 #: in cm without relying on importer metadata handling and without baking a
 #: node-level x100 (the OPEN-080-A failure mode). Previously exported FBX
 #: files carry metre-sized data and must be re-exported.
-PIPELINE_VERSION = "0B.1.3"
+#: 0B.1.4: export-time cm bake in af_export.py (D-090). FBX_SCALE_NONE alone
+#: still produced a root-bone scale of (100,100,100) in UE: the scene data is
+#: authored in metres, so the exporter's m->cm x100 unit factor was folded by
+#: the legacy importer into the skeleton root's reference pose (bounds were
+#: correct at 560, only the root scale was dirty). af_export.py now bakes the
+#: x100 into mesh/armature DATA (and object locations) right before export,
+#: compensates scene.unit_settings.scale_length to 0.01 so the exporter's
+#: effective unit factor becomes 1.0, and unbakes in a finally block so the
+#: scene is restored even on failure. Exporter options stay FBX_SCALE_NONE;
+#: no fourth apply_scale_options experiment (2nd-FAIL rule, D-087 policy).
+PIPELINE_VERSION = "0B.1.4"
 
 #: The Blender version this pipeline targets. Checked at runtime by
 #: af_validate.py; a mismatch is reported, never silently accepted.
