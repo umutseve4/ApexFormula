@@ -1,44 +1,81 @@
-# m54f_drive_test.py - M5.4f PIE surus kabul testi (D-092 kriterleri)
+# m54f_drive_test.py v2 - M5.4f PIE surus kabul testi (D-092 kriterleri)
+# v1 FAIL analizi: PIE basladi ama get_game_world() tespiti calismadi; ayrica
+# otomatik baslatma zinciri PIE'yi kararsiz yeniden baslatti. v2 degisiklikleri:
+#   1) Otomatik PIE baslatma YOK -> script calisir, SEN viewport'tan Play'e basarsin.
+#   2) Dunya tespiti cok-problu: UnrealEditorSubsystem.get_game_world,
+#      EditorLevelLibrary.get_game_world, LevelEditorSubsystem.is_in_play_in_editor.
+#   3) WAIT_PIE sirasinda 5 sn'de bir HEARTBEAT satiri: her probun dondurdugu deger
+#      loglanir -> FAIL olursa kok neden logda gorunur.
 # Kosum: UE Output Log ->  py "C:/Users/umuts/Documents/UludagFormula/BlenderPipeline/tools/m54f_drive_test.py"
-# Akis: haritayi yukler -> PIE baslatmayi dener (olmazsa Play'e basmani ister)
-#       -> tick callback ile faz makinesi kosar, sonunda OTOMATIK KONTROL basar.
 # Fazlar (girisler dogrudan ChaosWheeledVehicleMovementComponent'e verilir):
 #   SETTLE 0-5s   : giris yok        -> Z bandi +-50 cm
 #   FWD    5-10s  : throttle=1.0     -> yatay yer degistirme >= 1000 cm (10 m)
 #   STEER  10-13s : thr=0.6 steer=1  -> yaw degisimi >= 10 derece
-#   BRAKE  13-17s : thr=0 brake=1    -> hiz, fren basindaki hizin %20'sinin altina iner
-# NOT: klavye (W/A/S/D) zinciri ayrica 1 manuel PIE turu + screenshot ile kanitlanir.
+#   BRAKE  13-17s : thr=0 brake=1    -> hiz, fren basindaki hizin %20'sine iner (veya <=200 cm/s)
 
 import unreal
 
 MAP_PATH = "/Game/vehicle/Map_AF_DriveTest"
 S = {
-    "t": 0.0, "phase": "WAIT_PIE", "wait": 0.0,
+    "t": 0.0, "phase": "WAIT_PIE", "wait": 0.0, "hb_next": 0.0,
     "z0": None, "z_min": None, "z_max": None,
     "fwd_start": None, "yaw_start": None,
-    "brake_v0": None, "v_end": None,
+    "brake_v0": None,
     "results": [], "handle": None, "done": False,
+    "err_seen": set(),
 }
 
 def log(msg):
     unreal.log("[M54F] " + msg)
 
-def get_world():
+def log_err_once(tag, e):
+    key = tag + ":" + repr(e)
+    if key not in S["err_seen"]:
+        S["err_seen"].add(key)
+        log("ERR %s -> %r" % (tag, e))
+
+def probe_world():
+    """PIE dunyasini birden fazla API ile ara; (world, kaynak_adi) dondur."""
     try:
-        return unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_game_world()
-    except Exception:
-        return None
+        w = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_game_world()
+        if w:
+            return w, "UnrealEditorSubsystem"
+    except Exception as e:
+        log_err_once("UnrealEditorSubsystem.get_game_world", e)
+    try:
+        w = unreal.EditorLevelLibrary.get_game_world()
+        if w:
+            return w, "EditorLevelLibrary"
+    except Exception as e:
+        log_err_once("EditorLevelLibrary.get_game_world", e)
+    return None, "-"
+
+def probe_pie_flag():
+    try:
+        les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+        return str(les.is_in_play_in_editor())
+    except Exception as e:
+        log_err_once("is_in_play_in_editor", e)
+        return "API-YOK"
 
 def get_vehicle(world):
-    pawn = unreal.GameplayStatics.get_player_pawn(world, 0)
+    try:
+        pawn = unreal.GameplayStatics.get_player_pawn(world, 0)
+    except Exception as e:
+        log_err_once("get_player_pawn", e)
+        return None, None
     if not pawn:
         return None, None
-    comp = pawn.get_component_by_class(unreal.ChaosWheeledVehicleMovementComponent)
+    try:
+        comp = pawn.get_component_by_class(unreal.ChaosWheeledVehicleMovementComponent)
+    except Exception as e:
+        log_err_once("get_component_by_class", e)
+        return pawn, None
     return pawn, comp
 
 def add_result(name, ok, detail):
     S["results"].append((name, ok, detail))
-    log(("%s %s  %s") % (name, "PASS" if ok else "FAIL", detail))
+    log("%s %s  %s" % (name, "PASS" if ok else "FAIL", detail))
 
 def finish():
     S["done"] = True
@@ -51,7 +88,7 @@ def finish():
         log("%-8s : %s  (%s)" % (name, "PASS" if ok else "FAIL", detail))
     log("SONUC %s - %s" % ("PASS" if all_ok else "FAIL",
         "M5.4f otomatik kisim tamam; simdi manuel W/A/S/D turu + screenshot"
-        if all_ok else "kriter dusuruldu, cikti ile birlikte raporla"))
+        if all_ok else "HEARTBEAT satirlariyla birlikte ciktiyi raporla"))
     try:
         unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).editor_request_end_play()
     except Exception:
@@ -60,7 +97,7 @@ def finish():
 def tick(dt):
     if S["done"]:
         return
-    world = get_world()
+    world, src = probe_world()
 
     if S["phase"] == "WAIT_PIE":
         S["wait"] += dt
@@ -71,9 +108,18 @@ def tick(dt):
                 S["t"] = 0.0
                 z = pawn.get_actor_location().z
                 S["z0"] = S["z_min"] = S["z_max"] = z
-                log("PIE dunyasi bulundu; pawn=%s  z0=%.1f  -> SETTLE" % (pawn.get_name(), z))
-        elif S["wait"] > 120.0:
-            add_result("SETTLE", False, "PIE 120s icinde baslamadi")
+                log("PIE dunyasi bulundu (kaynak=%s); pawn=%s z0=%.1f -> SETTLE" % (src, pawn.get_name(), z))
+                return
+        if S["wait"] >= S["hb_next"]:
+            S["hb_next"] = S["wait"] + 5.0
+            pawn, comp = get_vehicle(world) if world else (None, None)
+            log("HEARTBEAT t=%.0fs  world=%s(kaynak=%s)  pie_flag=%s  pawn=%s  comp=%s"
+                % (S["wait"], world.get_name() if world else "None", src,
+                   probe_pie_flag(),
+                   pawn.get_name() if pawn else "None",
+                   type(comp).__name__ if comp else "None"))
+        if S["wait"] > 180.0:
+            add_result("SETTLE", False, "PIE/pawn 180s icinde bulunamadi - HEARTBEAT satirlarina bak")
             add_result("FWD", False, "-"); add_result("STEER", False, "-")
             add_result("BRAKE", False, "-")
             finish()
@@ -130,16 +176,7 @@ def main():
     les.load_level(MAP_PATH)
     log("Harita yuklendi: %s" % MAP_PATH)
     S["handle"] = unreal.register_slate_post_tick_callback(tick)
-    started = False
-    for fn in ("editor_request_begin_play", "editor_play_in_viewport"):
-        try:
-            getattr(les, fn)()
-            started = True
-            log("PIE otomatik baslatildi (%s)." % fn)
-            break
-        except Exception:
-            continue
-    if not started:
-        log("PIE otomatik baslatilamadi -> viewport ustundeki Play'e SEN bas; script bekliyor (120s).")
+    log(">>> SIMDI viewport ustundeki Play'e BIR KEZ bas. Script 180 sn bekliyor;")
+    log(">>> 5 sn'de bir HEARTBEAT satiri basar, test ~17 sn surer ve kendini raporlar.")
 
 main()
