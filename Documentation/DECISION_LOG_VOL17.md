@@ -203,3 +203,41 @@ dogrulandi (tahmin edilen menu adi yok; SCRIPT-FIRST istisna kosullari saglandi)
 ### Sonraki adim
 - M5.4e: `m54e_make_map.py` - GameMode (DefaultPawn=BP_AF_VehiclePawn) +
   Map_AF_DriveTest (duz zemin + PlayerStart + GameMode override) UE Python ile.
+
+---
+
+## D-097 - M5.4e KAPANDI: GameMode + test haritasi (7/7 PASS)
+
+**Tarih:** 2026-08-15
+**Durum:** KAPALI
+**Ilgili:** D-092 (M5.4 plani, M5.4e satiri), D-096 (casing kurali), D-095 (DataAssetFactory)
+
+### Yontem
+`BlenderPipeline/tools/m54e_make_map.py` (commit 2f1b963) UE Python ile kosuldu;
+tamamen script, GUI adimi yok (SCRIPT-FIRST tam uyum).
+
+### Sonuclar (kanit: LogPython, 7/7 PASS)
+- GM-CLASS : BP_AF_GameMode (GameModeBase turevi BP) uretildi.
+- GM-PAWN  : default_pawn_class = BP_AF_VehiclePawn_C (readback dogrulamali).
+- LEVEL    : /Game/vehicle/Map_AF_DriveTest yaratildi ve yuklendi.
+- FLOOR    : StaticMeshActor zemin, scale=(100,100,1), loc=(0,0,-50).
+- PSTART   : PlayerStart loc=(0,0,150).
+- GMODE-OVR: WorldSettings.default_game_mode = BP_AF_GameMode_C.
+- SAVE     : map_exists=True; MapCheck: 0 Error, 0 Warning.
+- SONUC    : PASS - "M5.4e tamam; M5.4f surus kabulune gec".
+
+### Yan kayit
+- "Unable to Check Out From Revision Control" dialogu zararsiz: UE'de revision
+  control saglayicisi bagli degil; SavePackage yine de diske yazdi (SAVE PASS).
+
+### LFS commit
+- `01b30b6` : Unreal/Content/Vehicle/BP_AF_GameMode.uasset +
+  Map_AF_DriveTest.umap (repo-casing `Vehicle/`, D-096 kurali uygulanmis).
+- Pointer dogrulama index uzerinden (`git show :<path>`): 2/2 PASS.
+- LFS upload 2/2 (34 KB); calisma agaci temiz.
+
+### Sonraki adim
+- M5.4f: `m54f_drive_test.py` - PIE surus kabul testi (D-092 kriterleri:
+  Z stabilite +-50cm/5s, W ile >=10m/5s, A/D yaw, S durus; pozisyon-log
+  OTOMATIK KONTROL + tek screenshot, PNG repoya girmez).
+- M5.4f PASS sonrasi: M5.4/M5/M2 kapanisi + MILESTONE_PLAN.md tek gecis.
