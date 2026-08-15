@@ -81,3 +81,50 @@ MILESTONE_PLAN.md durum tablosu tek seferde guncellenir (D-091 erteleme notu).
 - Iki BP .uasset LFS commit'i (pointer dogrulamasi OPEN-081-A kuraliyla).
 - M5.4c: `m54c_make_pawn.py` (BP_AF_VehiclePawn - WheeledVehiclePawn turevi,
   mesh + PhysAsset + 4 WheelSetup eslemesi).
+
+---
+
+## D-094 - M5.4c KAPANDI: tork egrisi CSV reimport ile cozuldu (v4)
+
+**Tarih:** 2026-08-15
+**Durum:** KAPALI
+**Ilgili:** D-092 (M5.4 plani), D-093 (M5.4a/b), D-087 (2-FAIL kurali)
+
+### Iterasyon zinciri (kanit: LogPython ciktilar)
+1. **v1 `m54c_make_pawn.py` (ccb545d):** FAIL - struct property'lerde in-place
+   yazim tutmadi; teshis ciktisi yetersizdi.
+2. **v2 `m54c_fix_pawn.py` (4ddebc3):** 8/9 PASS. copy->modify->set-back kalibi
+   MESH (skeletal_mesh_asset=AF_Vehicle_Proto), MOVE (vehicle_movement_component),
+   WHEEL (n=4, AF_Wheel_FL/FR/RL/RR), MASS (800.0), COMP, SAVE icin calisti.
+   Tek dusen TORK: `RuntimeFloatCurve.editor_curve_data` VE `CurveFloat.float_curve`
+   UE 5.8.1 Python'a expose degil (ENVANTER: RuntimeFloatCurve uyeleri = to_dict).
+3. **v3 `m54c_torque_fix.py` (20f5ea0):** yontem degisikligi (D-087) - CSV import
+   ile CurveFloat asset + `torque_curve.external_curve` binding. Binding PASS,
+   ama egri KEY'SIZ cikti: v(0)=v(5000)=v(6000)=0.0. Kok neden: CSVImportFactory
+   `automated_import_settings` atamasi try/except icinde sessiz dusmus; factory
+   varsayilani ECSV_DATA_TABLE ile kaldi (AYAR-ONCE loguyla v4'te kanitlandi).
+4. **v4 `m54c_curve_fix_v4.py` (80af288):** TAM PASS. Duzeltmeler:
+   - `import_type=ECSV_CURVE_FLOAT` copy->set-back + readback dogrulama
+     (exception yutulmuyor; AYAR satiri PASS/FAIL basiyor).
+   - Basliksiz CSV (`0,300 / 5000,300 / 6000,0`), RCIM_LINEAR interp.
+   - `replace_existing=True` reimport: ayni asset uzerine yazarak pawn'daki
+     external_curve referansi korundu.
+   - Kabul: ARALIK zaman=[0,6000] deger=[0,300]; CURVE v(0)=300 v(5000)=300
+     v(6000)=0; TORK readback=Curve_AF_Torque; COMP + SAVE PASS; SONUC PASS.
+
+### Nihai durum (dogrulanmis)
+`/Game/vehicle/BP_AF_VehiclePawn`: mesh=AF_Vehicle_Proto, movement=Chaos,
+4 WheelSetup (dogru kemikler), mass=800 kg, tork egrisi Curve_AF_Torque
+(external CurveFloat, 300 Nm plato -> 6000 rpm'de 0). Compile + save temiz.
+
+### UE 5.8.1 Python API-gap defteri (guncel)
+| Kapali yuzey | Kanit | Calisan alternatif |
+|---|---|---|
+| PhysicsAsset.skeletal_body_setups | D-087 | GUI hibrit (5 body elle) |
+| RuntimeFloatCurve.editor_curve_data | D-094 v2 | external_curve + CurveFloat asset |
+| CurveFloat.float_curve | D-094 v2 | CSV import (ECSV_CURVE_FLOAT) |
+
+### Sonraki adim
+- Pawn + curve .uasset LFS commit'i (OPEN-081-A pointer dogrulamasi).
+- M5.4d: `m54d_make_input.py` (3 IA + IMC_AF_Drive); pawn input graph baglama
+  script ile imkansizsa hibrit (screenshot dogrulamali GUI, SCRIPT-FIRST kurali).
