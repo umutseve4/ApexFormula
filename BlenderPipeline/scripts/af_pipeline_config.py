@@ -51,7 +51,17 @@ SCRIPT_PREFIX = "af_"
 #: AF_Armature_Proto, OPEN-080-A). FBX_SCALE_UNITS carries the conversion in
 #: FBX unit metadata instead, so bones import at scale (1,1,1). Previously
 #: exported FBX files carry the baked x100 and must be re-exported.
-PIPELINE_VERSION = "0B.1.2"
+#: 0B.1.3: apply_scale_options FBX_SCALE_UNITS -> FBX_SCALE_NONE (D-089).
+#: FBX_SCALE_UNITS keeps vertex/bone numbers in metres and carries the m->cm
+#: factor only in FBX unit metadata; the legacy UE FBX importer (active per
+#: D-084) ignores that metadata unless "Convert Scene Unit" is checked
+#: (default OFF), so the whole vehicle imported at 1/100 size (M5.3 FAIL,
+#: bounds X = 5.60 cm instead of 560). FBX_SCALE_NONE applies the unit
+#: conversion directly to the exported vertex/bone data, so numbers arrive
+#: in cm without relying on importer metadata handling and without baking a
+#: node-level x100 (the OPEN-080-A failure mode). Previously exported FBX
+#: files carry metre-sized data and must be re-exported.
+PIPELINE_VERSION = "0B.1.3"
 
 #: The Blender version this pipeline targets. Checked at runtime by
 #: af_validate.py; a mismatch is reported, never silently accepted.
@@ -498,13 +508,19 @@ MAX_COLLISION_PIECES = 16
 # signature at runtime rather than assuming every key exists in Blender 5.2
 # LTS. Unknown keys are reported in the export report, never silently dropped.
 #
-# D-083: apply_scale_options MUST be FBX_SCALE_UNITS. With a metric 1 unit =
-# 1 m scene, FBX_SCALE_ALL bakes the m->cm x100 unit factor into the armature
-# OBJECT node transform inside the FBX; UE Interchange folds that node into
-# the skeleton root, producing reference-pose Scale (100,100,100) on
-# AF_Armature_Proto (OPEN-080-A evidence). FBX_SCALE_UNITS carries the
-# conversion in the FBX file's unit metadata instead, so bones arrive at
-# scale (1,1,1) while mesh dimensions stay correct.
+# D-089: apply_scale_options MUST be FBX_SCALE_NONE. History of this setting:
+#   * FBX_SCALE_ALL (pre-D-083) baked the m->cm x100 unit factor into the
+#     armature OBJECT node transform; UE folded that into the skeleton root,
+#     producing reference-pose Scale (100,100,100) (OPEN-080-A).
+#   * FBX_SCALE_UNITS (D-083) fixed the root scale but carried the m->cm
+#     conversion only in FBX unit METADATA. The legacy UE FBX importer
+#     (active per D-084) ignores that metadata unless "Convert Scene Unit"
+#     is enabled (default OFF), so every linear dimension imported at 1/100
+#     (M5.3 acceptance FAIL: bounds X = 5.60 cm instead of 560).
+#   * FBX_SCALE_NONE (D-089) applies the unit conversion directly to the
+#     exported vertex/bone DATA: numbers arrive in cm, no node-level x100,
+#     no reliance on importer metadata handling. This is the only option
+#     that satisfies both constraints at once.
 
 FBX_EXPORT_SETTINGS = {
     "use_selection": True,
@@ -512,7 +528,7 @@ FBX_EXPORT_SETTINGS = {
     "object_types": {"ARMATURE", "MESH"},
     "axis_forward": "X",
     "axis_up": "Z",
-    "apply_scale_options": "FBX_SCALE_UNITS",
+    "apply_scale_options": "FBX_SCALE_NONE",
     "global_scale": 1.0,
     "apply_unit_scale": True,
     "use_space_transform": True,
@@ -836,11 +852,12 @@ def self_check():
     if FBX_EXPORT_SETTINGS.get("global_scale") != 1.0:
         problems.append("global_scale must stay 1.0; unit conversion is carried by "
                         "apply_scale_options, not by scene scale")
-    if FBX_EXPORT_SETTINGS.get("apply_scale_options") != "FBX_SCALE_UNITS":
-        problems.append("apply_scale_options must be FBX_SCALE_UNITS (D-083): "
-                        "FBX_SCALE_ALL bakes the m->cm x100 into the armature "
-                        "object node, which Unreal imports as root-bone scale "
-                        "(100,100,100)")
+    if FBX_EXPORT_SETTINGS.get("apply_scale_options") != "FBX_SCALE_NONE":
+        problems.append("apply_scale_options must be FBX_SCALE_NONE (D-089): "
+                        "FBX_SCALE_ALL bakes x100 into the armature node "
+                        "(root-bone scale 100,100,100, OPEN-080-A) and "
+                        "FBX_SCALE_UNITS relies on unit metadata the legacy "
+                        "UE importer ignores (100x shrink, M5.3 FAIL)")
     if FBX_EXPORT_SETTINGS.get("primary_bone_axis") != BONE_PRIMARY_AXIS:
         problems.append("FBX primary_bone_axis disagrees with BONE_PRIMARY_AXIS")
     if FBX_EXPORT_SETTINGS.get("secondary_bone_axis") != BONE_SECONDARY_AXIS:
@@ -877,7 +894,7 @@ if __name__ == "__main__":
     if ok:
         print("")
         print("config self-check: PASS (%d bones, %d owned collections, %d collision pieces)"
-              % (len(BONE_ORDER), len(OWNED_COLLECTIONS), len(COLLISION_PIECES)))
+              % (len(BONE_ORDER), len(OWNED_COLLISIONS := OWNED_COLLECTIONS), len(COLLISION_PIECES)))
         sys.exit(0)
     print("")
     print("config self-check: FAIL (%d problems)" % len(issues))
