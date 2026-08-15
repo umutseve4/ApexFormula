@@ -163,3 +163,43 @@ MILESTONE_PLAN.md durum tablosu tek seferde guncellenir (D-091 erteleme notu).
 
 ### Sonraki adim
 - LFS commit PS blogu + BP_AF_VehiclePawn editor screenshot'i (graph baglama).
+
+---
+
+## D-096 - M5.4d KAPANDI: graph baglama hibrit GUI ile tamamlandi
+
+**Tarih:** 2026-08-15
+**Durum:** KAPALI
+**Ilgili:** D-095 (asset katmani), D-092 (M5.4 plani), D-087 (hibrit model)
+
+### Yontem
+Python'da BP graph dugumu API'si olmadigi icin (D-095 tespiti) D-087 hibrit
+modeli uygulandi: mikro-adim GUI rehberligi, her adim editor screenshot'i ile
+dogrulandi (tahmin edilen menu adi yok; SCRIPT-FIRST istisna kosullari saglandi).
+
+### Yapilan baglama (BP_AF_VehiclePawn EventGraph)
+- BeginPlay -> GetController -> CastToPlayerController ->
+  EnhancedInputLocalPlayerSubsystem -> AddMappingContext(IMC_AF_Drive, prio 0)
+- IA_Throttle (Triggered) -> SetThrottleInput  (Action Value -> Throttle)
+- IA_Brake    (Triggered) -> SetBrakeInput     (Action Value -> Brake)
+- IA_Steer    (Triggered) -> SetSteeringInput  (Action Value -> Steering)
+- Hepsinde Target = VehicleMovementComponent (ChaosWheeledVehicleMovementComponent)
+- Compile + Save temiz (tab asterisk yok; screenshot kaniti).
+
+### Kanit zinciri
+- 5 editor screenshot'i (throttle/brake/steer zincirleri ayri ayri dogrulandi).
+- LFS commit `ff8027d` : BP_AF_VehiclePawn.uasset (84 KB LFS upload).
+- Pointer dogrulama: 5/5 PASS (BP + IA_Throttle/Brake/Steer + IMC_AF_Drive,
+  `git show HEAD:<path>` ile git-lfs pointer icerigi dogrulandi).
+- Calisma agaci temiz (uasset kalinti yok; OPEN-076-A PNG'lerine dokunulmadi).
+
+### Yan ders (surec)
+- Ilk commit denemesi bos gecti: disk klasoru `vehicle/` (kucuk) vs repo yolu
+  `Vehicle/` (buyuk). `git add` disk-casing yolla eslesmedi; `git show HEAD:`
+  kucuk harfli yolda 5 sahte POINTER FAIL uretti. Cozum: pathler repo-casing
+  ile sabit verildi. Kural: pointer/tree kontrollerinde daima `git ls-files`
+  casing'i kullanilir (git indeksi harfe duyarli, Windows FS degil).
+
+### Sonraki adim
+- M5.4e: `m54e_make_map.py` - GameMode (DefaultPawn=BP_AF_VehiclePawn) +
+  Map_AF_DriveTest (duz zemin + PlayerStart + GameMode override) UE Python ile.
