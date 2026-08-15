@@ -131,6 +131,22 @@ The commit accompanying this closure ships, via Git LFS where patterns match:
 
 Pointer verification (`git show :<path>` first line = `version https://git-lfs...`) is mandatory before push, per OPEN-076-A lesson.
 
+### Addendum — closure commit executed and verified (bf49a1b)
+
+**Date:** 2026-08-20 (project day)
+
+Disposition executed as commit **`bf49a1b`** ("feat(assets): D-085 closure - verified import root scale 1,1,1; replace 8 Vehicle uassets + official FBX via LFS (OPEN-080-A closed)"; 15 files changed, 44(+)/47(−) — small diffstat is expected: LFS-tracked binaries appear as 3-line pointer file diffs). Push to `origin/main` verified (`git log` shows `origin/main` at `bf49a1b`; subsequent push reports "Everything up-to-date").
+
+Post-push verification (developer machine):
+
+- `git show :BlenderPipeline/exports/AF_Vehicle_Proto.fbx` first line = `version https://git-lfs.github.com/spec/v1` — **LFS pointer OK**.
+- `git show :Unreal/Content/Vehicle/AF_Vehicle_Proto.uasset` first line = `version https://git-lfs.github.com/spec/v1` — **LFS pointer OK**.
+- `git status --short` clean.
+
+**Deviation from disposition item 3:** `git ls-files Unreal/Content/Vehicle/` lists **7** uassets, not 8 — `AF_M_Cockpit.uasset` was recorded as a deletion. The legacy FBX importer created only 4 material assets (`AF_M_Bodywork`, `AF_M_Detail`, `AF_M_Rim`, `AF_M_Tyre`); the Cockpit material slot was not materialized as a separate uasset on re-import. This is **accepted**: placeholder materials are throwaway per D-011 (final shading authored in Unreal), and the FBX itself still carries all 5 material slots. If the missing slot surfaces as a problem in M5.2+, re-import or author the material in-editor. Tracked as watch item, no new OPEN id.
+
+Final inventory at `bf49a1b`: `AF_Vehicle_Proto`, `AF_Vehicle_Proto_Skeleton`, `AF_Vehicle_Proto_PhysicsAsset`, `AF_M_Bodywork`, `AF_M_Detail`, `AF_M_Rim`, `AF_M_Tyre` (7 uassets) + official FBX + 6 report files.
+
 ### Next
 
 M5.2 resumes: Physics Asset configuration on the now-correct skeleton. Numeric acceptance: wheelbase 360±1 cm, overall length 560±1 cm, +X forward, +Z up, root at origin.
@@ -143,5 +159,5 @@ M5.2 resumes: Physics Asset configuration on the now-correct skeleton. Numeric a
 |---|---|---|
 | OPEN-076-A | 4 old PNG blobs committed as normal (non-LFS) objects — rewrite history or accept? | Carried (accepted for now, revisit before repo grows) |
 | OPEN-079-B | `DefaultEngine.ini` AndroidFileServer churn — pin or ignore? | Carried |
-| OPEN-080-A | Root bone scale ×100 | **CLOSED (D-085)** — legacy FBX importer fallback (D-084, `92435a3`) verified: root Scale=(1,1,1) screenshot evidence |
+| OPEN-080-A | Root bone scale ×100 | **CLOSED (D-085)** — legacy FBX importer fallback (D-084, `92435a3`) verified: root Scale=(1,1,1) screenshot evidence; closure commit `bf49a1b` pushed & pointer-verified |
 | OPEN-084-A | Interchange importer folds unit conversion into skeleton root — re-evaluate returning to Interchange in a future UE version | Carried |
