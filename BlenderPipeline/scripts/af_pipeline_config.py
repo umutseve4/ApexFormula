@@ -894,7 +894,7 @@ if __name__ == "__main__":
     if ok:
         print("")
         print("config self-check: PASS (%d bones, %d owned collections, %d collision pieces)"
-              % (len(BONE_ORDER), len(OWNED_COLLISIONS := OWNED_COLLECTIONS), len(COLLISION_PIECES)))
+              % (len(BONE_ORDER), len(OWNED_COLLECTIONS), len(COLLISION_PIECES)))
         sys.exit(0)
     print("")
     print("config self-check: FAIL (%d problems)" % len(issues))
