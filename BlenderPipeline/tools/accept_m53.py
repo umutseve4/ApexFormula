@@ -3,7 +3,9 @@
 #   A) Dingil mesafesi (FL-RL ve FR-RR, X ekseni)  : 360 +- 1 cm
 #   B) Arac boyu (mesh bounds X)                    : 560 +- 5 cm
 #   C) +X ileri: on tekerlek X > arka tekerlek X
-#   D) +Z yukari: sasi merkezi Z > tekerlek merkezi Z
+#   D) Sasi kemigi Z = 28 +- 1 cm (chassis_top/2 = 0.28 m; D-089 duzeltmesi:
+#      sasi kemigi TASARIM GEREGI tekerlek merkezlerinin (36/38 cm) altindadir,
+#      eski "sasi Z > tekerlek Z" kontrolu tasarima aykiriydi)
 import unreal
 
 MESH_PATH = '/Game/Vehicle/AF_Vehicle_Proto.AF_Vehicle_Proto'
@@ -65,9 +67,13 @@ else:
         check('C-ILERI+X', fwd_ok, 'on X (%.1f/%.1f) > arka X (%.1f/%.1f)' % (
             pos['AF_Wheel_FL'].x, pos['AF_Wheel_FR'].x, pos['AF_Wheel_RL'].x, pos['AF_Wheel_RR'].x))
 
-        # --- D: +Z yukari ---
-        wheel_z = sum(pos[w].z for w in WHEELS) / 4.0
-        check('D-YUKARI+Z', pos[CHASSIS].z > wheel_z, 'sasi Z=%.2f > tekerlek ort. Z=%.2f' % (pos[CHASSIS].z, wheel_z))
+        # --- D: sasi kemigi yuksekligi (D-089) ---
+        # Hedef: chassis_origin_m() = chassis_top/2 = 0.28 m = 28 cm.
+        # Tekerlek merkezleri 36/38 cm'dedir; sasi kemigi bunlarin ALTINDA olmak
+        # zorundadir. Eski kontrol (sasi Z > tekerlek ort. Z) tasarim geregi
+        # hicbir dogru veride gecemezdi.
+        check('D-SASI-Z', abs(pos[CHASSIS].z - 28.0) <= 1.0,
+              'sasi Z = %.2f cm (hedef 28 +- 1; D-089)' % pos[CHASSIS].z)
 
         # ekstra bilgi (kabul disi): iz genisligi
         track_f = abs(pos['AF_Wheel_FL'].y - pos['AF_Wheel_FR'].y)
