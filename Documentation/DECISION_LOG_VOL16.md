@@ -217,3 +217,56 @@ on kosulu eksikti: sahne verisi zaten cm olmali ki donusturulecek bir sey kalmas
 Blender tarafi denemesi biter; UE tarafina gecilir: import script'inde
 `ImportUniformScale` / importer birim ayarlariyla duzeltme (yontem degisikligi,
 ayni yaklasimin 3. denemesi degil).
+
+---
+
+## D-091 - M5.3 KAPANDI: v0B.1.4 dogrulandi, sayisal kabul 5/5 PASS
+
+**Tarih:** 2026-08-15
+**Durum:** KAPALI
+**Ilgili:** D-088 (protokol), D-089 (SCALE_NONE + D-kriteri revizyonu), D-090 (cm bake)
+
+### Sonuc
+
+M5.3 sayisal kabul kriterleri, v0B.1.4 (config hash 933a11f6292ec2b5) ile
+uretilen FBX'in (217292 B) yeniden import'u sonrasi **5/5 PASS** ile karsilandi.
+
+### Kosum kaniti (Umut'un makinesi, UE 5.8.1)
+
+1. **Smoke (Blender headless):** 6/6 stage PASS, failed 0. FBX 217292 B
+   (v0B.1.3'te 219756 B idi; cm bake sonrasi fark normal).
+2. **reimport_vehicle.py:**
+   - BOUNDS : PASS - X=560.00 Y=194.00 Z=94.00 cm
+   - ROOT   : PASS - AF_Root scale=(1.000, 1.000, 1.000)
+   - PHYSA  : PASS - 5 body (sasi Box + 4 teker Sphere) reimport'u sagladi
+3. **accept_m53.py (5/5):**
+   - B-BOY        : PASS - bounds X = 560.00 cm (hedef 560 +- 5)
+   - A-DINGIL-SOL : PASS - FL-RL X farki = 360.00 cm (hedef 360 +- 1)
+   - A-DINGIL-SAG : PASS - FR-RR X farki = 360.00 cm (hedef 360 +- 1)
+   - C-ILERI+X    : PASS - on X (180/180) > arka X (-180/-180)
+   - D-SASI-Z     : PASS - sasi Z = 28.00 cm (hedef 28 +- 1; D-089 revizyonu)
+   - Bilgi: iz genisligi on=160.00 arka=154.00 cm; teker Z on=36 arka=38 cm.
+
+### Kapanan kayitlar
+
+- **D-088:** protokoldeki "5 kontrol de PASS -> M5.3 KAPANDI" kosulu saglandi. KAPALI.
+- **D-089:** SCALE_NONE + cm bake kombinasyonu dogru cozum olarak dogrulandi;
+  scale-secenek matrisindeki v0B.1.4 satiri "dogrulandi (5/5)" statusune gecti. KAPALI.
+- **D-090:** "kosum bekliyor" notu kalkti; export-time cm bake empirik olarak
+  dogrulandi (root scale 1,1,1). KAPALI.
+- **OPEN-080-A olcek sagasi:** x0.01 (D-085) -> x100 (D-089) -> x1 (D-090/091).
+  Tamamen kapandi; bir daha acilmasi icin yeni kanit gerekir.
+
+### Ertelenen is
+
+- Documentation/MILESTONE_PLAN.md durum tablosu ("3-12 Not started" satiri)
+  guncellenmedi. Gerekce: D-089 transfer-butunlugu politikasi (push edilmis
+  icerik bellekten yeniden yazilmaz; blob-sha esitligi sart) ve M5'in butunuyle
+  henuz acik olmasi. Tablo, M5 tamamen kapandiginda tek seferde guncellenecek.
+
+### Sonraki adim
+
+- **M5.4 - Chaos Vehicle entegrasyonu.** Plan ayri kayit olarak acilacak (D-092):
+  ChaosVehiclesPlugin, WheeledVehiclePawn BP (AF_Vehicle_Proto mesh + PhysAsset),
+  AF_Wheel_FL/FR/RL/RR teker sinif eslemesi, tork egrisi, Enhanced Input,
+  GameMode + test haritasi, surus testi kabulu. Script-first (UE Python) esas.
