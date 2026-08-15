@@ -128,3 +128,38 @@ MILESTONE_PLAN.md durum tablosu tek seferde guncellenir (D-091 erteleme notu).
 - Pawn + curve .uasset LFS commit'i (OPEN-081-A pointer dogrulamasi).
 - M5.4d: `m54d_make_input.py` (3 IA + IMC_AF_Drive); pawn input graph baglama
   script ile imkansizsa hibrit (screenshot dogrulamali GUI, SCRIPT-FIRST kurali).
+
+---
+
+## D-095 - M5.4d ASSET KATMANI KAPANDI: DataAssetFactory yolu (v2)
+
+**Tarih:** 2026-08-15
+**Durum:** KAPALI (asset katmani; graph baglama ayri adim, ACIK)
+**Ilgili:** D-092 (M5.4 plani), D-094 (API-gap defteri), D-087 (2-FAIL kurali)
+
+### Iterasyon zinciri (kanit: LogPython ciktilar)
+1. **v1 `m54d_make_input.py` (4dfc3a0):** TAM FAIL (1. FAIL).
+   `unreal.InputActionFactory` ve `unreal.InputMappingContextFactory`
+   UE 5.8.1 Python yuzeyinde YOK (AttributeError + fallback mesajlari kanit).
+2. **v2 `m54d_make_input_v2.py` (a837896):** TAM PASS. Yontem degisikligi:
+   InputAction ve InputMappingContext siniflari UDataAsset turevidir ->
+   `DataAssetFactory` + `data_asset_class` genel yolu ile uretildi.
+   - IA_Throttle / IA_Brake / IA_Steer: value_type=AXIS1D (readback dogrulamali)
+   - IMC_AF_Drive: 4 esleme (W=Throttle, S=Brake, D=Steer, A=Steer+Negate)
+   - SAVE : PASS - kaydedilen=[True, True, True, True]
+
+### UE 5.8.1 Python API-gap defteri (ek satirlar)
+| Kapali yuzey | Kanit | Calisan alternatif |
+|---|---|---|
+| InputActionFactory | D-095 v1 | DataAssetFactory + data_asset_class=InputAction |
+| InputMappingContextFactory | D-095 v1 | DataAssetFactory + data_asset_class=InputMappingContext |
+
+### Kalan is (M5.4d kapanisi icin)
+- 4 .uasset LFS commit'i (IA_Throttle, IA_Brake, IA_Steer, IMC_AF_Drive).
+- Pawn event graph baglama: Python'da BP graph dugumu API'si yok ->
+  D-087 hibrit GUI (screenshot dogrulamali minimal tik listesi):
+  BeginPlay'de IMC_AF_Drive ekleme + IA eventlerinden
+  SetThrottleInput/SetBrakeInput/SetSteeringInput cagrilari.
+
+### Sonraki adim
+- LFS commit PS blogu + BP_AF_VehiclePawn editor screenshot'i (graph baglama).
