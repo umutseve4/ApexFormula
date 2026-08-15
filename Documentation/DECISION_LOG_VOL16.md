@@ -167,3 +167,53 @@ icin +Z yukari kanitini da icerir). Commit: `3146f70`.
 4. Reimport sonrasi ek dogrulama: iskelet root scale (1,1,1) VE PhysAsset'te
    5 body'nin korundugu (reimport body'leri sifirlayabilir; gerekirse
    `fix_physasset.py` geometri kosumu tekrarlanir — body'ler mevcutsa salt-script yeter).
+
+---
+
+## D-090 - M5.3 IKINCI KOSUM: SCALE_NONE ile boy DUZELDI, root scale=100 kaldi -> export-time cm bake (v0B.1.4)
+
+**Tarih:** 2026-08-15
+**Durum:** DUZELTME PUSH EDILDI (yeniden export + reimport + kabul kosumu bekliyor)
+**Ilgili:** D-089 (SCALE_NONE karari), D-088 (kabul protokolu), OPEN-080-A (root scale=100 ilk vaka)
+
+### Bulgu (kanit: 2026-08-15 reimport_vehicle.py kosumu, config v0B.1.3)
+- BOUNDS : PASS - X=560.00 Y=194.00 Z=94.00 cm (tam hedef; 1/100 sorunu bitti)
+- PHYSA  : PASS - 5 body reimport'u sag atlatti (fix_physasset tekrar gerekmedi)
+- ROOT   : FAIL - AF_Root scale=(100,100,100) (hedef 1,1,1)
+
+### Kok neden
+Sahne METRE cinsinden kurulu (scale_length=1.0). SCALE_NONE'da exporter veriyi
+degistirmez ama m->cm x100 birim donusumunu yine de dosyaya node donusumu olarak
+yazmak zorunda kalir; UE legacy importeri bu x100'u root kemigin referans-poz
+scale'ine katlar. Yani D-089 matrisindeki "SCALE_NONE + scene dogru" satirinin
+on kosulu eksikti: sahne verisi zaten cm olmali ki donusturulecek bir sey kalmasin.
+
+### Duzeltme: export aninda cm bake (v0B.1.4, iki commit)
+- `af_pipeline_config.py` -> `PIPELINE_VERSION=0B.1.4` (commit `7a86eb0`, blob dogrulandi).
+- `af_export.py` -> `bake_cm()` / `unbake_cm()` + `export_all()` icinde try/finally
+  (commit `d11a03b`, blob `81abb645...` lokal ile birebir).
+- Mekanizma: export'tan hemen once tum export seti icin konumlar + mesh/armature
+  DATA'si x100 olceklenir (obj.scale (1,1,1) kalir), `scale_length` 0.01'e cekilir;
+  efektif birim carpani 100 x 0.01 = 1.0 -> dosyada tasinacak donusum kalmaz.
+  Export bitince finally blogu sahneyi metreye geri alir ve `scale_length`'i
+  config sabitine esitler (float kaymasina karsi).
+- 2.-FAIL kurali geregi 4. bir `apply_scale_options` denemesi YAPILMADI;
+  yontem degistirildi (exporter secenegi yerine veri bake'i).
+
+### Olcek vakalari ozet matrisi (kapanis referansi)
+| Deneme | Sonuc |
+|---|---|
+| FBX_SCALE_ALL (OPEN-080-A) | boy dogru, root=100 (kirli) |
+| FBX_SCALE_UNITS (D-089) | 1/100 kucuk |
+| FBX_SCALE_NONE (bu kosum) | boy dogru, root=100 |
+| SCALE_NONE + cm bake (v0B.1.4) | beklenen: boy dogru + root (1,1,1) - kosum bekliyor |
+
+### Kabul
+1. Headless smoke: 7 asama PASS, `pipeline version 0B.1.4`, config hash `933a11f6292ec2b5`.
+2. `reimport_vehicle.py`: BOUNDS PASS + ROOT PASS (1,1,1) + PHYSA PASS (5 body).
+3. `accept_m53.py`: A/B/C/D hepsi PASS -> M5.3 KAPANDI; D-088/089/090 kapanir.
+
+### Yedek plan (bu da FAIL olursa)
+Blender tarafi denemesi biter; UE tarafina gecilir: import script'inde
+`ImportUniformScale` / importer birim ayarlariyla duzeltme (yontem degisikligi,
+ayni yaklasimin 3. denemesi degil).
