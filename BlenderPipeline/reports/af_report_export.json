@@ -5,7 +5,7 @@
     2,
     0
   ],
-  "config_hash": "6486736f83b6fb7f9c9cea6cf73c0454aab815339b285c4e796a80bbe3c27958",
+  "config_hash": "0c0be9d960b7321c223e4fbd3bbeb6a59b6cf7bbf2793e3967022eba2a1f4449",
   "expected_bone_list": [
     "AF_Root",
     "AF_Chassis",
@@ -93,13 +93,13 @@
     "settings_unfiltered_fallback": false,
     "size_bytes": 218236
   },
-  "generated_utc": "2026-08-14T18:53:50Z",
+  "generated_utc": "2026-08-14T23:46:53Z",
   "glb": {
     "format": "GLB",
     "reason": "GLB_EXPORT_ENABLED is False; GLB is preview-only and never the authoritative export (decision D-016)",
     "skipped": true
   },
-  "pipeline_version": "0B.1.1",
+  "pipeline_version": "0B.1.2",
   "project": "UludagFormula",
   "script": "af_export.py",
   "selected_count": 18,

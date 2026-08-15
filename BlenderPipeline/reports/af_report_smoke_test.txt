@@ -1,21 +1,21 @@
 UludagFormula pipeline smoke test
 ======================================================================
-pipeline version : 0B.1.1
-config hash      : 6486736f83b6fb7f9c9cea6cf73c0454aab815339b285c4e796a80bbe3c27958
-generated (UTC)  : 2026-08-14T18:53:50Z
+pipeline version : 0B.1.2
+config hash      : 0c0be9d960b7321c223e4fbd3bbeb6a59b6cf7bbf2793e3967022eba2a1f4449
+generated (UTC)  : 2026-08-14T23:46:53Z
 Blender runtime  : [5, 2, 0]
 target Blender   : [5, 2]
 overall          : PASS
 stages run       : 7 of 7
 
-1. scene setup               PASS    0.02s
+1. scene setup               PASS    0.01s
     collections_created      ['AF_Source', 'AF_Generated', 'AF_Rig', 'AF_Export', 'AF_Body', 'AF_Wheels', 'AF_Suspension', 'AF_Collision', 'AF_LOD']
     objects_cleared          {'AF_Generated': 0, 'AF_Rig': 0, 'AF_Export': 0}
     orphans_purged           {'meshes': 0, 'armatures': 0}
     scale_length             1.0
     unit_system              METRIC
 
-2. generate geometry         PASS    0.07s
+2. generate geometry         PASS    0.18s
     body                     AF_Body_Proto
     body_polygons            132
     collision                5
@@ -23,7 +23,7 @@ stages run       : 7 of 7
     suspension               4
     wheels                   4
 
-3. rig                       PASS    0.07s
+3. rig                       PASS    0.10s
     armature                 AF_Armature_Proto
     bone_count               11
     bone_order_matches_config True
@@ -44,7 +44,7 @@ stages run       : 7 of 7
     skipped                  1
     total                    21
 
-6. export FBX                PASS    2.27s
+6. export FBX                PASS    0.53s
     bones_exported           11
     dropped_settings         []
     fbx_bytes                218236

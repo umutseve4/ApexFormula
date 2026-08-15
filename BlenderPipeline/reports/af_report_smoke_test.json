@@ -4,10 +4,10 @@
     2,
     0
   ],
-  "config_hash": "6486736f83b6fb7f9c9cea6cf73c0454aab815339b285c4e796a80bbe3c27958",
-  "generated_utc": "2026-08-14T18:53:50Z",
+  "config_hash": "0c0be9d960b7321c223e4fbd3bbeb6a59b6cf7bbf2793e3967022eba2a1f4449",
+  "generated_utc": "2026-08-14T23:46:53Z",
   "overall": "PASS",
-  "pipeline_version": "0B.1.1",
+  "pipeline_version": "0B.1.2",
   "project": "UludagFormula",
   "script": "af_smoke_test.py",
   "stages": [
@@ -37,7 +37,7 @@
         "unit_system": "METRIC"
       },
       "error": null,
-      "seconds": 0.018,
+      "seconds": 0.014,
       "stage": "1. scene setup",
       "status": "PASS"
     },
@@ -51,7 +51,7 @@
         "wheels": 4
       },
       "error": null,
-      "seconds": 0.065,
+      "seconds": 0.182,
       "stage": "2. generate geometry",
       "status": "PASS"
     },
@@ -64,7 +64,7 @@
         "expected_bone_count": 11
       },
       "error": null,
-      "seconds": 0.074,
+      "seconds": 0.098,
       "stage": "3. rig",
       "status": "PASS"
     },
@@ -75,7 +75,7 @@
         "missing_objects": []
       },
       "error": null,
-      "seconds": 0.03,
+      "seconds": 0.031,
       "stage": "4. materials",
       "status": "PASS"
     },
@@ -90,7 +90,7 @@
         "total": 21
       },
       "error": null,
-      "seconds": 0.038,
+      "seconds": 0.045,
       "stage": "5. validate (pre-export)",
       "status": "PASS"
     },
@@ -102,7 +102,7 @@
         "fbx_path": "BlenderPipeline\\exports\\AF_Vehicle_Proto.fbx"
       },
       "error": null,
-      "seconds": 2.269,
+      "seconds": 0.532,
       "stage": "6. export FBX",
       "status": "PASS"
     },
@@ -117,7 +117,7 @@
         "total": 21
       },
       "error": null,
-      "seconds": 0.033,
+      "seconds": 0.025,
       "stage": "7. validate (post-export)",
       "status": "PASS"
     }
