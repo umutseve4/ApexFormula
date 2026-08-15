@@ -174,14 +174,85 @@ def export_glb():
     }
 
 
+def _bake_targets():
+    """Objects plus their UNIQUE mesh/armature datablocks for the cm bake.
+
+    Datablocks are deduplicated by name so shared meshes are transformed once.
+    """
+    objects = []
+    meshes = {}
+    armatures = {}
+    for name in export_object_names():
+        obj = bpy.data.objects.get(name)
+        if obj is None:
+            continue
+        objects.append(obj)
+        if obj.type == "MESH":
+            meshes[obj.data.name] = obj.data
+        elif obj.type == "ARMATURE":
+            armatures[obj.data.name] = obj.data
+    return objects, list(meshes.values()), list(armatures.values())
+
+
+def _apply_scale_factor(factor):
+    """Scale object locations and mesh/armature data by ``factor``.
+
+    Object-level ``scale`` stays (1,1,1) on purpose: baking into DATA keeps
+    node transforms clean, which is the whole point (root must import at
+    scale (1,1,1), see D-090). ``matrix_parent_inverse`` translation must be
+    scaled too, or parented objects (wheels under the armature) would drift.
+    """
+    import mathutils
+
+    matrix = mathutils.Matrix.Scale(factor, 4)
+    objects, meshes, armatures = _bake_targets()
+
+    for obj in objects:
+        obj.location = [c * factor for c in obj.location]
+        mpi = obj.matrix_parent_inverse.copy()
+        mpi.translation = mpi.translation * factor
+        obj.matrix_parent_inverse = mpi
+
+    for mesh in meshes:
+        mesh.transform(matrix)
+
+    for arm in armatures:
+        arm.transform(matrix)
+
+    scene = bpy.context.scene
+    scene.unit_settings.scale_length = scene.unit_settings.scale_length / factor
+    bpy.context.view_layer.update()
+
+
+def bake_cm():
+    """Bake the m->cm factor into scene data just before export (D-090).
+
+    After this, vertex/bone numbers are in cm and scale_length is 0.01, so the
+    exporter's effective unit factor is 100 * 0.01 = 1.0: no unit conversion is
+    left for the FBX file to carry, and no x100 can leak into the root bone.
+    """
+    _apply_scale_factor(cfg.CM_PER_UNIT)
+
+
+def unbake_cm():
+    """Exact inverse of :func:`bake_cm`; restores the metre-based scene."""
+    _apply_scale_factor(1.0 / cfg.CM_PER_UNIT)
+    # Guard against float drift on the one value other scripts assert on.
+    bpy.context.scene.unit_settings.scale_length = cfg.BLENDER_SCALE_LENGTH
+
+
 def export_all():
     selected, missing = select_for_export()
     if missing:
         raise RuntimeError(
             "cannot export, missing object(s): %s" % ", ".join(missing))
 
-    fbx_info = export_fbx()
-    glb_info = export_glb()
+    bake_cm()
+    try:
+        fbx_info = export_fbx()
+        glb_info = export_glb()
+    finally:
+        unbake_cm()
 
     return {
         "project": cfg.PROJECT_NAME,
