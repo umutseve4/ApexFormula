@@ -63,3 +63,47 @@ denenmez; 2. FAIL'de yontem degistirilir.
 ### Sonraki adim
 - M5.3: sayisal kabul (dingil mesafesi 360 +-1, boy 560 +-1, +X ileri, +Z yukari).
 - LFS commit: `Unreal/Content/Vehicle/AF_Vehicle_Proto_PhysicsAsset.uasset` (bu kayitla eszamanli).
+
+### Zeyl (2026-08-15 ~02:45 UTC): push dogrulandi
+- Commit `4e316eb` push edildi (`feat(physics): D-087 - rebuild PhysAsset to 5 bodies ...`).
+- LFS upload: 1 obje, 11 KB; pointer dogrulandi
+  (`version https://git-lfs.github.com/spec/v1` — dosya icerigi pointer, binary degil).
+- M5.2 boylece %100 kapali: uretildi + dogrulandi + versiyonlandi.
+
+---
+
+## D-088 - M5.3 protokolu: sayisal kabul (paste-only)
+
+**Tarih:** 2026-08-15
+**Durum:** ACIK (script repoda hazir, kosum bekliyor)
+**Ilgili:** D-087 (M5.2 kapanisi), D-078 (olcum protokolu mirasi)
+
+### Karar
+M5.3 kabulu TEK UE Python scripti ile yapilir; GUI adimi SIFIR.
+Script: `BlenderPipeline/tools/accept_m53.py` (commit `0d41efe` ile repoda).
+
+Kabul kriterleri (hepsi ayni kosumda PASS olmali):
+
+| # | Kontrol | Hedef | Tolerans |
+|---|---|---|---|
+| A | Dingil mesafesi (FL-RL ve FR-RR, X ekseni) | 360 cm | +-1 cm |
+| B | Arac boyu (imported bounds X) | 560 cm | +-5 cm (bounds kanat/govde tasmasi icerebilir) |
+| C | Yon: +X ileri | on tekerlek X > arka tekerlek X | bool |
+| D | Yon: +Z yukari | sasi merkez Z > tekerlek ortalama Z | bool |
+
+### Yontem
+- Mesh `/Game/Vehicle/AF_Vehicle_Proto` yuklenir; gecici `SkeletalMeshActor`
+  spawn edilip kemik dunya konumlari `get_socket_location` ile okunur
+  (bind-pose sorgusu icin en garantili Python yolu; aktor sonda destroy edilir).
+- Bounds `get_imported_bounds()` ile okunur.
+- Cikti `===== OTOMATIK KONTROL =====` altinda kontrol basina PASS/FAIL + tek satir SONUC.
+
+### Kosum (kullanici tek satir yapistirir, once git pull)
+```
+py "C:/Users/umuts/Documents/UludagFormula/BlenderPipeline/tools/accept_m53.py"
+```
+
+### Kabul
+- 5 kontrol de PASS -> M5.3 KAPANDI, D-088 guncellenir, M5.4 (Chaos Vehicle kurulumu) acilir.
+- Herhangi FAIL -> sapma D-088 altina islenir; duzeltme Blender kaynak tarafinda yapilir
+  (UE'de elle tasima YASAK — pipeline butunlugu).
