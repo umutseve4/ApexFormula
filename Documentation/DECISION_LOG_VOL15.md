@@ -153,6 +153,51 @@ M5.2 resumes: Physics Asset configuration on the now-correct skeleton. Numeric a
 
 ---
 
+## D-086 — M5.2 Physics Asset baseline assessment: auto-generation produced 1 chassis capsule only; target layout = chassis Box + 4 wheel Spheres
+
+**Date:** 2026-08-20 (project day)
+**Status:** Plan issued — **corrections pending on developer machine; verification pending**
+**Affects:** `Unreal/Content/Vehicle/AF_Vehicle_Proto_PhysicsAsset.uasset`
+
+### Baseline evidence (Physics Asset Editor screenshot, 2026-08-15 UTC)
+
+- Editor header: **1 Bodies (1 Considered For Bounds, 100%), 1 Primitive: (1 Capsule), 0 Constraints, 0 Collision Interactions.**
+- Skeleton Tree lists only `AF_Chassis` (default filter shows bodies only) — the sole body, a single Capsule, `Bone Name = AF_Chassis`, Physics Type Default, Collision Enabled, Consider for Bounds on.
+- Tools → Body Creation panel state at import time: **Min Bone Size = 20.0**, Primitive Type = Capsule, Vertex Weighting = Dominant Weight.
+- Viewport: the capsule covers only the mid-section of the ~560 cm hull; wheels and suspension have **no collision bodies at all**.
+
+### Root cause of the sparse auto-generation
+
+Legacy-importer default body creation uses **Min Bone Size = 20** (bones whose weighted-vertex extent falls under 20 uu are skipped). Wheel meshes (r ≈ 36–38 cm but only 50 verts each) and suspension stubs (8 verts) fell below the weighting threshold heuristics, so only `AF_Chassis` (176 verts across the hull) received a body. This is expected importer behaviour, not a pipeline defect — the FBX and skeleton are correct (D-085).
+
+### Decision — target body layout (5 bodies, 0 constraints for now)
+
+| Bone | Body | Rationale |
+|---|---|---|
+| `AF_Chassis` | **Box** (replace Capsule), covering ~560×194×94 cm hull envelope | Flat, box-like race car hull; a capsule either bulges past the width or under-covers the nose/tail |
+| `AF_Wheel_FL/FR/RL/RR` | **Sphere**, r ≈ 36 cm front / 38 cm rear, centered on bone head | Chaos vehicle wheels expect simple round collision; sphere is cheapest and rotation-invariant |
+| `AF_Root`, `AF_Steering` | **none** | Structural/animation bones; a body here double-counts mass and can fold into the chassis |
+| `AF_Suspension_*` (×4) | **none** — deliberate revision of the earlier M5.2 sketch | Chaos wheeled-vehicle suspension is a raycast/constraint simulation owned by the Vehicle Movement Component; collision bodies on suspension bones only create self-collision and mass noise |
+
+Constraints: none needed at this stage. The auto-generated 0-constraint state is acceptable; wheel articulation will be owned by the Chaos vehicle setup (M6+), not by PhysAsset constraints.
+
+### Correction protocol (developer machine, Physics Asset Editor)
+
+1. Skeleton Tree gear icon → enable **Show All Bones** (verify all 12 nodes / 11 contract bones are visible).
+2. Select the existing `AF_Chassis` body → Tools panel: Primitive Type = **Box** → **Re-generate Bodies** (with the body selected, regeneration applies to the selection only).
+3. Ctrl-select the 4 `AF_Wheel_*` bones → Tools: Primitive Type = **Sphere**, Min Bone Size = **1.0** → **Re-generate Bodies**.
+4. **Caution:** never press Re-generate Bodies with nothing selected — it regenerates every body from current Tools settings.
+5. Save; screenshot the editor showing **5 Bodies / 5 Primitives (1 Box + 4 Spheres)** header plus viewport = evidence.
+
+### Numeric acceptance (M5.2)
+
+- Header reads exactly **5 Bodies, 5 Primitives, 0 Constraints**.
+- Wheel sphere centers at bone heads: FL/FR (±180, ±80, 36) cm, RL/RR (∓180, ±77, 38) cm — consistent with wheelbase 360±1 cm.
+- Chassis box length within 560±1 cm, width ≤ 200 cm, height ≤ 95 cm.
+- No body on `AF_Root`, `AF_Steering`, or any `AF_Suspension_*`.
+
+---
+
 ## Open questions
 
 | ID | Question | Status |
