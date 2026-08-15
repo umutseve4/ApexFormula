@@ -7,7 +7,7 @@ Continues `DECISION_LOG_VOL14.md`, frozen after D-082 at ~17.2 KB (D-057 volume 
 ## D-083 — OPEN-080-A root cause: FBX_SCALE_ALL bakes ×100 into skeleton root; fix = FBX_SCALE_UNITS (v0B.1.2)
 
 **Date:** 2026-08-19 (project day)
-**Status:** Fix committed (`c12dc12`) — **verification PENDING on developer machine**
+**Status:** Fix committed (`c12cd12` → see D-084) — **verification FAILED; superseded by D-084**
 **Affects:** `BlenderPipeline/scripts/af_pipeline_config.py` §0/§9/§12, all previously exported FBX + imported uassets
 
 ### Context
@@ -53,10 +53,58 @@ M5.2 opened with the mandatory OPEN-080-A scale check (D-080/D-082). Developer s
 
 ---
 
+## D-084 — D-083 verification FAIL post-mortem: the config change was a no-op; real root cause is UE's Interchange importer; fix = legacy FBX importer fallback
+
+**Date:** 2026-08-19 (project day)
+**Status:** Fix committed (`92435a3`, `Unreal/Config/DefaultEngine.ini`) — **UE re-import verification PENDING on developer machine**
+**Affects:** `Unreal/Config/DefaultEngine.ini`; supersedes D-083's mechanism claim (its §9/§0/§12 config changes are RETAINED — see below)
+
+### Verification result of D-083 (v0B.1.2)
+
+Developer executed the D-083 protocol flawlessly. Evidence:
+
+1. Smoke test 7/7 PASS under `0B.1.2`, config hash `0c0be9d960b7321c223e4fbd3bbeb6a59b6cf7bbf2793e3967022eba2a1f4449`, fresh FBX 218,236 B.
+2. Binary header probe of the exported FBX: `UnitScaleFactor: 100`, `OriginalUnitScaleFactor: 100` — identical to the v0B.1.1 file.
+3. UE 5.8 re-import screenshot: `AF_Armature_Proto` root **still Scale = (100,100,100)** in Bone and Reference transforms. **FAIL.**
+
+### Post-mortem: why D-083 changed nothing
+
+Reading Blender's `export_fbx_bin.py` scale-mode arithmetic: with our settings (`global_scale=1.0`, `apply_unit_scale=True`, metric scene at 1.0), **`FBX_SCALE_ALL` and `FBX_SCALE_UNITS` produce byte-identical output** — both write `UnitScaleFactor=100` and leave node transforms at 1.0. The two modes only diverge when `global_scale != 1.0`. Proof: identical 218,236-byte file size, identical header values, identical UE result across v0B.1.1 and v0B.1.2. D-083's mechanism claim ("FBX_SCALE_ALL bakes ×100 into node transforms") was **wrong** — neither mode bakes anything at global_scale=1.0.
+
+### Actual root cause
+
+The FBX is **semantically correct**: nodes at scale 1.0, m→cm conversion declared in file unit metadata. The defect is import-side: **UE 5.4+ replaced the legacy FBX importer with the Interchange Framework as default**, and Interchange folds the unit conversion (UnitScaleFactor=100) into the skeleton root joint's reference pose → root Scale=(100,100,100). This exact symptom is reproduced in Epic forum reports (Blender 4.4 → UE 5.4 skeletal imports) and community deep-dives; no Blender-side `apply_scale_options` value avoids it:
+
+| Blender scale mode | File contents | Interchange result |
+|---|---|---|
+| FBX_SCALE_ALL / FBX_SCALE_UNITS (global_scale=1) | UnitScaleFactor=100, nodes at 1 | unit conversion folded into root → ×100 |
+| FBX_SCALE_NONE | UnitScaleFactor=1, armature **node** scale ×100 | node scale folded into root → ×100 |
+
+### Decision
+
+- **Keep** the Blender pipeline at v0B.1.2 / `FBX_SCALE_UNITS` (correct file semantics; §12 guard stays). The exported FBX and its reports remain valid evidence.
+- **Fix import-side:** fall back to the **legacy FBX importer** via the Epic-documented console variable, persisted in the project config so it applies to every editor session:
+  - `Unreal/Config/DefaultEngine.ini`, new `[ConsoleVariables]` section: `Interchange.FeatureFlags.Import.FBX=False` (commit `92435a3`).
+  - Source: Epic knowledge base "Interchange FBX options" (UE_FlavienP, staff): the cvar "can be added in the DefaultEngine.ini file of the project so that Legacy FBX is turned on by default". Confirmed present through UE 5.8.
+  - Interchange remains active for textures/MaterialX/glTF (Epic recommendation; only the FBX format flag is disabled).
+- The legacy importer converts units by scaling geometry/bind-pose data, leaving the root bone at (1,1,1) — the standard Blender→UE pipeline behaviour pre-5.4 (`FBX_SCALE_UNITS` + legacy import was THE documented combo).
+- Revisit Interchange when Epic resolves the root-scale fold (track in Open questions, OPEN-084-A).
+
+### Verification protocol (developer machine)
+
+1. `git pull --rebase` (pick up `92435a3` + this log). **No Blender re-run needed** — current FBX (218,236 B, v0B.1.2) is valid.
+2. Restart the Unreal editor (DefaultEngine.ini cvars load at startup).
+3. **Force Delete** the 8 old Vehicle uassets, re-import the official FBX. Expected proof the flag works: the OLD-style "FBX Import Options" dialog appears (not the Interchange dialog).
+4. Inspect `AF_Armature_Proto`: **Scale = (1.0, 1.0, 1.0)** in Bone and Reference transforms; length ~560 cm. Screenshot = evidence.
+5. On PASS: recommit official FBX + new uassets via LFS; close OPEN-080-A with D-085.
+
+---
+
 ## Open questions
 
 | ID | Question | Status |
 |---|---|---|
 | OPEN-076-A | 4 old PNG blobs committed as normal (non-LFS) objects — rewrite history or accept? | Carried (accepted for now, revisit before repo grows) |
 | OPEN-079-B | `DefaultEngine.ini` AndroidFileServer churn — pin or ignore? | Carried |
-| OPEN-080-A | Root bone scale ×100 | **Fix committed (`c12dc12`, D-083) — UE re-import verification pending** |
+| OPEN-080-A | Root bone scale ×100 | **D-083 fix FAILED (no-op); D-084 legacy-importer fix committed (`92435a3`) — UE re-import verification pending** |
+| OPEN-084-A | Interchange importer folds unit conversion into skeleton root — re-evaluate returning to Interchange in a future UE version | New (carried) |
