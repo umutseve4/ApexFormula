@@ -47,3 +47,37 @@ MILESTONE_PLAN.md durum tablosu tek seferde guncellenir (D-091 erteleme notu).
 
 ### Sonraki adim
 - M5.4a PS blogu Umut'a teslim edilir (tek kopyala-yapistir + OTOMATIK KONTROL).
+
+---
+
+## D-093 - M5.4a ve M5.4b KAPANDI
+
+**Tarih:** 2026-08-15
+**Durum:** KAPALI
+**Ilgili:** D-092 (M5.4 plani), D-087 (Python yuzeyi sinirlari)
+
+### M5.4a sonucu (KAPALI)
+- ChaosVehiclesPlugin girdisi `Unreal/ApexFormula.uproject` icinde ZATEN mevcuttu
+  (onceki bir editor oturumunda eklenmis); idempotent PS blogu degisiklik yapmadi
+  ("Everything up-to-date" beklenen davranis).
+- `verify_m54a.py` kabulu: 3/3 PASS
+  (WheeledVehiclePawn, ChaosVehicleWheel, ChaosWheeledVehicleMovementComponent yuklendi).
+
+### M5.4b sonucu (KAPALI)
+- `BlenderPipeline/tools/m54b_make_wheels.py` (commit 1ca70b9) UE icinde kosuldu.
+- UE 5.8.1 Python yuzeyi bu is icin ACIK cikti: BlueprintFactory + parent_class +
+  get_default_object() calisti; D-087 hibrit fallback'ine gerek kalmadi.
+- Uretilen assetler (read-back dogrulamali):
+  - `/Game/vehicle/BP_AF_Wheel_Front` : r=36, steer=True (maxSteer=40), engine=False, brake=True
+  - `/Game/vehicle/BP_AF_Wheel_Rear`  : r=38, steer=False, engine=True, brake=True
+- SONUC : PASS ("M5.4b tamam; 2 teker BP hazir, M5.4c'ye gec").
+
+### Yan kayit
+- Calisma agacinda kirlenen `Unreal/Content/Vehicle/AF_Vehicle_Proto.uasset`
+  (istemsiz editor resave) `git restore` ile f48beca haline dondu; repo hali
+  otoritatif kaldi.
+
+### Sonraki adim
+- Iki BP .uasset LFS commit'i (pointer dogrulamasi OPEN-081-A kuraliyla).
+- M5.4c: `m54c_make_pawn.py` (BP_AF_VehiclePawn - WheeledVehiclePawn turevi,
+  mesh + PhysAsset + 4 WheelSetup eslemesi).
