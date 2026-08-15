@@ -1,8 +1,8 @@
 ApexFormula export report
 ============================================================
-pipeline version : 0B.1.2
-config hash      : 0c0be9d960b7321c223e4fbd3bbeb6a59b6cf7bbf2793e3967022eba2a1f4449
-generated (UTC)  : 2026-08-14T23:46:53Z
+pipeline version : 0B.1.4
+config hash      : 933a11f6292ec2b5548913c2e0e89790fcf06f7fb3e37eed29875ea04339c225
+generated (UTC)  : 2026-08-15T03:54:33Z
 Blender runtime  : [5, 2, 0]
 
 selected objects (18):
@@ -97,7 +97,7 @@ FBX: {
     "use_visible"
   ],
   "settings_unfiltered_fallback": false,
-  "size_bytes": 218236
+  "size_bytes": 217292
 }
 GLB: {
   "format": "GLB",

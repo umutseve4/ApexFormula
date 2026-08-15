@@ -524,7 +524,7 @@
           "delta_m": [
             0.0,
             -0.0,
-            0.0
+            -0.0
           ],
           "design": {
             "cm": [
@@ -555,7 +555,7 @@
           "delta_m": [
             0.0,
             0.0,
-            0.0
+            -0.0
           ],
           "design": {
             "cm": [
@@ -585,7 +585,7 @@
         "RL": {
           "delta_m": [
             -0.0,
-            0.0,
+            -0.0,
             -0.0
           ],
           "design": {
@@ -616,7 +616,7 @@
         "RR": {
           "delta_m": [
             -0.0,
-            -0.0,
+            0.0,
             -0.0
           ],
           "design": {
@@ -710,7 +710,7 @@
       "tolerance": null
     }
   ],
-  "config_hash": "0c0be9d960b7321c223e4fbd3bbeb6a59b6cf7bbf2793e3967022eba2a1f4449",
+  "config_hash": "933a11f6292ec2b5548913c2e0e89790fcf06f7fb3e37eed29875ea04339c225",
   "expected_bone_count": 11,
   "expected_bone_list": [
     "AF_Root",
@@ -726,8 +726,8 @@
     "AF_Wheel_RR"
   ],
   "export": {},
-  "generated_utc": "2026-08-14T23:46:53Z",
-  "pipeline_version": "0B.1.2",
+  "generated_utc": "2026-08-15T03:54:33Z",
+  "pipeline_version": "0B.1.4",
   "project": "UludagFormula",
   "script": "af_validate.py",
   "summary": {

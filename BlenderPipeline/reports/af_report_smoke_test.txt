@@ -1,8 +1,8 @@
 UludagFormula pipeline smoke test
 ======================================================================
-pipeline version : 0B.1.2
-config hash      : 0c0be9d960b7321c223e4fbd3bbeb6a59b6cf7bbf2793e3967022eba2a1f4449
-generated (UTC)  : 2026-08-14T23:46:53Z
+pipeline version : 0B.1.4
+config hash      : 933a11f6292ec2b5548913c2e0e89790fcf06f7fb3e37eed29875ea04339c225
+generated (UTC)  : 2026-08-15T03:54:33Z
 Blender runtime  : [5, 2, 0]
 target Blender   : [5, 2]
 overall          : PASS
@@ -15,7 +15,7 @@ stages run       : 7 of 7
     scale_length             1.0
     unit_system              METRIC
 
-2. generate geometry         PASS    0.18s
+2. generate geometry         PASS    0.03s
     body                     AF_Body_Proto
     body_polygons            132
     collision                5
@@ -23,19 +23,19 @@ stages run       : 7 of 7
     suspension               4
     wheels                   4
 
-3. rig                       PASS    0.10s
+3. rig                       PASS    0.03s
     armature                 AF_Armature_Proto
     bone_count               11
     bone_order_matches_config True
     bound_meshes             9
     expected_bone_count      11
 
-4. materials                 PASS    0.03s
+4. materials                 PASS    0.01s
     materials_in_file        5
     meshes_with_slots        12
     missing_objects          []
 
-5. validate (pre-export)     PASS    0.04s
+5. validate (pre-export)     PASS    0.02s
     failed                   0
     failed_checks            []
     passed                   20
@@ -44,13 +44,13 @@ stages run       : 7 of 7
     skipped                  1
     total                    21
 
-6. export FBX                PASS    0.53s
+6. export FBX                PASS    0.39s
     bones_exported           11
     dropped_settings         []
-    fbx_bytes                218236
+    fbx_bytes                217292
     fbx_path                 BlenderPipeline\exports\AF_Vehicle_Proto.fbx
 
-7. validate (post-export)    PASS    0.03s
+7. validate (post-export)    PASS    0.02s
     failed                   0
     failed_checks            []
     passed                   20

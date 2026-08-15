@@ -1,8 +1,8 @@
 ApexFormula validation report
 ============================================================
-pipeline version : 0B.1.2
-config hash      : 0c0be9d960b7321c223e4fbd3bbeb6a59b6cf7bbf2793e3967022eba2a1f4449
-generated (UTC)  : 2026-08-14T23:46:53Z
+pipeline version : 0B.1.4
+config hash      : 933a11f6292ec2b5548913c2e0e89790fcf06f7fb3e37eed29875ea04339c225
+generated (UTC)  : 2026-08-15T03:54:33Z
 Blender runtime  : [5, 2, 0]
 target Blender   : [5, 2] LTS
 target Unreal    : 5.8
@@ -73,7 +73,7 @@ checks: 21 total, 20 passed, 0 failed, 1 skipped
         tolerance: {"cm": 0.2, "m": 0.002}
 [PASS] 19. wheel centres at configured wheelbase/track
         expected : {"track_front": {"cm": 160.0, "m": 1.6}, "track_rear": {"cm": 154.0, "m": 1.54}, "wheelbase": {"cm": 360.0, "m": 3.6}}
-        measured : {"FL": {"delta_m": [0.0, -0.0, 0.0], "design": {"cm": [180.0, 80.0, 36.0], "m": [1.8, 0.8, 0.36]}, "measured": {"cm": [180.0, 80.0, 36.0], "m": [1.8, 0.8, 0.36]}}, "FR": {"delta_m": [0.0, 0.0, 0.0], "design": {"cm": [180.0, -80.0, 36.0], "m": [1.8, -0.8, 0.36]}, "measured": {"cm": [180.0, -80.0, 36.0], "m": [1.8, -0.8, 0.36]}}, "RL": {"delta_m": [-0.0, 0.0, -0.0], "design": {"cm": [-180.0, 77.0, 3 ...(truncated)
+        measured : {"FL": {"delta_m": [0.0, -0.0, -0.0], "design": {"cm": [180.0, 80.0, 36.0], "m": [1.8, 0.8, 0.36]}, "measured": {"cm": [180.0, 80.0, 36.0], "m": [1.8, 0.8, 0.36]}}, "FR": {"delta_m": [0.0, 0.0, -0.0], "design": {"cm": [180.0, -80.0, 36.0], "m": [1.8, -0.8, 0.36]}, "measured": {"cm": [180.0, -80.0, 36.0], "m": [1.8, -0.8, 0.36]}}, "RL": {"delta_m": [-0.0, -0.0, -0.0], "design": {"cm": [-180.0, 77.0 ...(truncated)
         tolerance: {"cm": 0.5, "m": 0.005}
 [PASS] 20. object names match the declared patterns
         expected : ["AF_Armature_Proto", "AF_Body_Proto", "AF_Body_Proto_LOD1", "AF_Body_Proto_LOD2", "AF_Body_Proto_LOD3", "AF_Susp_FL", "AF_Susp_FR", "AF_Susp_RL", "AF_Susp_RR", "AF_WheelMesh_FL", "AF_WheelMesh_FR", "AF_WheelMesh_RL", "AF_WheelMesh_RR", "UCX_AF_Body_Proto_01", "UCX_AF_Body_Proto_02", "UCX_AF_Body_Proto_03", "UCX_AF_Body_Proto_04", "UCX_AF_Body_Proto_05"]
