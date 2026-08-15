@@ -91,6 +91,8 @@ Kabul kriterleri (hepsi ayni kosumda PASS olmali):
 | C | Yon: +X ileri | on tekerlek X > arka tekerlek X | bool |
 | D | Yon: +Z yukari | sasi merkez Z > tekerlek ortalama Z | bool |
 
+NOT (D-089): D kontrolu tasarim hatasiydi; revize hali icin D-089'a bakin.
+
 ### Yontem
 - Mesh `/Game/Vehicle/AF_Vehicle_Proto` yuklenir; gecici `SkeletalMeshActor`
   spawn edilip kemik dunya konumlari `get_socket_location` ile okunur
@@ -107,3 +109,61 @@ py "C:/Users/umuts/Documents/UludagFormula/BlenderPipeline/tools/accept_m53.py"
 - 5 kontrol de PASS -> M5.3 KAPANDI, D-088 guncellenir, M5.4 (Chaos Vehicle kurulumu) acilir.
 - Herhangi FAIL -> sapma D-088 altina islenir; duzeltme Blender kaynak tarafinda yapilir
   (UE'de elle tasima YASAK — pipeline butunlugu).
+
+---
+
+## D-089 - M5.3 ILK KOSUM FAIL: 100x olcek kaybi kok nedeni + config v0B.1.3 + D kontrolu revizyonu
+
+**Tarih:** 2026-08-15
+**Durum:** DUZELTME PUSH EDILDI (yeniden export + reimport + kabul kosumu bekliyor)
+**Ilgili:** D-088 (kabul protokolu), D-084 (legacy FBX importer karari), OPEN-080-A (onceki olcek vakasi)
+
+### Bulgu (kanit: 2026-08-15 accept_m53.py ilk kosumu)
+Tum lineer olculer tam 1/100 geldi:
+- B: bounds X = 5.60 cm (hedef 560) -> FAIL
+- A: dingil 3.60 cm (hedef 360) -> FAIL x2
+- C: +X ileri PASS (yon olcekten bagimsiz)
+- D: FAIL (asagida ayri ele alindi — bagimsiz tasarim hatasi)
+
+### Kok neden (olcek)
+Config v0B.1.2 `apply_scale_options='FBX_SCALE_UNITS'` kullaniyordu.
+SCALE_UNITS m->cm x100 donusumunu SADECE FBX birim METADATA'sina yazar;
+vertex/kemik verisi metre olarak kalir. UE'nin legacy FBX importeri (D-084 geregi
+aktif) bu metadata'yi varsayilan ayarlarla DIKKATE ALMAZ -> her sey 1/100 gelir.
+OPEN-080-A'daki SCALE_ALL denemesi ise tersine root kemige scale=100 basiyordu.
+Uc secenegin davranis matrisi:
+
+| apply_scale_options | Vertex verisi | Root scale | Legacy importer sonucu |
+|---|---|---|---|
+| FBX_SCALE_ALL | cm (x100 uygulanir) | 100 (kirli) | dogru boy ama kirli iskelet (OPEN-080-A) |
+| FBX_SCALE_UNITS | m (degismez) | 1 | 1/100 kucuk (bu vaka) |
+| FBX_SCALE_NONE + scene.unit_settings dogru | cm (veriye islenmis) | 1 (beklenen) | dogru boy + temiz iskelet (hedef) |
+
+### Duzeltme
+- Config v0B.1.3: `apply_scale_options='FBX_SCALE_NONE'`; self_check bu degeri
+  D-089 referansiyla zorunlu kilar. Commit: `3a68ac1`, byte-dogrulama duzeltmesi `d21ddce`.
+- Yeniden export headless: `blender --background --python BlenderPipeline/scripts/af_smoke_test.py`
+  (sahne sifirdan uretilir, .blend gerekmez).
+
+### Post-mortem: push aktarim bozulmasi (2. vaka)
+`3a68ac1` push'unda icerik bellekten yeniden yazildi ve `__main__` print'ine
+20 baytlik walrus artefakti sizdi (`OWNED_COLLISIONS := OWNED_COLLECTIONS`).
+Tespit: lokal git blob SHA (`hashlib.sha1(b'blob %d\0' % len + data)`) ile
+GitHub'in dondurdugu blob SHA karsilastirildi; tek fark bu satirdi. `d21ddce`
+ile duzeltildi, donen blob SHA `376d31dd...` lokal ile birebir esledi.
+KALICI POLITIKA: repo'ya iceriik push'lanirken asla bellekten yeniden yazma;
+push oncesi/sonrasi blob SHA esitligi kanit olarak zorunlu.
+
+### D kontrolu revizyonu (bagimsiz tasarim hatasi)
+Eski D: "sasi merkez Z > tekerlek ortalama Z". Tasarimda sasi kemigi origin'i
+chassis_top/2 = 0.28 m = 28 cm'dedir; tekerlek merkezleri 36/38 cm. Yani DOGRU
+veride bile D gecemezdi. Revize D: sasi kemigi Z = 28 +- 1 cm (Z > 0 oldugu
+icin +Z yukari kanitini da icerir). Commit: `3146f70`.
+
+### Kabul (D-088 guncellenmis kriterlerle)
+1. Yeniden export (smoke test 7 asama PASS, config 0B.1.3 dogrulanir).
+2. UE reimport (script ile, AssetImportTask).
+3. `accept_m53.py` yeniden kosum: A/B/C/D hepsi PASS -> M5.3 KAPANDI.
+4. Reimport sonrasi ek dogrulama: iskelet root scale (1,1,1) VE PhysAsset'te
+   5 body'nin korundugu (reimport body'leri sifirlayabilir; gerekirse
+   `fix_physasset.py` geometri kosumu tekrarlanir — body'ler mevcutsa salt-script yeter).
