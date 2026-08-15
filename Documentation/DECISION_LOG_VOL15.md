@@ -56,7 +56,7 @@ M5.2 opened with the mandatory OPEN-080-A scale check (D-080/D-082). Developer s
 ## D-084 — D-083 verification FAIL post-mortem: the config change was a no-op; real root cause is UE's Interchange importer; fix = legacy FBX importer fallback
 
 **Date:** 2026-08-19 (project day)
-**Status:** Fix committed (`92435a3`, `Unreal/Config/DefaultEngine.ini`) — **UE re-import verification PENDING on developer machine**
+**Status:** **VERIFIED — closed by D-085.** Fix `92435a3` (`Unreal/Config/DefaultEngine.ini`) confirmed working on developer machine.
 **Affects:** `Unreal/Config/DefaultEngine.ini`; supersedes D-083's mechanism claim (its §9/§0/§12 config changes are RETAINED — see below)
 
 ### Verification result of D-083 (v0B.1.2)
@@ -100,11 +100,48 @@ The FBX is **semantically correct**: nodes at scale 1.0, m→cm conversion decla
 
 ---
 
+## D-085 — OPEN-080-A CLOSED: D-084 legacy-importer fix verified; root bone Scale = (1,1,1); LFS recommit disposition
+
+**Date:** 2026-08-20 (project day)
+**Status:** **CLOSED** — screenshot evidence accepted; asset recommit executed per disposition below
+**Affects:** `Unreal/Content/Vehicle/*` (8 uassets, replaced), `BlenderPipeline/exports/AF_Vehicle_Proto.fbx` (official, recommitted), `BlenderPipeline/reports/*` (v0B.1.2 evidence)
+
+### Verification evidence (developer machine, 2026-08-15 UTC)
+
+Developer executed the D-084 protocol exactly:
+
+1. `git pull --rebase --autostash` succeeded after clearing OPEN-079-B ini churn; HEAD at `7525c02`; `Select-String` confirmed `[ConsoleVariables]` (line 55) and `Interchange.FeatureFlags.Import.FBX=False` (line 66) present in the working-tree ini.
+2. Editor restarted; old Vehicle uassets Force Deleted (working tree showed 8 × ` D` before re-import).
+3. Official FBX (218,236 B, v0B.1.2, config hash `0c0be9d…`) re-imported via the **legacy FBX importer** — the flag demonstrably took effect.
+4. **Skeleton editor screenshot:** `AF_Armature_Proto` selected; **Bone transform Scale = (1.0, 1.0, 1.0)**, **Reference transform Scale = (1.0, 1.0, 1.0)**, Location/Rotation all zero. Skeleton tree shows the accepted 12-node hierarchy (D-080): `AF_Armature_Proto → AF_Root → AF_Chassis → AF_Steering + 4×(AF_Suspension_* → AF_Wheel_*)`. Preview stats: 696 triangles, 1,584 vertices, 1 UV channel, approx size 6x2x2 — consistent with ~560 cm length envelope. **PASS.**
+
+### Verdict
+
+- **OPEN-080-A: CLOSED.** Root bone scale defect eliminated at the import path; Blender pipeline unchanged at v0B.1.2.
+- D-084 status updated to VERIFIED.
+- Watch item from D-082 (560×196×198 cm envelope vs design height 95 cm) resolved by the 6x2x2 approx size readout: the earlier 198 cm height reading was an artifact of the ×100-scaled import; dimensions are now consistent with design.
+
+### Asset disposition (single LFS commit)
+
+The commit accompanying this closure ships, via Git LFS where patterns match:
+
+1. `BlenderPipeline/exports/AF_Vehicle_Proto.fbx` — official v0B.1.2 export (218,236 B), replaces the invalid `7225cf0` copy.
+2. `BlenderPipeline/reports/af_report_{export,smoke_test,validate}.{json,txt}` — v0B.1.2 evidence (config hash `0c0be9d…`, 7/7 PASS).
+3. `Unreal/Content/Vehicle/*.uasset` — 8 assets from the legacy-importer re-import, replacing the invalid Interchange-imported set.
+
+Pointer verification (`git show :<path>` first line = `version https://git-lfs...`) is mandatory before push, per OPEN-076-A lesson.
+
+### Next
+
+M5.2 resumes: Physics Asset configuration on the now-correct skeleton. Numeric acceptance: wheelbase 360±1 cm, overall length 560±1 cm, +X forward, +Z up, root at origin.
+
+---
+
 ## Open questions
 
 | ID | Question | Status |
 |---|---|---|
 | OPEN-076-A | 4 old PNG blobs committed as normal (non-LFS) objects — rewrite history or accept? | Carried (accepted for now, revisit before repo grows) |
 | OPEN-079-B | `DefaultEngine.ini` AndroidFileServer churn — pin or ignore? | Carried |
-| OPEN-080-A | Root bone scale ×100 | **D-083 fix FAILED (no-op); D-084 legacy-importer fix committed (`92435a3`) — UE re-import verification pending** |
-| OPEN-084-A | Interchange importer folds unit conversion into skeleton root — re-evaluate returning to Interchange in a future UE version | New (carried) |
+| OPEN-080-A | Root bone scale ×100 | **CLOSED (D-085)** — legacy FBX importer fallback (D-084, `92435a3`) verified: root Scale=(1,1,1) screenshot evidence |
+| OPEN-084-A | Interchange importer folds unit conversion into skeleton root — re-evaluate returning to Interchange in a future UE version | Carried |
