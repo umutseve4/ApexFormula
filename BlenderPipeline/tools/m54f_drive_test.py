@@ -1,15 +1,17 @@
-# m54f_drive_test.py v3 - M5.4f PIE surus kabul testi (D-092 kriterleri)
-# v2 FAIL analizi: pawn dogru (BP_AF_VehiclePawn) ama FWD=0cm, STEER=0.0 ve
-# SETTLE z sapma=0.0 -> arac HIC simule olmuyor (z=150'den yere bile dusmemis).
-# Kok neden adaylari: mesh Simulate Physics kapali / vites N / el freni.
-# v3 degisiklikleri:
-#   1) ENGAGE adimi: pawn bulununca is_simulating_physics kontrol -> kapaliysa AC,
-#      set_use_automatic_gears(True), set_target_gear(1), set_handbrake_input(False).
-#   2) Her faz gecisinde DIAG satiri: gear / RPM / hiz / simfizik.
-#   3) Deprecated EditorLevelLibrary fallback kaldirildi (subsystem probu kanitli calisiyor).
+# m54f_drive_test.py v4 - M5.4f PIE surus kabul testi (D-092 kriterleri)
+# v3 kosum #4 analizi: SETTLE PASS (arac dustu, simfizik=True) ama FWD=2cm, RPM
+# rolantide (1200) sabit kaldi. Iki kusur:
+#   A) set_target_gear() UE 5.8'de 2 argüman ister (immediate) -> TypeError yedi.
+#   B) simulate_physics BeginPlay'de kapaliydi; ChaosVehicle drivetrain'i BeginPlay'de
+#      kurar -> sonradan acmak govdeyi dusurur ama motor-teker bagini kurmaz.
+# v4 degisiklikleri:
+#   1) ONKOSUL kontrolu: pawn bulununca simulate_physics ZATEN acik olmali
+#      (m54i_persist_physics.py BP'ye kalici yazdi). Kapaliysa erken FAIL + net mesaj.
+#   2) set_target_gear(1, True) - 2 arguman; eski imzaya fallback.
+#   3) DIAG'a throttle girisi eklendi.
+# Kosum sirasi: once m54i_persist_physics.py (tek sefer), sonra bu script + Play.
 # Kosum: UE Output Log ->  py "C:/Users/umuts/Documents/UludagFormula/BlenderPipeline/tools/m54f_drive_test.py"
-# Fazlar: SETTLE 0-5s (Z +-50cm; z0'dan dusus varsa serbest) -> FWD 5-10s (>=1000cm)
-#         -> STEER 10-13s (|dyaw|>=10) -> BRAKE 13-17s (hiz orani <=0.20 veya <=200cm/s)
+# Fazlar: SETTLE 0-5s -> FWD 5-10s (>=1000cm) -> STEER 10-13s (|dyaw|>=10) -> BRAKE 13-17s
 
 import unreal
 
@@ -64,7 +66,7 @@ def get_mesh(pawn):
         return None
 
 def diag(tag, pawn, comp):
-    gear = rpm = sim = "?"
+    gear = rpm = sim = thr = "?"
     try:
         gear = comp.get_current_gear()
     except Exception as e:
@@ -73,6 +75,10 @@ def diag(tag, pawn, comp):
         rpm = "%.0f" % comp.get_engine_rotation_speed()
     except Exception as e:
         log_err_once("get_engine_rotation_speed", e)
+    try:
+        thr = "%.2f" % comp.get_editor_property("throttle_input")
+    except Exception as e:
+        log_err_once("throttle_input", e)
     mesh = get_mesh(pawn)
     if mesh:
         try:
@@ -84,31 +90,51 @@ def diag(tag, pawn, comp):
         spd = "%.0f" % abs(comp.get_forward_speed())
     except Exception:
         pass
-    log("DIAG[%s] gear=%s rpm=%s simfizik=%s hiz=%scm/s z=%.1f" %
-        (tag, gear, rpm, sim, spd, pawn.get_actor_location().z))
+    log("DIAG[%s] gear=%s rpm=%s gaz=%s simfizik=%s hiz=%scm/s z=%.1f" %
+        (tag, gear, rpm, thr, sim, spd, pawn.get_actor_location().z))
 
 def engage(pawn, comp):
-    """Drivetrain'i teste hazirla: fizik ac, otomatik vites + gear 1, el freni birak."""
+    """Drivetrain'i teste hazirla. NOT: simulate_physics artik BP'de kalici (m54i)."""
     mesh = get_mesh(pawn)
+    sim_ok = False
     if mesh:
         try:
-            if not mesh.is_simulating_physics():
-                mesh.set_simulate_physics(True)
-                log("ENGAGE simulate_physics KAPALIYDI -> ACILDI")
-            else:
-                log("ENGAGE simulate_physics zaten acik")
+            sim_ok = mesh.is_simulating_physics()
+        except Exception as e:
+            log_err_once("is_simulating_physics", e)
+    if not sim_ok:
+        log("ENGAGE KRITIK: simulate_physics BeginPlay'de KAPALI!")
+        log("ENGAGE -> once m54i_persist_physics.py calistirilmali (BP'ye kalici yazar).")
+        # yine de ac ki test tamamen olu olmasin, ama sonuc guvenilmez
+        try:
+            mesh.set_simulate_physics(True)
         except Exception as e:
             log_err_once("set_simulate_physics", e)
     else:
-        log("ENGAGE UYARI: SkeletalMeshComponent bulunamadi")
-    for name, args in (("set_use_automatic_gears", (True,)),
-                       ("set_target_gear", (1,)),
-                       ("set_handbrake_input", (False,))):
+        log("ENGAGE simulate_physics BeginPlay'den acik (m54i kalici yazimi dogru)")
+    try:
+        comp.set_use_automatic_gears(True)
+        log("ENGAGE set_use_automatic_gears(True) OK")
+    except Exception as e:
+        log_err_once("set_use_automatic_gears", e)
+    # UE 5.8 imzasi: set_target_gear(gear, immediate) - 2 arguman zorunlu
+    try:
+        comp.set_target_gear(1, True)
+        log("ENGAGE set_target_gear(1, True) OK")
+    except TypeError:
         try:
-            getattr(comp, name)(*args)
-            log("ENGAGE %s%s OK" % (name, args))
+            comp.set_target_gear(1)
+            log("ENGAGE set_target_gear(1) OK (eski imza)")
         except Exception as e:
-            log_err_once(name, e)
+            log_err_once("set_target_gear", e)
+    except Exception as e:
+        log_err_once("set_target_gear", e)
+    try:
+        comp.set_handbrake_input(False)
+        log("ENGAGE set_handbrake_input(False) OK")
+    except Exception as e:
+        log_err_once("set_handbrake_input", e)
+    return sim_ok
 
 def add_result(name, ok, detail):
     S["results"].append((name, ok, detail))
@@ -145,7 +171,7 @@ def tick(dt):
                 S["t"] = 0.0
                 z = pawn.get_actor_location().z
                 S["z0"] = S["z_min"] = S["z_max"] = z
-                log("PIE dunyasi bulundu (kaynak=%s); pawn=%s z0=%.1f -> ENGAGE+SETTLE" % (src, pawn.get_name(), z))
+                log("PIE dunyasi bulundu (kaynak=%s); pawn=%s z0=%.1f -> ENGAGE+SETTLE (script v4)" % (src, pawn.get_name(), z))
                 engage(pawn, comp)
                 diag("SETTLE-IN", pawn, comp)
                 return
@@ -179,8 +205,6 @@ def tick(dt):
         comp.set_throttle_input(0.0); comp.set_brake_input(0.0); comp.set_steering_input(0.0)
         S["z_min"] = min(S["z_min"], loc.z); S["z_max"] = max(S["z_max"], loc.z)
         if t >= 5.0:
-            # v3: z0'dan asagi inis (yere oturma) serbest; olcut son 'titresim' degil
-            # basitce bant kontrolu: yere oturduktan sonraki z, z_min'e yakin olmali.
             dev = abs(loc.z - S["z_min"])
             add_result("SETTLE", dev <= 50.0, "yere oturma sonrasi sapma=%.1f cm (<=50); z0=%.1f z_min=%.1f" % (dev, S["z0"], S["z_min"]))
             S["fwd_start"] = unreal.Vector(loc.x, loc.y, loc.z)
@@ -189,6 +213,8 @@ def tick(dt):
 
     elif S["phase"] == "FWD":
         comp.set_throttle_input(1.0); comp.set_brake_input(0.0); comp.set_steering_input(0.0)
+        if abs(t - 7.5) < dt:
+            diag("FWD-ORTA", pawn, comp)
         if t >= 10.0:
             dx = loc.x - S["fwd_start"].x; dy = loc.y - S["fwd_start"].y
             dist = (dx * dx + dy * dy) ** 0.5
@@ -218,7 +244,7 @@ def tick(dt):
 def main():
     les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
     les.load_level(MAP_PATH)
-    log("Harita yuklendi: %s (script v3)" % MAP_PATH)
+    log("Harita yuklendi: %s (script v4)" % MAP_PATH)
     S["handle"] = unreal.register_slate_post_tick_callback(tick)
     log(">>> SIMDI viewport ustundeki Play'e BIR KEZ bas. Script 180 sn bekliyor;")
     log(">>> ENGAGE+DIAG satirlari fizik/vites durumunu raporlar, test ~17 sn surer.")
