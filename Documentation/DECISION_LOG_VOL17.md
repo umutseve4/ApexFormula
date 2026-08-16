@@ -241,3 +241,20 @@ tamamen script, GUI adimi yok (SCRIPT-FIRST tam uyum).
   Z stabilite +-50cm/5s, W ile >=10m/5s, A/D yaw, S durus; pozisyon-log
   OTOMATIK KONTROL + tek screenshot, PNG repoya girmez).
 - M5.4f PASS sonrasi: M5.4/M5/M2 kapanisi + MILESTONE_PLAN.md tek gecis.
+
+---
+
+## D-098 - M5.5 kok neden analizi (AYRI SAYFA)
+
+**Tarih:** 2026-08-17
+**Durum:** ACIK (m56s + m56m_v2 UE kosumu bekliyor)
+
+Tam kayit: `DECISION_LOG_VOL17_D098.md` (bu ciltte sayfa buyudugu icin ayri dosya).
+Ozet: torque OK / XY=0 blokajinin root-bone hipotezi ARASTIRMACI kanitiyla
+ELENDI (`CanCreateVehicle()` root-bone sarti icermiyor); `bone_name` Python'dan
+read-only oldugu icin m56r rebind yolu GECERSIZ; birincil hipotez oversized
+chassis collision box. Cozum scriptleri repoda:
+`BlenderPipeline/tools/m56s_shrink_chassis.py` (box shrink, QA-hardened) +
+`m56m_drive_test_v2.py` (settle-aware PIE kabul testi). Kabul: m56s != FAIL
+VE m56m SONUC: PASS. Not: m55e..m56r chat-only teshis scriptleri bilerek repoya
+alinmadi; yalnizca nihai iki script push edildi.
