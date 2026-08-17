@@ -2,13 +2,13 @@
 
 **Scope:** the `m5x`/vehicle UE-editor Python scripts under `BlenderPipeline/tools/`. Companion to `SCRIPT_INVENTORY.md` (which covers only the `af_*.py` Blender scripts and predates these).
 
-**Honesty rule:** this table records authorship, not execution; execution evidence lives in the decision logs (D-076..D-098) and the project ledger. `statically inspected: no CI workflow references these scripts` (inspected at HEAD `182bc3e`); they require a locally open UE 5.8 editor.
+**Honesty rule:** this table distinguishes authorship/delivery from execution. Execution statuses are summaries only; authoritative execution evidence lives in the decision logs (D-076..D-098) and the project ledger. Work without execution evidence remains labeled `requires Unreal Editor verification`. `statically inspected: no CI workflow references these scripts` (inspected at HEAD `182bc3e`); they require a locally open UE 5.8 editor.
 
 | Script | Purpose | Status label |
 |---|---|---|
-| `m56s_shrink_chassis.py` | Shrink oversized `AF_Chassis` collision box bottom to +2 cm above wheel centers — **candidate fix** for the suspected airborne-hull cause | delivered at `93fb41f`; `requires Unreal Editor verification` — not yet run |
-| `m56m_drive_test_v2.py` | Scripted drive acceptance: settle t=3 s, measure t=12 s; PASS = XY > 300 cm AND speed > 100 cm/s | delivered at `93fb41f`; `requires Unreal Editor verification` — not yet run |
-| `m56w_animbp_shell.py` | Create/load a **candidate** Vehicle AnimBP shell (parent `VehicleAnimationInstance`) + attempt **candidate** persistent `anim_class` CDO/template assignment; AnimGraph Wheel Controller wiring is always manual editor work | statically authored; `requires Unreal Editor verification` — not yet run |
+| `m56s_shrink_chassis.py` | Shrink oversized `AF_Chassis` collision box bottom to +2 cm above wheel centers — **candidate fix** for the suspected airborne-hull cause | authored/delivered at `93fb41f`; v4 code at `46c7534`; execution summary: run 2026-08-17, **SONUC: PASS** — authoritative execution record in the D-098 update section (`5e9afcc`); fixed uasset exists only on the local machine, LFS commit pending |
+| `m56m_drive_test_v2.py` | Scripted drive acceptance: settle t=3 s, measure t=12 s; PASS = XY > 300 cm AND speed > 100 cm/s | delivered at `93fb41f`; `requires Unreal Editor verification` — not yet run; **blocked: local machine currently unreachable** |
+| `m56w_animbp_shell.py` | Create/load a **candidate** Vehicle AnimBP shell (parent `VehicleAnimationInstance`) + attempt **candidate** persistent `anim_class` CDO/template assignment; AnimGraph Wheel Controller wiring is always manual editor work | statically authored; `requires Unreal Editor verification` — not yet run; **blocked: local machine currently unreachable** |
 | `m54a..m55a` series (35 scripts) | Diagnostic/fix iterations during M5.4–M5.5 (pawn, input, torque, physics asset, bone checks) | authored and superseded where noted in decision logs; per-script execution status: see DECISION_LOG volumes |
 
-**Open item:** after `m56m_drive_test_v2` PASS, record evidence in D-098 and update the MILESTONE_PLAN status table.
+**Open item:** after `m56m_drive_test_v2` PASS, record evidence in D-098 and update the MILESTONE_PLAN status table. Causality of the chassis-box fix is NOT yet established; it depends on the `m56m_drive_test_v2` result.
