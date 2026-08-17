@@ -4,7 +4,7 @@
 icin ayri sayfa. Sonraki ciltte birlestirilebilir.)
 
 **Tarih:** 2026-08-17
-**Durum:** ACIK (m56s + m56m_v2 UE kosumu bekliyor)
+**Durum:** ACIK (m56s v4 PASS; m56m_drive_test_v2 UE kosumu bekliyor)
 **Ilgili:** D-097 (M5.4e), m56a..m56r chat-only teshis zinciri
 
 ## Baglam: chat-only script acigi
@@ -48,3 +48,36 @@ deger -> suspansiyon raycast'leri zemine ulasamaz -> tekerlekler bosta doner
 ## Kabul kriteri (M5.5 kapanisi)
 m56s SONUC != FAIL VE m56m SONUC: PASS. PASS sonrasi: uasset LFS commit
 (UE KAPALI iken), MILESTONE_PLAN M5.5 kapanisi, D-098 KAPALI.
+
+## GUNCELLEME 2026-08-17: m56s v4 KOSULDU - SONUC: PASS
+- KOSUM KANITI (Umut'un makinesi, 2026-08-17): m56s v4
+  SONUC: PASS.
+- Olcum: chassis box actor-space bottom -46.7 cm; tekerlek merkezleri
+  z=0.4 cm. Bu olcum, chassis collision kutusunun tekerlek
+  merkezlerinden daha asagida oldugunu DOGRULADI. Bunun XY=0 sorununun
+  kok nedeni oldugu henuz dogrulanmadi; nedensellik m56m_drive_test_v2
+  sonucuna baglidir.
+- Fix uygulandi ve kaydedildi: bottom -46.7 -> +2.4 cm. PhysicsAsset
+  save PASS ve persist readback OK.
+  `Unreal/Content/vehicle/AF_Vehicle_Proto_PhysicsAsset.uasset`
+  yalnizca lokal makinede degistirildi; LFS commit HENUZ yapilmadi.
+- REPO KANITI (kosum kaniti degil): commit 46c7534, UE 5.8'de
+  `unreal.SkeletalBodySetup` expose olmadigi icin
+  `getattr(unreal, "BodySetup")` parent-iter ve runtime class-adi
+  filtresini ekledi.
+- ONCEKI DENEME KAYDI (bu denetimde kosum loglari gorulmedi):
+  v1 preview_skeletal_mesh expose acigina, v2 subobject ad tahminine,
+  v3 ise `unreal.SkeletalBodySetup` expose acigina takildi.
+- ARASTIRMA NOTU (kosum kaniti degil): PA kaydi sonrasi yeni PIE
+  oturumunun kaydedilmis collision'i almasi beklenir; BP recompile veya
+  UE restart gerektigi iddia edilmemektedir.
+- Ders (kalici kural): Unreal surumunde expose olup olmadigi belirsiz
+  sinif attribute'lari `getattr(..., None)` ile korunur; subobject
+  adlari tahmin edilmez.
+
+**Durum: ACIK.** Kalan teknik surus kabul testi
+`m56m_drive_test_v2`'dir. PASS kosulu: XY>300cm VE speed>100cm/s.
+Lokal makine su an erisilemedigi icin test KOSULMADI. Bu bolumdeki
+PASS yalnizca m56s v4 kosumuna aittir; surus kabulu ve kok neden
+nedenselligi HENUZ DOGRULANMADI. Drive test, sonraki ilgili adimlar ve
+uasset LFS commit makine erisimi saglandiginda yapilacaktir.
