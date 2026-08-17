@@ -95,11 +95,16 @@ else:
 def run(actor, smc, eas):
     global PASS
     # 4) Body setup'lari ObjectIterator ile ENUMERATE et (isim tahmini YASAK - v2 FAIL nedeni)
-    # ARASTIRMACI kaniti: UE 5.8'de ObjectIterator + get_outer() mevcut; PA yuklu oldugundan
-    # subobject'leri de yuklu -> outer filtresi guvenli.
-    subs = [o for o in unreal.ObjectIterator(unreal.SkeletalBodySetup)
-            if o.get_outer() == pa]
-    info("ENUM", "%d SkeletalBodySetup bulundu (ObjectIterator)" % len(subs))
+    # v4 fix: unreal.SkeletalBodySetup 5.8'de expose degil (gap #14).
+    # Plan A: parent sinif unreal.BodySetup ile iterate; Plan B: filtresiz iterate.
+    # Her iki yolda da outer==pa + runtime class adi 'SkeletalBodySetup' filtresi.
+    body_cls = getattr(unreal, "BodySetup", None)
+    it = unreal.ObjectIterator(body_cls) if body_cls is not None else unreal.ObjectIterator()
+    subs = [o for o in it
+            if o.get_outer() == pa
+            and o.get_class().get_name() == "SkeletalBodySetup"]
+    info("ENUM", "%d SkeletalBodySetup bulundu (yol=%s)"
+         % (len(subs), "BodySetup-iter" if body_cls is not None else "tam-iter"))
     candidates = []   # (idx, sub, bone, n_box, n_other)
     for i, sub in enumerate(subs):
         bn = str(sub.get_editor_property("bone_name"))
