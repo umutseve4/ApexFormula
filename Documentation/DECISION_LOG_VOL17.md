@@ -247,7 +247,7 @@ tamamen script, GUI adimi yok (SCRIPT-FIRST tam uyum).
 ## D-098 - M5.5 kok neden analizi (AYRI SAYFA)
 
 **Tarih:** 2026-08-17
-**Durum:** ACIK (m56s + m56m_v2 UE kosumu bekliyor)
+**Durum:** ACIK (m56s v4 PASS; m56m_drive_test_v2 UE kosumu bekliyor)
 
 Tam kayit: `DECISION_LOG_VOL17_D098.md` (bu ciltte sayfa buyudugu icin ayri dosya).
 Ozet: torque OK / XY=0 blokajinin root-bone hipotezi ARASTIRMACI kanitiyla
@@ -258,3 +258,10 @@ chassis collision box. Cozum scriptleri repoda:
 `m56m_drive_test_v2.py` (settle-aware PIE kabul testi). Kabul: m56s != FAIL
 VE m56m SONUC: PASS. Not: m55e..m56r chat-only teshis scriptleri bilerek repoya
 alinmadi; yalnizca nihai iki script push edildi.
+
+Duzeltme (2026-08-17): m56s v4 UE kosumu PASS - sasi collision box olculdu ve
+duzeltildi (actor-space taban -46.7 cm -> +2.4 cm), PhysicsAsset kaydedildi
+(.uasset LFS commit'i bekliyor). XY=0 icin nedensellik ve surus kabulu
+m56m_drive_test_v2 kosumuna kadar dogrulanmamis sayilir; kosum bloke
+(gelistirme makinesi erisilemez). Bu paragraf eski ozetin acik durum
+duzeltmesidir; kayit yeniden yazilmamistir.
