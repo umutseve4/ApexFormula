@@ -37,12 +37,25 @@ pa = unreal.load_asset(pa_path)
 log("PA_FIND", pa is not None, pa_path)
 
 # --- 2) Preview skeletal mesh + temp actor ---
-prev_mesh = pa.get_editor_property("preview_skeletal_mesh")
+# UE 5.8: preview_skeletal_mesh Python'a expose DEGIL (ARASTIRMACI dogruladi)
+# -> try/except + iki kademeli fallback arama
+prev_mesh = None
+try:
+    prev_mesh = pa.get_editor_property("preview_skeletal_mesh")
+except Exception:
+    info("MESH", "preview_skeletal_mesh UE 5.8 Python'da expose degil - fallback arama")
 if prev_mesh is None:
-    # fallback: ayni klasorde skeletal mesh ara
+    # fallback 1: ayni klasorde skeletal mesh ara
     folder = pa_path.rsplit("/", 1)[0]
     for a in ar.get_assets_by_path(folder, recursive=True):
         if str(a.asset_class_path.asset_name) == "SkeletalMesh":
+            prev_mesh = a.get_asset()
+            break
+if prev_mesh is None:
+    # fallback 2: /Game altinda adi AF_Vehicle iceren SkeletalMesh
+    for a in ar.get_assets_by_path("/Game", recursive=True):
+        if (str(a.asset_class_path.asset_name) == "SkeletalMesh"
+                and "af_vehicle" in str(a.asset_name).lower()):
             prev_mesh = a.get_asset()
             break
 log("MESH", prev_mesh is not None,
