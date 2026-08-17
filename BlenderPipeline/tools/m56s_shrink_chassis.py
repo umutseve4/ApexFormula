@@ -94,13 +94,14 @@ else:
 # --- 4..6) Body sec + box hesap + kaydet (QA: try/finally ile temizlik) ---
 def run(actor, smc, eas):
     global PASS
-    # 4) Body setup'lari subobject route ile yukle; chassis'i bone_name ile POZITIF sec
+    # 4) Body setup'lari ObjectIterator ile ENUMERATE et (isim tahmini YASAK - v2 FAIL nedeni)
+    # ARASTIRMACI kaniti: UE 5.8'de ObjectIterator + get_outer() mevcut; PA yuklu oldugundan
+    # subobject'leri de yuklu -> outer filtresi guvenli.
+    subs = [o for o in unreal.ObjectIterator(unreal.SkeletalBodySetup)
+            if o.get_outer() == pa]
+    info("ENUM", "%d SkeletalBodySetup bulundu (ObjectIterator)" % len(subs))
     candidates = []   # (idx, sub, bone, n_box, n_other)
-    for i in range(8):
-        sub = unreal.load_object(None, "%s.%s:SkeletalBodySetups_%d"
-                                 % (pa_path, pa_path.rsplit("/", 1)[1], i))
-        if sub is None:
-            continue
+    for i, sub in enumerate(subs):
         bn = str(sub.get_editor_property("bone_name"))
         agg0 = sub.get_editor_property("agg_geom")
         n_box = len(list(agg0.get_editor_property("box_elems")))
@@ -125,7 +126,8 @@ def run(actor, smc, eas):
                 % (len(chassis), len(boxed)))
             return "FAIL"
     body_idx, found_body, bn = chassis[0][0], chassis[0][1], chassis[0][2]
-    log("BODY", True, "SkeletalBodySetups_%d bone=%s secildi" % (body_idx, bn))
+    log("BODY", True, "body[%d] %s bone=%s secildi"
+        % (body_idx, found_body.get_name(), bn))
     if chassis[0][4] > 0:
         log("BODY", False,
             "bu body'de box disi sekiller de var - script sadece box duzenler, PhAT GUI gerekir")
@@ -193,9 +195,8 @@ def run(actor, smc, eas):
     if not saved:
         return "FAIL"
 
-    sub2 = unreal.load_object(None, "%s.%s:SkeletalBodySetups_%d"
-                              % (pa_path, pa_path.rsplit("/", 1)[1], body_idx))
-    agg2 = sub2.get_editor_property("agg_geom")
+    # verify: ayni nesneden agg_geom'u tekrar oku (isim tahminsiz)
+    agg2 = found_body.get_editor_property("agg_geom")
     for j, bx in enumerate(list(agg2.get_editor_property("box_elems"))):
         info("VERIFY", "box%d persist: z=%.1f center=%s"
              % (j, float(bx.get_editor_property("z")),
