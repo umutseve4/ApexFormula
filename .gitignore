@@ -108,3 +108,16 @@ $RECYCLE.BIN/
 Crashes/
 
 Unreal/Config/DefaultEditor.ini
+
+# ------------------------------------------------------------
+# UE Python diagnostic scratch scripts — machine-local (M5 debugging)
+# Delivered scripts are committed explicitly and listed in
+# Documentation/UE_SCRIPT_INVENTORY.md. One-off diagnostic
+# experiments belong in the directory below and stay machine-local;
+# a deliberately narrow directory rule is used instead of a broad
+# m5*.py pattern so that future intentional scripts are never
+# silently hidden from `git status`. Loose scratch m5x_*.py files
+# still on the development machine are queued to move into this
+# directory when the machine is next reachable.
+# ------------------------------------------------------------
+BlenderPipeline/tools/local_diagnostics/
