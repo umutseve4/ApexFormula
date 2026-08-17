@@ -399,17 +399,20 @@ This table records what has been *authored* and what has been *verified*. Author
 | 0A | Yes | Yes — `statically inspected` | Documentation set exists and is cross-consistent. |
 | 0B | Yes | Yes — `automatically validated` | Blender 5.2.0 LTS runs `af_smoke_test.py` headless in CI on every push. All seven stages pass, the harness exits 0, and the pre-export validator reports 19 passed / 0 failed / 1 skipped of 21 checks against measured values. `requires visual inspection` remains open for whether the geometry looks right. |
 | 1 | Yes | **Yes — `verified (local build + editor + automation run)`** | Accepted 2026-08-14 (D-076, D-077): clean compile on the developer's machine after a 9-file UE 5.8 API fix (`a5ca90c`); editor opens `Unreal/ApexFormula.uproject` with no module load errors; 37/37 automation tests green after the SectorTimer guard reorder (`dbfb5d4`). |
-| 2 | Yes | 2 of 4 — see below | Criteria 3 (compatibility layer, CI) and 4 (skeleton import, D-079/D-080) are met; the two playtesting criteria await M5 content (D-079). Execution protocol: D-078 (B-3 sweep). |
-| 3–12 | No | Not started | Not begun. |
+| 2 | Yes | 2 of 4 — see below | Criteria 3 (compatibility layer, CI) and 4 (skeleton import, D-079/D-080) are met; the two playtesting criteria await M5 content (D-079). Execution protocol: D-078 (B-3 sweep). Diagnostic runs under D-098 do not constitute formal acceptance; the two playtesting criteria are gated on `m56m_drive_test_v2`, currently blocked (development machine unreachable). |
+| 3 | Partially | Not claimed | Standalone models authored (Tools/af_circuit_generate.py, Tools/af_lap_rules_model.py); self-tests `automatically validated` in CI; no in-engine circuit exists. |
+| 4 | Partially | Not claimed | Mesh quality gate and configuration-digest guard `automatically validated` in CI; D-048 rename wave 1 in progress. |
+| 5 | Partially | Not claimed | In execution. M5.2 and M5.3 closed; M5.4a–M5.4e closed — status summary from D-087, D-091 and D-093–D-097; execution evidence remains authoritative only in those decision records. D-098 open and blocked pending m56m_drive_test_v2 (development machine unreachable): the m56s v4 run (2026-08-17) measured and corrected the chassis collision-box defect (actor-space bottom −46.7 cm → +2.4 cm); causality for the XY=0 driving failure and driving acceptance remain unverified. M5.6 (m56w) unexecuted, separately gated on a D-098 PASS. No closure claimed for M5.1, M5.4 overall or Milestone 5 overall. |
+| 6–12 | No | Not started | Not begun. |
 
-The 0B row previously read "Not confirmed — no script has been run". That was true when written and is no longer true. It was corrected rather than quietly deleted, because a status table that silently improves is indistinguishable from one that is being flattered. The Milestone 1 row was updated the same way on 2026-08-14: it previously read "Not confirmed", which stopped being true when D-076/D-077 recorded the acceptance evidence. The Milestone 2 row moved from "1 of 4" to "2 of 4" on 2026-08-14 when D-080 recorded the skeleton-import evidence.
+The 0B row previously read "Not confirmed — no script has been run". That was true when written and is no longer true. It was corrected rather than quietly deleted, because a status table that silently improves is indistinguishable from one that is being flattered. The Milestone 1 row was updated the same way on 2026-08-14: it previously read "Not confirmed", which stopped being true when D-076/D-077 recorded the acceptance evidence. The Milestone 2 row moved from "1 of 4" to "2 of 4" on 2026-08-14 when D-080 recorded the skeleton-import evidence. The former "3–12 | No | Not started" row was split on 2026-08-17 because it had become false for Milestones 3–5, which had reached an authored-but-unaccepted state recorded in decision-log volumes 13–17; the split follows the same open-correction convention.
 
 **Milestone 2 acceptance criteria, individually:**
 
 | Criterion | Status | Label |
 | --- | --- | --- |
-| Vehicle accelerates, brakes and steers | Not met — not demonstrated | `requires playtesting` |
-| Vehicle does not fall through the ground, oscillate, or invert at rest | Not met — not demonstrated | `requires playtesting` |
+| Vehicle accelerates, brakes and steers | Not met — not demonstrated. Diagnostic runs under D-098 do not constitute formal acceptance; gated on `m56m_drive_test_v2` (blocked: development machine unreachable). | `requires playtesting` |
+| Vehicle does not fall through the ground, oscillate, or invert at rest | Not met — not demonstrated. Diagnostic runs under D-098 do not constitute formal acceptance; gated on `m56m_drive_test_v2` (blocked: development machine unreachable). | `requires playtesting` |
 | All engine vehicle access goes through `UAFVehicleCompatibilityLayer` | **Met** | `automatically validated` — enforced by `Tools/af_static_validate.py` in CI |
 | Imported skeleton bone names match `UAFBoneNameMap` | **Met** — verified 2026-08-14 (D-079, D-080) | `requires Unreal Editor verification` — performed |
 
@@ -425,7 +428,7 @@ Criterion 4 closed on 2026-08-14. The producing side was already continuously ve
 | Dependencies form an acyclic order (0A → 0B → 1 → 2 → …) | statically inspected |
 | Every referenced document and section exists | statically inspected |
 | Acceptance criteria are checkable rather than aspirational | statically inspected |
-| Milestones 0A, 0B, 1 and 2 have been authored | statically inspected |
+| Milestones 0A, 0B, 1 and 2 have been authored; 3–5 are partially authored | statically inspected |
 | Milestone 0A acceptance criteria are met | statically inspected |
 | Milestone 0B acceptance criteria are met | automatically validated — headless Blender in CI, exit 0, 19/21 passed with 1 permanent skip |
 | The 0B geometry looks correct in a viewport | not claimed — `requires visual inspection` |
@@ -434,6 +437,8 @@ Criterion 4 closed on 2026-08-14. The producing side was already continuously ve
 | Milestone 2 criterion 3 is met | automatically validated |
 | Milestone 2 criterion 4 has partial (producing-side) evidence in CI | automatically validated |
 | Milestone 2 criterion 4 is met | verified (Unreal Editor import + Skeleton Tree read-back) — D-079/D-080 |
+| M5.2, M5.3 and M5.4a–M5.4e are closed | statically inspected — status summary from D-087, D-091 and D-093–D-097; execution evidence remains authoritative only in those decision records |
+| Milestone 5 acceptance criteria are met | not claimed — D-098 open |
 | The product name "Uludağ Formula" matches none of the prohibited identifier patterns in `af_static_validate.py` | automatically validated |
 | The six module identifiers still carry the previous product name and are queued for wave 2 | statically inspected |
 | Any milestone beyond 0A, 0B and 1 is complete | not claimed |
