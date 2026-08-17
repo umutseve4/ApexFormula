@@ -2,9 +2,18 @@
 
 An original 3D formula racing game built with Unreal Engine 5.8 and Blender 5.2 LTS.
 
-> **Current state:** the Blender pipeline is executed and green in CI. The Unreal side is
-> authored and statically validated but **has never been compiled**. There is no art asset in
-> this repository yet, nothing has been imported into an editor, and nothing has been played.
+> **Current state:** the Blender pipeline is executed and green in CI. The Unreal project has
+> been compiled clean on the developer's machine, the editor opens with no module load errors
+> and 37/37 automation tests pass — Milestone 1 was accepted on 2026-08-14 (D-076/D-077). The
+> placeholder vehicle FBX is imported and the skeleton contract is verified in-editor
+> (D-079/D-080). Milestone 5 (visual + physics integration) is in execution: M5.2 and M5.3 are
+> closed and M5.4a–M5.4e are closed (D-087, D-091, D-093–D-097); the drive-test acceptance
+> D-098 is **open** — the m56s v4 PASS run (2026-08-17) measured and corrected a chassis
+> collision-box defect (actor-space bottom −46.7 cm → +2.4 cm), but causality for the XY=0
+> driving failure and formal driving acceptance remain unverified pending
+> `m56m_drive_test_v2`, which is **blocked: the development machine is currently unreachable**.
+> No closure is claimed for M5.1, M5.4 overall or Milestone 5 overall. No milestone beyond 1 is
+> claimed complete.
 
 > **Rename in progress (D-048):** the project was previously called *Apex Formula*. The product
 > name is now **Uludağ Formula**. The rename is being applied in waves and is **not finished**.
@@ -91,14 +100,14 @@ this is a staged migration rather than a single sweep.
 ## What this repository contains
 
 Design documents, the Blender-side authoring and export pipeline, the Unreal Engine 5.8 C++
-project foundation and vehicle implementation, and the standalone static validators that check
-them against each other.
+project foundation and vehicle implementation, the imported vehicle content (Git LFS), and the
+standalone static validators that check them against each other.
 
 ```
 UludagFormula/
 ├── Documentation/          design documents, decision log, version matrix
-├── BlenderPipeline/        nine af_*.py scripts + README
-├── Unreal/                 .uproject, Config/, Source/ with six C++ modules
+├── BlenderPipeline/        nine af_*.py scripts + committed UE Python tools + README
+├── Unreal/                 .uproject, Config/, Source/ with six C++ modules, Content/ (LFS)
 ├── Tools/                  seven standalone af_*.py validators
 ├── .github/workflows/      static validation + headless Blender smoke test on every push
 ├── .gitattributes
@@ -120,19 +129,24 @@ UludagFormula/
 | `MILESTONE_3_CIRCUIT.md` | The Crescent Vale test circuit specification |
 | `MILESTONE_3_IMPLEMENTATION.md` | What Milestone 3 added, and what it does not prove |
 | `MILESTONE_4_IMPLEMENTATION.md` | Mesh quality gate, the configuration digest guard, the rename |
+| `M56_WHEELSPIN_PLAN.md` | The M5.6 wheel-spin AnimBP execution plan, gated on a D-098 PASS |
+| `UE_SCRIPT_INVENTORY.md` | Inventory of the UE Python scripts under `BlenderPipeline/tools/` — delivery vs execution status |
 | `VERSION_MATRIX.md` | Pinned environment and version-sensitive assumptions |
 | `CI_EVIDENCE.md` | Recorded CI run identifiers and what each one proves |
 | `DECISION_LOG.md` | Numbered decision records D-001 to D-044 — **frozen** |
-| `DECISION_LOG_VOL2.md` | Numbered decision records D-045 onward — **live** |
+| `DECISION_LOG_VOL2.md` … `DECISION_LOG_VOL17.md` | Numbered decision records D-045 onward; a new volume opens at ~20 KB; the highest-numbered volume is live |
+| `DECISION_LOG_VOL17_D098.md` | The open D-098 drive-test record — authoritative execution evidence for M5.5 |
 
 The decision log is split into volumes. Volume 1 reached 50 KB, at which point appending a
 single row meant retranscribing the whole file, and in practice the ledger stopped being
-updated. Volume 1 is now frozen and authoritative for D-001 to D-044; new decisions go into
-volume 2. A new volume is opened whenever the current one passes roughly 20 KB.
+updated. Volume 1 is frozen and authoritative for D-001 to D-044; later decisions live in
+numbered volumes (VOL2–VOL17 at the time of writing), and a new volume is opened whenever the
+current one passes roughly 20 KB. The open D-098 record grew large enough to warrant its own
+file, `DECISION_LOG_VOL17_D098.md`.
 
 Suggested reading order: `PROJECT_VISION` → `TECHNICAL_ARCHITECTURE` →
 `VEHICLE_SYSTEM_DECISION` → `BLENDER_PIPELINE_DESIGN` → `DRIVER_PIPELINE_DESIGN` →
-`MILESTONE_PLAN` → `VERSION_MATRIX` → `DECISION_LOG` → `DECISION_LOG_VOL2`.
+`MILESTONE_PLAN` → `VERSION_MATRIX` → `DECISION_LOG` → the latest decision-log volume.
 
 ## Technology
 
@@ -189,15 +203,18 @@ committed, packaged or transmitted. See `Documentation/DRIVER_PIPELINE_DESIGN.md
 | --- | --- | --- |
 | **0A — Technical foundation** | Complete | `Documentation/` — design documents |
 | **0B — Blender pipeline foundation** | Complete, **executed and green in CI** | `BlenderPipeline/` — nine `af_*.py` scripts |
-| **1 — Unreal project foundation** | Complete, never compiled | `Unreal/` — six C++ modules; `Tools/af_static_validate.py` |
-| **2 — Vehicle implementation** | Authored and merged; 1 of 4 acceptance criteria met | Vehicle/pawn/controller implementations, 37 automation tests, `Tools/af_validate_interfaces.py` |
+| **1 — Unreal project foundation** | **Accepted 2026-08-14** (D-076/D-077): `requires local compilation` — performed; `requires Unreal Editor verification` — performed; 37/37 automation tests `automatically validated` | `Unreal/` — six C++ modules; `Tools/af_static_validate.py` |
+| **2 — Vehicle implementation** | Authored and merged; 2 of 4 acceptance criteria met (D-079/D-080); the two driving criteria are gated on D-098 | Vehicle/pawn/controller implementations, 37 automation tests, `Tools/af_validate_interfaces.py` |
 | **3 — Circuit and lap rules** | Partial | `Tools/af_circuit_generate.py`, `Tools/af_lap_rules_model.py` |
 | **4 — Quality gates and rename** | In progress | `Tools/af_mesh_quality.py`, `Tools/af_config_hash_guard.py`, wave 1 of D-048 |
+| **5 — Visual + physics integration** | In execution — M5.2, M5.3 and M5.4a–M5.4e closed (D-087, D-091, D-093–D-097); D-098 open and blocked pending `m56m_drive_test_v2` (development machine unreachable); M5.6/`m56w` unexecuted, separately gated on a D-098 PASS | `Unreal/Content/` vehicle assets (Git LFS; the m56s-corrected PhysicsAsset `.uasset` commit is pending), `BlenderPipeline/tools/` UE scripts, `Documentation/UE_SCRIPT_INVENTORY.md` |
 
-"Complete, never compiled" for Milestone 1 means every file is authored and the static validator
-passes with zero failures, but **nothing has been compiled**, no editor has been opened and no
-automation test has been executed — no Unreal Engine exists in the environment where this was
-authored. That is unchanged by Milestone 2.
+The Milestone 1 row previously read "Complete, never compiled": every file was authored and the
+static validator passed, but nothing had been compiled and no editor had been opened. That
+stopped being true on 2026-08-14, when the project was compiled clean on the developer's machine
+after a 9-file UE 5.8 API fix (`a5ca90c`), the editor opened `Unreal/ApexFormula.uproject` with
+no module load errors and all 37 automation tests ran green (D-076/D-077). The row was corrected
+openly rather than silently, per the project's status-correction convention.
 
 Milestone 0B is different, and the difference is worth stating precisely. `Blender 5.2.0 LTS`
 downloads and runs headless in CI on every push, executing
@@ -208,30 +225,33 @@ permanent and documented). This is `automatically validated`, not `requires Blen
 
 For Milestone 2 the four acceptance criteria are:
 
-1. The vehicle accelerates, brakes and steers — **not met**, `requires playtesting`.
-2. It does not fall through the ground, oscillate or invert at rest — **not met**,
-   `requires playtesting`.
+1. The vehicle accelerates, brakes and steers — **not met — not demonstrated**,
+   `requires playtesting`. Diagnostic runs under D-098 do not constitute formal acceptance; the
+   criterion is gated on `m56m_drive_test_v2` (currently blocked — development machine
+   unreachable).
+2. It does not fall through the ground, oscillate or invert at rest — **not met — not
+   demonstrated**, `requires playtesting`, same gate as criterion 1.
 3. All engine vehicle access goes through `UAFVehicleCompatibilityLayer` — **met**,
    `automatically validated`.
-4. Imported skeleton bone names match `UAFBoneNameMap` — **not met**,
-   `requires Unreal Editor verification`.
+4. Imported skeleton bone names match `UAFBoneNameMap` — **met**, verified 2026-08-14
+   (D-079/D-080), `requires Unreal Editor verification` — performed.
 
-Criterion 4 deserves a note rather than a bare "not met". The Blender smoke test now prints the
-full eleven-bone hierarchy on every CI run, with each bone's parent and head position in both
-metres and centimetres, and the rig stage asserts `bone_order_matches_config == True`. So the
-*producing* side of the contract is verified continuously. What remains unverified is the
-*consuming* side: no FBX has been imported into an Unreal editor, because no Unreal editor
-exists here. Criterion 4 closes when someone imports the exported asset and reads the skeleton.
+Criterion 4 closed on 2026-08-14. The producing side of the contract remains continuously
+verified in CI (the rig stage asserts `bone_order_matches_config == True`). The consuming side
+was verified by importing `AF_Vehicle_Proto.fbx` into UE 5.8 via Interchange: the Skeleton Tree
+read back all 11 contract bones with exact names, plus one accepted armature root node,
+`AF_Armature_Proto` — D-080 records why that extra root is inherent Interchange behaviour and
+how the acceptance criteria were amended for it (12 nodes: accepted root + 11 contract bones).
 
-Only criterion 3 can be evaluated without an engine, and it is enforced on every push. See
-`Documentation/MILESTONE_2_IMPLEMENTATION.md` and `Unreal/README.md` §7.
+See `Documentation/MILESTONE_2_IMPLEMENTATION.md` and `Unreal/README.md` §7.
 
 ## Repository layout
 
 ```
 Documentation/     Design documents, decision log, version matrix
-BlenderPipeline/   Blender-side authoring, validation and export scripts
+BlenderPipeline/   Blender-side authoring, validation and export scripts + UE Python tools
 Unreal/            The Unreal Engine 5.8 project and its six C++ modules  (D-027)
+Unreal/Content/    Imported vehicle assets (.uasset/.umap), tracked with Git LFS
 Tools/             Standalone tooling that needs neither Blender nor Unreal
 ```
 
@@ -289,5 +309,8 @@ downward from the envelope instead of being scaled from the halo tube radius, an
 
 ## Next milestone
 
-**4** — finish the D-048 rename waves, then close the open Milestone 3 items. See
-`Documentation/MILESTONE_PLAN.md` and `Documentation/MILESTONE_4_IMPLEMENTATION.md`.
+**5** — close the D-098 drive-test acceptance: run `m56m_drive_test_v2` (PASS = XY
+displacement > 300 cm AND speed > 100 cm/s) — currently blocked, the development machine is
+unreachable — then the separately gated M5.6 wheel-spin AnimBP run (`m56w`). See
+`Documentation/MILESTONE_PLAN.md`, `Documentation/M56_WHEELSPIN_PLAN.md`,
+`Documentation/UE_SCRIPT_INVENTORY.md` and `Documentation/DECISION_LOG_VOL17_D098.md`.
